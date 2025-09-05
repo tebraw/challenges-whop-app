@@ -90,7 +90,17 @@ export async function getCurrentUser() {
   if (whopUser) {
     // For Experience apps, auto-create user if needed
     let user = await prisma.user.findUnique({
-      where: { whopUserId: whopUser.userId }
+      where: { whopUserId: whopUser.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        whopCompanyId: true,
+        whopUserId: true,
+        tenantId: true
+      }
     });
     
     if (!user) {
@@ -99,14 +109,13 @@ export async function getCurrentUser() {
       
       // Get or create tenant for this company
       let tenant = await prisma.tenant.findFirst({
-        where: { whopCompanyId: userCompanyId }
+        where: { name: `Company ${userCompanyId?.slice(-6) || 'Unknown'}` }
       });
       
       if (!tenant) {
         tenant = await prisma.tenant.create({
           data: {
-            name: `Company ${userCompanyId?.slice(-6) || 'Unknown'}`,
-            whopCompanyId: userCompanyId
+            name: `Company ${userCompanyId?.slice(-6) || 'Unknown'}`
           }
         });
         console.log(`🆕 Created tenant for company: ${userCompanyId}`);
@@ -121,15 +130,23 @@ export async function getCurrentUser() {
           name: whopUser.user?.username || `User ${whopUser.userId.slice(-6)}`,
           role: isOwner ? 'ADMIN' : 'USER',
           tenantId: tenant.id,
-          whopUserId: whopUser.userId,
-          whopCompanyId: userCompanyId,
-          isFreeTier: !isOwner,
-          subscriptionStatus: 'active',
-          tier: isOwner ? 'enterprise' : 'basic'
+          whopUserId: whopUser.userId
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          createdAt: true,
+          whopCompanyId: true,
+          whopUserId: true,
+          tenantId: true
         }
       });
       
-      console.log(`🆕 Auto-created user: ${user.email} (${user.role}) for company ${userCompanyId}`);
+      if (user) {
+        console.log(`🆕 Auto-created user: ${user.email} (${user.role}) for company ${userCompanyId}`);
+      }
     }
     
     return user;

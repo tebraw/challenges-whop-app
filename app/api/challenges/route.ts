@@ -16,10 +16,23 @@ export async function GET() {
       );
     }
 
+    // Get user's tenant manually since tenantId might not be in type yet
+    const userWithTenant = await prisma.user.findUnique({
+      where: { id: currentUser.id },
+      include: { tenant: true }
+    });
+
+    if (!userWithTenant?.tenant) {
+      return NextResponse.json(
+        { error: 'No tenant found for user' },
+        { status: 403 }
+      );
+    }
+
     // Only fetch challenges for this user's tenant
     const challenges = await prisma.challenge.findMany({
       where: {
-        tenantId: currentUser.tenantId
+        tenantId: userWithTenant.tenant.id
       },
       include: {
         creator: {
