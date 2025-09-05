@@ -1,12 +1,26 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getWhopUserFromHeaders } from "@/lib/whop-auth";
+import { getCurrentUser } from "@/lib/auth";
 
 const prisma = new PrismaClient();
 
 export async function GET() {
   try {
+    // Get current user and their tenant
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized - No user found' },
+        { status: 401 }
+      );
+    }
+
+    // Only fetch challenges for this user's tenant
     const challenges = await prisma.challenge.findMany({
+      where: {
+        tenantId: currentUser.tenantId
+      },
       include: {
         creator: {
           select: { id: true, name: true, email: true }

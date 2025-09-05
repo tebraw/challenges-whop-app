@@ -76,7 +76,8 @@ export async function getCurrentUser() {
         role: true,
         createdAt: true,
         whopCompanyId: true,
-        whopUserId: true
+        whopUserId: true,
+        tenantId: true
       }
     });
     return user;
