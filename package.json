@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "whop-proxy --command 'next dev'",
-    "build": "npx prisma generate && npx prisma migrate deploy && next build",
+    "build": "npx prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "db:push": "prisma db push",
