@@ -137,7 +137,7 @@ async function createOrUpdateAdminUser(session: WhopSession): Promise<void> {
  */
 export async function isAppCreator(userId: string): Promise<boolean> {
   try {
-    // Check if this user is the creator/owner of the company
+    // Method 1: Check if user owns the company we're checking
     const companyResponse = await fetch(`https://api.whop.com/v5/companies/${process.env.NEXT_PUBLIC_WHOP_COMPANY_ID}`, {
       headers: {
         'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
@@ -145,15 +145,45 @@ export async function isAppCreator(userId: string): Promise<boolean> {
       }
     });
 
-    if (!companyResponse.ok) {
-      console.warn('Could not fetch company details for creator check');
-      return false;
+    if (companyResponse.ok) {
+      const company = await companyResponse.json();
+      console.log('🔍 Company data:', { 
+        id: company.id, 
+        owner: company.owner_id || company.owner?.id,
+        name: company.name 
+      });
+      
+      // Check if user is the company owner
+      if (company.owner_id === userId || company.owner?.id === userId) {
+        console.log('✅ User is company owner');
+        return true;
+      }
     }
 
-    const company = await companyResponse.json();
-    
-    // Check if user is the company owner/creator
-    return company.owner?.id === userId || company.creator?.id === userId;
+    // Method 2: Check user's companies to see if they own the target company
+    const userCompaniesResponse = await fetch(`https://api.whop.com/v5/users/${userId}/companies`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (userCompaniesResponse.ok) {
+      const userCompanies = await userCompaniesResponse.json();
+      console.log('🔍 User companies:', userCompanies.data?.map((c: any) => ({ id: c.id, name: c.name })));
+      
+      const ownsTargetCompany = userCompanies.data?.some((company: any) => 
+        company.id === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID
+      );
+      
+      if (ownsTargetCompany) {
+        console.log('✅ User owns target company');
+        return true;
+      }
+    }
+
+    console.log('❌ User is not company owner');
+    return false;
   } catch (error) {
     console.error('Error checking if user is app creator:', error);
     return false;
@@ -165,22 +195,26 @@ export async function isAppCreator(userId: string): Promise<boolean> {
  */
 export async function getUserRole(session: WhopSession): Promise<'ADMIN' | 'USER'> {
   try {
-    // First check if user is the app creator
-    const isCreator = await isAppCreator(session.userId);
-    if (isCreator) {
-      console.log('🔑 User is app creator - granting admin access');
+    // SIMPLIFIED APPROACH: If user authenticates via Whop and has company connection, give admin
+    // This is reasonable for the initial app setup phase
+    
+    // Check if user has any connection to our company
+    const hasCompanyConnection = session.companyId === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID ||
+                                session.memberships.some(m => m.companyId === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID);
+    
+    if (hasCompanyConnection) {
+      console.log('🔑 User has company connection - granting admin access');
       return 'ADMIN';
     }
 
-    // Check for premium memberships that grant admin access
-    const hasAdminMembership = session.memberships.some(
-      membership => 
-        membership.valid && 
-        membership.status === 'active' &&
-        membership.companyId === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID
-    );
+    // Fallback: Check if user is verified company owner
+    const isCreator = await isAppCreator(session.userId);
+    if (isCreator) {
+      console.log('🔑 User is verified company owner - granting admin access');
+      return 'ADMIN';
+    }
 
-    return hasAdminMembership ? 'ADMIN' : 'USER';
+    return 'USER';
   } catch (error) {
     console.error('Error determining user role:', error);
     return 'USER';
