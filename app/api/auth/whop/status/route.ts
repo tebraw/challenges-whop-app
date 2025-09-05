@@ -4,10 +4,10 @@ import { whopSdk } from '@/lib/whop-sdk';
 
 export async function GET() {
   const configured = !!(
-    process.env.WHOP_APP_ID && 
-    process.env.WHOP_API_KEY &&
-    process.env.WHOP_CLIENT_SECRET &&
-    process.env.WHOP_WEBHOOK_SECRET
+    process.env.WHOP_API_KEY && 
+    process.env.WHOP_OAUTH_CLIENT_ID &&
+    process.env.WHOP_OAUTH_CLIENT_SECRET &&
+    process.env.NEXT_PUBLIC_WHOP_COMPANY_ID
   );
 
   const sdkStatus = whopSdk ? 'initialized' : 'not_initialized';
@@ -30,11 +30,13 @@ export async function GET() {
     sdkStatus,
     apiConnectionTest,
     environment: {
-      hasAppId: !!process.env.WHOP_APP_ID,
+      hasAppId: !!process.env.NEXT_PUBLIC_WHOP_APP_ID,
       hasApiKey: !!process.env.WHOP_API_KEY,
-      hasClientSecret: !!process.env.WHOP_CLIENT_SECRET,
+      hasClientId: !!process.env.WHOP_OAUTH_CLIENT_ID,
+      hasClientSecret: !!process.env.WHOP_OAUTH_CLIENT_SECRET,
       hasWebhookSecret: !!process.env.WHOP_WEBHOOK_SECRET,
       hasAppUrl: !!process.env.WHOP_APP_URL,
+      hasCompanyId: !!process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
     },
     message: configured 
       ? `Whop SDK is ${sdkStatus} - API test: ${apiConnectionTest}` 
