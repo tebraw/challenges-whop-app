@@ -2,6 +2,7 @@
 import { cookies } from 'next/headers';
 import { PrismaClient } from '@prisma/client';
 import { isDevAdmin, getDevUser } from './devAuth';
+import { getWhopSession } from './whop/auth';
 
 const prisma = new PrismaClient();
 
@@ -40,12 +41,16 @@ export async function getCurrentUserId(): Promise<string | null> {
       if (testUserId) return testUserId;
     }
     
-    // PRODUCTION: Only use Whop session tokens
-    const sessionToken = cookieStore.get('whop_session')?.value;
-    if (!sessionToken) return null;
+    // PRODUCTION: Use Whop session to get user ID
+    const whopSession = await getWhopSession();
+    if (whopSession) {
+      // Find user by Whop User ID
+      const user = await prisma.user.findUnique({
+        where: { whopUserId: whopSession.userId }
+      });
+      return user?.id || null;
+    }
     
-    // TODO: Verify session with Whop API and get user ID
-    // This must be implemented for production security
     return null;
   } catch {
     return null;
@@ -58,18 +63,24 @@ export async function getCurrentUser() {
     return await getDevUser();
   }
   
-  const userId = await getCurrentUserId();
-  if (!userId) return null;
+  // PRODUCTION: Use Whop session to get user
+  const whopSession = await getWhopSession();
+  if (whopSession) {
+    // Find user by Whop User ID
+    const user = await prisma.user.findUnique({
+      where: { whopUserId: whopSession.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        whopCompanyId: true,
+        whopUserId: true
+      }
+    });
+    return user;
+  }
   
-  return await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      createdAt: true,
-      whopCompanyId: true
-    }
-  });
+  return null;
 }

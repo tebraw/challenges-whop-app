@@ -2,6 +2,7 @@
 // Official Whop Integration for Next.js Apps
 
 import { cookies } from 'next/headers';
+import { prisma } from '@/lib/prisma';
 
 export interface WhopSession {
   userId: string;
@@ -80,6 +81,109 @@ export async function getWhopSession(): Promise<WhopSession | null> {
   } catch (error) {
     console.error('Error getting Whop session:', error);
     return null;
+  }
+}
+
+/**
+ * Create or update admin user in database
+ */
+async function createOrUpdateAdminUser(session: WhopSession): Promise<void> {
+  try {
+    // Get or create tenant
+    let tenant = await prisma.tenant.findFirst();
+    
+    if (!tenant) {
+      tenant = await prisma.tenant.create({
+        data: {
+          name: 'Default Organization'
+        }
+      });
+    }
+
+    // Create or update user in database
+    await prisma.user.upsert({
+      where: { 
+        whopUserId: session.userId 
+      },
+      update: {
+        email: session.email,
+        name: session.username || session.email.split('@')[0],
+        role: 'ADMIN',
+        whopCompanyId: session.companyId || process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
+        isFreeTier: false,
+        tier: 'enterprise'
+      },
+      create: {
+        email: session.email,
+        name: session.username || session.email.split('@')[0],
+        role: 'ADMIN',
+        tenantId: tenant.id,
+        whopUserId: session.userId,
+        whopCompanyId: session.companyId || process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
+        isFreeTier: false,
+        subscriptionStatus: 'active',
+        tier: 'enterprise'
+      }
+    });
+
+    console.log(`🔑 App creator ${session.email} granted admin access`);
+  } catch (error) {
+    console.error('Error creating/updating admin user:', error);
+  }
+}
+
+/**
+ * Check if user is the app creator (automatic admin access)
+ */
+export async function isAppCreator(userId: string): Promise<boolean> {
+  try {
+    // Check if this user is the creator/owner of the company
+    const companyResponse = await fetch(`https://api.whop.com/v5/companies/${process.env.NEXT_PUBLIC_WHOP_COMPANY_ID}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!companyResponse.ok) {
+      console.warn('Could not fetch company details for creator check');
+      return false;
+    }
+
+    const company = await companyResponse.json();
+    
+    // Check if user is the company owner/creator
+    return company.owner?.id === userId || company.creator?.id === userId;
+  } catch (error) {
+    console.error('Error checking if user is app creator:', error);
+    return false;
+  }
+}
+
+/**
+ * Get user role based on Whop membership and creator status
+ */
+export async function getUserRole(session: WhopSession): Promise<'ADMIN' | 'USER'> {
+  try {
+    // First check if user is the app creator
+    const isCreator = await isAppCreator(session.userId);
+    if (isCreator) {
+      console.log('🔑 User is app creator - granting admin access');
+      return 'ADMIN';
+    }
+
+    // Check for premium memberships that grant admin access
+    const hasAdminMembership = session.memberships.some(
+      membership => 
+        membership.valid && 
+        membership.status === 'active' &&
+        membership.companyId === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID
+    );
+
+    return hasAdminMembership ? 'ADMIN' : 'USER';
+  } catch (error) {
+    console.error('Error determining user role:', error);
+    return 'USER';
   }
 }
 
@@ -217,6 +321,13 @@ export async function handleWhopCallback(code: string): Promise<WhopSession | nu
         expiresAt: m.expires_at
       }))
     };
+
+    // Check if user is app creator and auto-create admin account
+    const userRole = await getUserRole(session);
+    
+    if (userRole === 'ADMIN') {
+      await createOrUpdateAdminUser(session);
+    }
 
     // Store session in secure cookie
     const cookieStore = await cookies();
