@@ -6,23 +6,53 @@ interface WhopAuthUser {
   userId: string;
   user?: WhopUser;
   memberships?: any[];
+  companyId?: string;
 }
 
 export async function getWhopUserFromHeaders(): Promise<WhopAuthUser | null> {
   const h = await headers();
   const authHeader = h.get('authorization') || h.get('Authorization') || '';
   
-  // Also check for token in x-whop-token header (common in Whop apps)
+  // Whop Experience headers (iFrame embedding)
   const whopToken = h.get('x-whop-token') || '';
+  const whopUserId = h.get('x-whop-user-id') || '';
+  const whopCompanyId = h.get('x-whop-company-id') || '';
   
   const token = authHeader || whopToken;
   
-  if (!token) {
-    console.log('No authorization token found in headers');
+  console.log('🔍 Whop headers received:', {
+    hasAuth: !!authHeader,
+    hasToken: !!whopToken,
+    hasUserId: !!whopUserId,
+    hasCompanyId: !!whopCompanyId,
+    companyId: whopCompanyId
+  });
+  
+  if (!token && !whopUserId) {
+    console.log('No Whop authentication found in headers');
     return null;
   }
 
   try {
+    // For Experience apps, we might get direct user info in headers
+    if (whopUserId && whopCompanyId) {
+      const result: WhopAuthUser = {
+        userId: whopUserId,
+        user: {
+          id: whopUserId,
+          email: `user_${whopUserId.slice(-6)}@whop.com`,
+          username: `User_${whopUserId.slice(-6)}`,
+          created_at: new Date().toISOString(),
+          avatar_url: ''
+        },
+        companyId: whopCompanyId
+      };
+      
+      console.log('✅ Whop Experience user detected:', result);
+      return result;
+    }
+    
+    // Fallback to token verification
     const tokenInfo = await verifyUserToken(token);
     
     if (!tokenInfo?.valid || !tokenInfo.userId) {

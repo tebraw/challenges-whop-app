@@ -195,25 +195,33 @@ export async function isAppCreator(userId: string): Promise<boolean> {
  */
 export async function getUserRole(session: WhopSession): Promise<'ADMIN' | 'USER'> {
   try {
-    // SIMPLIFIED APPROACH: If user authenticates via Whop and has company connection, give admin
-    // This is reasonable for the initial app setup phase
-    
-    // Check if user has any connection to our company
-    const hasCompanyConnection = session.companyId === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID ||
-                                session.memberships.some(m => m.companyId === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID);
-    
-    if (hasCompanyConnection) {
-      console.log('🔑 User has company connection - granting admin access');
+    // FOR WHOP EXPERIENCE APPS: Check if user's company matches our target company
+    // This means they are the company owner (app installer)
+    if (session.companyId === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID) {
+      console.log('🔑 User is company owner (app installer) - granting admin access');
       return 'ADMIN';
     }
 
-    // Fallback: Check if user is verified company owner
+    // Check if user has any memberships to our company (they are members)
+    const hasCompanyMembership = session.memberships.some(m => 
+      m.companyId === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID && 
+      m.valid && 
+      m.status === 'active'
+    );
+    
+    if (hasCompanyMembership) {
+      console.log('🔑 User has valid membership - user access');
+      return 'USER';
+    }
+
+    // Fallback: Check if user is verified company owner via API
     const isCreator = await isAppCreator(session.userId);
     if (isCreator) {
       console.log('🔑 User is verified company owner - granting admin access');
       return 'ADMIN';
     }
 
+    console.log('❌ User has no access to this company');
     return 'USER';
   } catch (error) {
     console.error('Error determining user role:', error);
