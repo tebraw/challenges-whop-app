@@ -1,6 +1,6 @@
 import { whopSdk } from "@/lib/whop-sdk";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export default async function ExperiencePage({
   params,
@@ -31,9 +31,39 @@ export default async function ExperiencePage({
     // 'no_access' means the user does not have access to the whop
     const { accessLevel } = result;
 
-    // If admin, redirect to our admin dashboard
+    // If admin, show admin access button instead of redirect
     if (accessLevel === 'admin') {
-      redirect('/admin?source=whop-experience&experienceId=' + experienceId);
+      return (
+        <div className="flex justify-center items-center h-screen px-8">
+          <div className="max-w-2xl text-center">
+            <h1 className="text-3xl font-bold mb-4">
+              🎯 Challenges App - Admin Access
+            </h1>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+              <p className="text-lg mb-2">
+                Welcome <strong>{user.name}</strong> (@{user.username})! 
+              </p>
+              <p className="text-blue-800 mb-4">
+                ⭐ You have <strong>Admin Access</strong> as the company owner.
+              </p>
+              <p className="text-sm text-blue-600 mb-4">
+                Experience: <strong>{experience.name}</strong> (ID: {experienceId})
+              </p>
+            </div>
+            
+            <Link 
+              href={`/admin?source=whop-experience&experienceId=${experienceId}`}
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+            >
+              🚀 Open Admin Dashboard
+            </Link>
+            
+            <p className="text-xs text-gray-500 mt-4">
+              Create and manage challenges for your community
+            </p>
+          </div>
+        </div>
+      );
     }
 
     return (
