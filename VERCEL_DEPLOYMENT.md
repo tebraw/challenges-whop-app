@@ -38,7 +38,7 @@ Im Vercel Dashboard, gehen Sie zu **Settings > Environment Variables** und füge
 NODE_ENV=production
 ENABLE_DEV_AUTH=false
 WHOP_API_KEY=wFOmsD0dVhxcv6mCo3zJRwHgY9_xZXet2rfy9Rney-o
-NEXT_PUBLIC_WHOP_APP_ID=app_zPVd4wYq8wpnEr
+NEXT_PUBLIC_WHOP_APP_ID=app_ZYUHlzHinpA5Ce
 NEXT_PUBLIC_WHOP_AGENT_USER_ID=user_1HN0I5krNDWlS
 NEXT_PUBLIC_WHOP_COMPANY_ID=biz_YoIIIT73rXwrtK
 DATABASE_URL=postgresql://username:password@hostname:port/database
@@ -61,7 +61,7 @@ NEXTAUTH_SECRET=your-super-secret-production-key-min-32-chars
 
 ### **6. Whop App Konfiguration aktualisieren**
 
-1. Gehen Sie zu: **https://dev.whop.com/apps/app_zPVd4wYq8wpnEr**
+1. Gehen Sie zu: **https://dev.whop.com/apps/app_ZYUHlzHinpA5Ce**
 2. Aktualisieren Sie **Redirect URI:**
    - Von: `http://localhost:3000/api/auth/whop/callback`
    - Zu: `https://your-app.vercel.app/api/auth/whop/callback`
