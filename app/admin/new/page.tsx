@@ -66,10 +66,13 @@ export default function NewChallengePage() {
       difficulty: form.difficulty as "BEGINNER" | "INTERMEDIATE" | "ADVANCED"
     };
 
+    console.log("Submitting challenge data:", challengeData);
+
     // Validate using the schema
     const parsed = challengeAdminSchema.safeParse(challengeData);
     if (!parsed.success) {
-      alert(parsed.error.errors[0].message);
+      console.error("Validation error:", parsed.error);
+      alert(`Validation error: ${parsed.error.errors[0].message}`);
       return;
     }
 
@@ -81,8 +84,11 @@ export default function NewChallengePage() {
         body: JSON.stringify(challengeData)
       });
 
+      console.log("Response status:", response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log("Challenge created successfully:", data);
         router.push(`/admin/c/${data.id}`);
       } else {
         const errorData = await response.json();
@@ -120,44 +126,49 @@ export default function NewChallengePage() {
     form.rewards?.every(r => r.title.trim()) && form.policy && form.policy.length >= 10;
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="mb-8">
-        <button
-          onClick={() => router.push("/admin")}
-          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Admin
-        </button>
-        <h1 className="text-2xl font-bold">Create New Challenge</h1>
-        <p className="text-gray-600">Step {step} of 5</p>
-      </div>
-
-      {/* Progress Indicator */}
-      <div className="flex items-center gap-4 mb-8">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex items-center">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                i <= step
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-500"
-              }`}
-            >
-              {i < step ? <Check className="h-4 w-4" /> : i}
-            </div>
-            {i < 5 && (
-              <div
-                className={`w-12 h-1 ${
-                  i < step ? "bg-blue-600" : "bg-gray-200"
-                }`}
-              />
-            )}
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="mb-8">
+          <button
+            onClick={() => router.push("/admin")}
+            className="flex items-center gap-2 text-sm text-muted hover:text-foreground mb-6 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Admin
+          </button>
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-foreground mb-2">Create New Challenge</h1>
+            <p className="text-muted">Step {step} of 5</p>
           </div>
-        ))}
-      </div>
+        </div>
 
-      <Card>
+        {/* Progress Indicator */}
+        <div className="flex justify-center mb-8">
+          <div className="flex items-center gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                    i <= step
+                      ? "bg-brand text-white"
+                      : "bg-panel border border-border text-muted"
+                  }`}
+                >
+                  {i < step ? <Check className="h-4 w-4" /> : i}
+                </div>
+                {i < 5 && (
+                  <div
+                    className={`w-16 h-1 rounded-full transition-colors ${
+                      i < step ? "bg-brand" : "bg-border"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Card className="shadow-lg border-0 bg-panel/50 backdrop-blur-sm">
         <div className="p-6">
           {/* Step 1: Basic Info */}
           {step === 1 && (
@@ -426,6 +437,7 @@ export default function NewChallengePage() {
           </div>
         </div>
       </Card>
+      </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
+import { getUserAccessLevel } from '@/lib/access-control-client';
 
 interface AdminGuardProps {
   children: React.ReactNode;
@@ -16,10 +17,9 @@ export default function AdminGuard({ children }: AdminGuardProps) {
   useEffect(() => {
     async function checkAdminAccess() {
       try {
-        const response = await fetch('/api/auth/check-admin');
-        const data = await response.json();
+        const accessLevel = await getUserAccessLevel();
         
-        if (data.isAdmin) {
+        if (accessLevel.userType === 'company_owner') {
           setIsAdmin(true);
         } else {
           // Redirect to home with error message

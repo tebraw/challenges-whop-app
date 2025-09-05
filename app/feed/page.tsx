@@ -1,129 +1,178 @@
 // app/feed/page.tsx
-import { prisma } from "@/lib/prisma";
+"use client";
+
+import { useEffect, useState } from "react";
+import { getUserAccessLevel, type AccessControlResult } from "@/lib/access-control-client";
+import { Card } from "@/components/ui/Card";
 import Link from "next/link";
-import ChallengeListClient from "../challenges/ChallengeListClient";
-import { getChallengesFromFollowedCreators } from "@/lib/whopApi";
+import { Calendar, Users, Award } from "lucide-react";
 
-// Force dynamic rendering to prevent build-time database access
-export const dynamic = 'force-dynamic';
+type Challenge = {
+  id: string;
+  title: string;
+  description?: string;
+  startAt: string;
+  endAt: string;
+  imageUrl?: string;
+  _count?: { enrollments: number };
+  creator?: { name: string; };
+  rules?: any;
+};
 
-export default async function FeedPage() {
-  // TODO: Get the current user's Whop ID from session/auth
-  const currentUserWhopId = "mock_user_id"; // This should come from authentication
-  
-  let feedChallenges;
-  
-  try {
-    // Get creators that the user follows on Whop
-    const followedCreatorIds = await getChallengesFromFollowedCreators(currentUserWhopId);
-    
-    // Get challenges from those creators
-    feedChallenges = await prisma.challenge.findMany({
-      where: {
-        // TODO: Once migration is done, filter by whopCreatorId
-        // whopCreatorId: {
-        //   in: followedCreatorIds
-        // }
-      },
-      take: 20,
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        tenantId: true,
-        title: true,
-        description: true,
-        startAt: true,
-        endAt: true,
-        proofType: true,
-        rules: true,
-        createdAt: true,
-        imageUrl: true,
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching feed challenges:", error);
-    // Fallback to recent challenges
-    feedChallenges = await prisma.challenge.findMany({
-      take: 10,
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        tenantId: true,
-        title: true,
-        description: true,
-        startAt: true,
-        endAt: true,
-        proofType: true,
-        rules: true,
-        createdAt: true,
-        imageUrl: true,
-      },
-    });
+export default function FeedPage() {
+  const [userAccess, setUserAccess] = useState<AccessControlResult | null>(null);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        // Check user access
+        const access = await getUserAccessLevel();
+        setUserAccess(access);
+
+        // If user can't view feed, don't load challenges
+        if (!access.canViewMyFeed) {
+          setLoading(false);
+          return;
+        }
+
+        // Load challenges for user's feed
+        const response = await fetch('/api/challenges');
+        if (response.ok) {
+          const data = await response.json();
+          setChallenges(data.challenges || []);
+        }
+      } catch (error) {
+        console.error('Error loading feed:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background pt-20">
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-panel rounded w-1/3"></div>
+            <div className="grid gap-6">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="h-48 bg-panel"></Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  // Convert the data to match the ChallengeListClient interface
-  const challengesForClient = feedChallenges.map(challenge => ({
-    ...challenge,
-    rules: JSON.stringify(challenge.rules),
-    proofType: challenge.proofType as string,
-  }));
+  // Check if user has access to this page
+  if (!userAccess?.canViewMyFeed) {
+    return (
+      <div className="min-h-screen bg-background pt-20">
+        <div className="max-w-4xl mx-auto p-6 text-center">
+          <Card className="py-12">
+            <h1 className="text-2xl font-bold text-foreground mb-4">Access Restricted</h1>
+            <p className="text-muted mb-6">
+              You need to be logged in as a customer or company owner to view your feed.
+            </p>
+            <Link 
+              href="/auth/whop" 
+              className="inline-block bg-brand text-brand-foreground px-6 py-3 rounded-lg hover:bg-brand/90 transition-colors"
+            >
+              Sign In
+            </Link>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-extrabold mb-4">
-          Your Personal Feed
-        </h1>
-        <p className="text-lg text-[var(--muted)] max-w-2xl">
-          Challenges from the creators you follow on Whop.
-        </p>
-      </div>
-
-      {/* Info Banner */}
-      <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-        <div className="flex items-start gap-3">
-          <span className="text-blue-400 text-lg">ℹ️</span>
-          <div>
-            <h3 className="font-semibold text-blue-400 mb-1">Whop Integration</h3>
-            <p className="text-sm text-blue-300">
-              Your feed will be personalized based on the creators you follow on Whop. 
-              The integration will be activated soon.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Feed Challenges */}
-      {challengesForClient.length > 0 ? (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">
-              From your creators ({challengesForClient.length})
-            </h2>
-            <Link 
-              href="/discover"
-              className="text-[var(--brand)] hover:text-[var(--brand)]/80 font-medium"
-            >
-              Discover more →
-            </Link>
-          </div>
-          <ChallengeListClient rows={challengesForClient} />
-        </div>
-      ) : (
-        <div className="card p-8 text-center text-[var(--muted)]">
-          <h3 className="font-semibold mb-2">No feed challenges found</h3>
-          <p className="mb-4">
-            Either the creators you follow haven't created challenges yet, 
-            or the Whop integration is not yet active.
+    <div className="min-h-screen bg-background pt-20">
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-2">My Feed</h1>
+          <p className="text-muted">
+            {userAccess.userType === 'customer' 
+              ? 'Challenges from creators you follow and participate in'
+              : 'Your challenges and community activity'
+            }
           </p>
-          <Link 
-            href="/discover" 
-            className="inline-flex items-center text-[var(--brand)] hover:text-[var(--brand)]/80"
-          >
-            Discover new Challenges →
-          </Link>
         </div>
-      )}
-    </main>
+
+        {challenges.length === 0 ? (
+          <Card className="text-center py-12">
+            <h2 className="text-xl font-semibold text-foreground mb-4">No challenges yet</h2>
+            <p className="text-muted mb-6">
+              {userAccess.userType === 'customer' 
+                ? 'Start following creators and join challenges to see them here.'
+                : 'Create your first challenge to get started!'
+              }
+            </p>
+            <Link 
+              href={userAccess.userType === 'customer' ? '/discover' : '/admin/new'}
+              className="inline-block bg-brand text-brand-foreground px-6 py-3 rounded-lg hover:bg-brand/90 transition-colors"
+            >
+              {userAccess.userType === 'customer' ? 'Discover Challenges' : 'Create Challenge'}
+            </Link>
+          </Card>
+        ) : (
+          <div className="grid gap-6">
+            {challenges.map((challenge) => (
+              <Card key={challenge.id} className="hover:shadow-lg transition-shadow">
+                <Link href={`/c/${challenge.id}`} className="block">
+                  <div className="flex gap-4">
+                    {challenge.imageUrl && (
+                      <div className="flex-shrink-0">
+                        <img
+                          src={challenge.imageUrl}
+                          alt={challenge.title}
+                          className="w-24 h-24 object-cover rounded-lg"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold text-foreground mb-2 truncate">
+                        {challenge.title}
+                      </h3>
+                      {challenge.description && (
+                        <p className="text-muted text-sm mb-3 line-clamp-2">
+                          {challenge.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-4 text-sm text-muted">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          <span>
+                            {new Date(challenge.startAt).toLocaleDateString()} - {new Date(challenge.endAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {challenge._count?.enrollments && (
+                          <div className="flex items-center gap-1">
+                            <Users className="w-4 h-4" />
+                            <span>{challenge._count.enrollments} participants</span>
+                          </div>
+                        )}
+                        {challenge.rules?.rewards?.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Award className="w-4 h-4" />
+                            <span>{challenge.rules.rewards.length} rewards</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

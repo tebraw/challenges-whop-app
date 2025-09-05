@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { frostedThemePlugin } from "@whop/react/tailwind";
 
 export default {
   content: [
@@ -6,32 +7,23 @@ export default {
     "./components/**/*.{ts,tsx}",
   ],
   darkMode: 'class',
+  plugins: [frostedThemePlugin()],
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        background: "var(--bg)",
+        foreground: "var(--fg)",
         panel: "var(--panel)",
         border: "var(--border)",
         muted: "var(--muted)",
-        brand: {
-          DEFAULT: "var(--brand)",
-          foreground: "var(--brand-foreground)",
-        },
-        input: {
-          DEFAULT: "var(--input-bg)",
-          border: "var(--input-border)",
-          placeholder: "var(--input-placeholder)",
-        },
-        ring: "var(--ring)",
+        brand: "var(--brand)",
       },
       fontFamily: {
-        'sans': ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'sans-serif'],
+        'sans': ['Inter', 'ui-sans-serif', 'system-ui'],
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
         'slide-in': 'slideIn 0.3s ease-out',
-        'pulse-slow': 'pulse 3s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -43,10 +35,6 @@ export default {
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
       },
-      backdropBlur: {
-        xs: '2px',
-      }
     },
   },
-  plugins: [],
 } satisfies Config;
