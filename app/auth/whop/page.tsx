@@ -8,21 +8,31 @@ export default function WhopLoginPage() {
 
   const handleWhopLogin = () => {
     setIsLoading(true);
-    // Redirect to Whop OAuth login
+    // Redirect to Whop OAuth login (GET request)
     window.location.href = '/api/auth/whop/login?returnTo=/admin';
   };
 
-  const handleDevLogin = () => {
+  const handleDevLogin = async () => {
     setIsLoading(true);
-    // Development login
-    fetch('/api/auth/dev-admin', { method: 'POST' })
-      .then(() => {
-        window.location.href = '/admin';
-      })
-      .catch(() => {
-        setIsLoading(false);
-        alert('Dev login failed');
+    try {
+      // Use POST to trigger session creation, then redirect
+      const response = await fetch('/api/auth/dev-admin', { 
+        method: 'POST',
+        redirect: 'manual' // Don't follow redirects automatically
       });
+      
+      if (response.status === 307 || response.status === 308) {
+        // Manual redirect to follow server redirect
+        window.location.href = '/admin';
+      } else if (response.ok) {
+        window.location.href = '/admin';
+      } else {
+        throw new Error('Login failed');
+      }
+    } catch (error) {
+      setIsLoading(false);
+      alert('Dev login failed: ' + (error as Error).message);
+    }
   };
 
   return (

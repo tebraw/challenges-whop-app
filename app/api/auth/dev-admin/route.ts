@@ -34,6 +34,40 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  // Same as GET for convenience
-  return GET(req);
+  try {
+    // For development, set admin session and redirect
+    const response = NextResponse.redirect(new URL('/admin', req.url));
+    
+    // Set session cookies for dev admin
+    response.cookies.set('dev-admin', 'true', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 // 24 hours
+    });
+    
+    response.cookies.set('admin-user', JSON.stringify({
+      id: 'dev-admin-123',
+      email: 'admin@localhost.com',
+      name: 'Dev Admin',
+      role: 'ADMIN',
+      whopUserId: 'user_11HQI5KrNDW1S',
+      isFreeTier: false
+    }), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60
+    });
+
+    console.log('🔧 Development Auth: Setting session and redirecting to /admin');
+    return response;
+
+  } catch (error) {
+    console.error('Dev auth error:', error);
+    return NextResponse.json(
+      { error: 'Dev auth failed' },
+      { status: 500 }
+    );
+  }
 }
