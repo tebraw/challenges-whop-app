@@ -1,0 +1,21 @@
+{
+  "name": "challenges-whop-app",
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "@database-url",
+    "DIRECT_URL": "@direct-url", 
+    "WHOP_API_KEY": "@whop-api-key",
+    "WHOP_APP_ID": "@whop-app-id",
+    "WHOP_CLIENT_SECRET": "@whop-client-secret",
+    "WHOP_WEBHOOK_SECRET": "@whop-webhook-secret",
+    "NEXTAUTH_SECRET": "@nextauth-secret",
+    "NEXTAUTH_URL": "@nextauth-url"
+  },
+  "regions": ["fra1"]
+}

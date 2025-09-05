@@ -25,6 +25,12 @@ export default function AppHeader() {
             Home
           </Link>
           <Link 
+            href="/dashboard" 
+            className="text-sm font-medium hover:text-[var(--brand)] transition-colors"
+          >
+            Dashboard
+          </Link>
+          <Link 
             href="/feed" 
             className="text-sm font-medium hover:text-[var(--brand)] transition-colors"
           >
@@ -81,6 +87,13 @@ export default function AppHeader() {
               onClick={() => setIsMobileMenuOpen(false)}
             >
               🏠 Home
+            </Link>
+            <Link 
+              href="/dashboard" 
+              className="block py-2 text-base font-medium hover:text-[var(--brand)] transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              📊 Dashboard
             </Link>
             <Link 
               href="/feed" 
