@@ -20,6 +20,18 @@ export default function WhopLoginTest() {
     setLoading(false);
   };
 
+  const testExperienceAuth = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/auth/experience-test');
+      const data = await response.json();
+      setDebugInfo({ experienceTest: data, status: response.status });
+    } catch (error) {
+      setDebugInfo({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+    setLoading(false);
+  };
+
   const testCurrentUser = async () => {
     setLoading(true);
     try {
@@ -44,6 +56,9 @@ export default function WhopLoginTest() {
         <Button onClick={checkWhopHeaders} disabled={loading}>
           Check Whop Headers
         </Button>
+        <Button onClick={testExperienceAuth} disabled={loading}>
+          Test Experience Auth
+        </Button>
         <Button onClick={testCurrentUser} disabled={loading}>
           Test Current User
         </Button>
@@ -62,12 +77,22 @@ export default function WhopLoginTest() {
       )}
       
       <Card className="p-4 bg-blue-50">
-        <h3 className="font-semibold mb-2">🔧 Debug Schritte:</h3>
+        <h3 className="font-semibold mb-2">🔧 Experience App Debug:</h3>
         <ol className="list-decimal list-inside space-y-1 text-sm">
-          <li><strong>Check Whop Headers:</strong> Sieht welche Whop headers ankommen</li>
-          <li><strong>Test Current User:</strong> Prüft ob ein User erkannt wird</li>
-          <li><strong>Try Whop Login:</strong> Versucht OAuth Login (falls App nicht in iFrame)</li>
+          <li><strong>Check Whop Headers:</strong> Alle verfügbaren Whop headers anzeigen</li>
+          <li><strong>Test Experience Auth:</strong> Experience App Context und User prüfen</li>
+          <li><strong>Test Current User:</strong> Aktuellen User Status abrufen</li>
+          <li><strong>Try Whop Login:</strong> OAuth Login versuchen (falls nicht in iFrame)</li>
         </ol>
+        
+        <div className="mt-3 p-2 bg-blue-100 rounded">
+          <strong>💡 Experience App Hinweise:</strong>
+          <ul className="text-xs mt-1 space-y-1">
+            <li>• App muss in Whop Company installiert und über Whop aufgerufen werden</li>
+            <li>• Experience Apps laufen in iFrame mit automatischen Headers</li>
+            <li>• Direkte URL-Aufrufe funktionieren nicht mit Experience Apps</li>
+          </ul>
+        </div>
       </Card>
     </div>
   );

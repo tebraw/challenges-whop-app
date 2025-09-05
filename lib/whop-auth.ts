@@ -11,31 +11,42 @@ interface WhopAuthUser {
 
 export async function getWhopUserFromHeaders(): Promise<WhopAuthUser | null> {
   const h = await headers();
+  
+  // Standard Authorization header
   const authHeader = h.get('authorization') || h.get('Authorization') || '';
   
-  // Whop Experience headers (iFrame embedding)
-  const whopToken = h.get('x-whop-token') || '';
-  const whopUserId = h.get('x-whop-user-id') || '';
-  const whopCompanyId = h.get('x-whop-company-id') || '';
+  // Whop Experience App headers (verschiedene mögliche Formate)
+  const whopToken = h.get('x-whop-token') || h.get('X-Whop-Token') || '';
+  const whopUserId = h.get('x-whop-user-id') || h.get('X-Whop-User-Id') || 
+                     h.get('x-user-id') || h.get('X-User-Id') || '';
+  const whopCompanyId = h.get('x-whop-company-id') || h.get('X-Whop-Company-Id') || 
+                        h.get('x-company-id') || h.get('X-Company-Id') || '';
+  const whopMembershipId = h.get('x-whop-membership-id') || h.get('X-Whop-Membership-Id') || 
+                           h.get('x-membership-id') || h.get('X-Membership-Id') || '';
+  const whopExperienceId = h.get('x-whop-experience-id') || h.get('X-Whop-Experience-Id') || 
+                           h.get('x-experience-id') || h.get('X-Experience-Id') || '';
   
   const token = authHeader || whopToken;
   
-  console.log('🔍 Whop headers received:', {
+  console.log('🔍 Experience App headers received:', {
     hasAuth: !!authHeader,
     hasToken: !!whopToken,
     hasUserId: !!whopUserId,
     hasCompanyId: !!whopCompanyId,
-    companyId: whopCompanyId
+    hasMembershipId: !!whopMembershipId,
+    hasExperienceId: !!whopExperienceId,
+    userId: whopUserId?.slice(-6) || 'none',
+    companyId: whopCompanyId?.slice(-6) || 'none'
   });
   
   if (!token && !whopUserId) {
-    console.log('No Whop authentication found in headers');
+    console.log('❌ No Whop authentication found in headers');
     return null;
   }
 
   try {
-    // For Experience apps, we might get direct user info in headers
-    if (whopUserId && whopCompanyId) {
+    // Priority 1: Experience App headers (most reliable for iFrame apps)
+    if (whopUserId) {
       const result: WhopAuthUser = {
         userId: whopUserId,
         user: {
@@ -45,10 +56,15 @@ export async function getWhopUserFromHeaders(): Promise<WhopAuthUser | null> {
           created_at: new Date().toISOString(),
           avatar_url: ''
         },
-        companyId: whopCompanyId
+        companyId: whopCompanyId || undefined,
+        memberships: whopMembershipId ? [{ id: whopMembershipId }] : []
       };
       
-      console.log('✅ Whop Experience user detected:', result);
+      console.log('✅ Experience App user detected:', {
+        userId: result.userId?.slice(-6),
+        companyId: result.companyId?.slice(-6),
+        hasMembership: !!whopMembershipId
+      });
       return result;
     }
     

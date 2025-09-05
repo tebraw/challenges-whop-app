@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { PrismaClient } from '@prisma/client';
 import { isDevAdmin, getDevUser } from './devAuth';
 import { getWhopSession } from './whop/auth';
+import { getExperienceContext } from './whop-experience';
 
 const prisma = new PrismaClient();
 
@@ -63,7 +64,80 @@ export async function getCurrentUser() {
     return await getDevUser();
   }
   
-  // PRODUCTION: Use Whop session OR Whop Experience headers
+  // PRIORITY 1: Experience App Context (most common for Whop apps)
+  try {
+    const experienceContext = await getExperienceContext();
+    if (experienceContext.userId && experienceContext.companyId) {
+      console.log('🖼️ Using Experience App context for authentication');
+      
+      // Find user by Whop User ID
+      let user = await prisma.user.findUnique({
+        where: { whopUserId: experienceContext.userId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          createdAt: true,
+          whopCompanyId: true,
+          whopUserId: true,
+          tenantId: true
+        }
+      });
+      
+      if (!user) {
+        // Auto-create user for Experience App
+        const userCompanyId = experienceContext.companyId;
+        
+        // Get or create tenant for this company
+        let tenant = await prisma.tenant.findFirst({
+          where: { name: `Company ${userCompanyId?.slice(-6) || 'Unknown'}` }
+        });
+        
+        if (!tenant) {
+          tenant = await prisma.tenant.create({
+            data: {
+              name: `Company ${userCompanyId?.slice(-6) || 'Unknown'}`
+            }
+          });
+          console.log(`🆕 Created tenant for Experience App company: ${userCompanyId}`);
+        }
+        
+        // Check if user owns this company (admin) or is a member (user)
+        const isOwner = await isUserCompanyOwner(experienceContext.userId, userCompanyId);
+        
+        user = await prisma.user.create({
+          data: {
+            email: `user_${experienceContext.userId.slice(-6)}@whop.com`,
+            name: `User ${experienceContext.userId.slice(-6)}`,
+            role: isOwner ? 'ADMIN' : 'USER',
+            tenantId: tenant.id,
+            whopUserId: experienceContext.userId
+          },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            createdAt: true,
+            whopCompanyId: true,
+            whopUserId: true,
+            tenantId: true
+          }
+        });
+        
+        if (user) {
+          console.log(`🆕 Auto-created Experience App user: ${user.email} (${user.role}) for company ${userCompanyId}`);
+        }
+      }
+      
+      return user;
+    }
+  } catch (error) {
+    console.log('No valid Experience App context, trying other methods...');
+  }
+  
+  // PRIORITY 2: Whop OAuth session
   const whopSession = await getWhopSession();
   if (whopSession) {
     // Find user by Whop User ID
@@ -83,7 +157,7 @@ export async function getCurrentUser() {
     return user;
   }
   
-  // FALLBACK: Try Experience Headers directly  
+  // PRIORITY 3: Legacy Whop headers (fallback)
   const { getWhopUserFromHeaders } = await import('./whop-auth');
   const whopUser = await getWhopUserFromHeaders();
   
