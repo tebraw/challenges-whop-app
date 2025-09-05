@@ -86,47 +86,105 @@ export async function getWhopSession(): Promise<WhopSession | null> {
 
 /**
  * Create or update admin user in database
+ * MULTI-TENANT: Creates separate tenant for each company
  */
 async function createOrUpdateAdminUser(session: WhopSession): Promise<void> {
   try {
-    // Get or create tenant
-    let tenant = await prisma.tenant.findFirst();
-    
-    if (!tenant) {
-      tenant = await prisma.tenant.create({
-        data: {
-          name: 'Default Organization'
-        }
-      });
-    }
-
-    // Create or update user in database
-    await prisma.user.upsert({
-      where: { 
-        whopUserId: session.userId 
-      },
-      update: {
-        email: session.email,
-        name: session.username || session.email.split('@')[0],
-        role: 'ADMIN',
-        whopCompanyId: session.companyId || process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
-        isFreeTier: false,
-        tier: 'enterprise'
-      },
-      create: {
-        email: session.email,
-        name: session.username || session.email.split('@')[0],
-        role: 'ADMIN',
-        tenantId: tenant.id,
-        whopUserId: session.userId,
-        whopCompanyId: session.companyId || process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
-        isFreeTier: false,
-        subscriptionStatus: 'active',
-        tier: 'enterprise'
+    // Get user's owned companies to create tenants
+    const userCompaniesResponse = await fetch(`https://api.whop.com/v5/users/${session.userId}/companies`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+        'Content-Type': 'application/json'
       }
     });
 
-    console.log(`🔑 App creator ${session.email} granted admin access`);
+    let userCompanies = [];
+    if (userCompaniesResponse.ok) {
+      const companiesData = await userCompaniesResponse.json();
+      userCompanies = companiesData.data || [];
+    }
+
+    // If user owns companies, create/update tenant for each
+    if (userCompanies.length > 0) {
+      for (const company of userCompanies) {
+        // Get or create tenant for this company
+        let tenant = await prisma.tenant.findFirst({
+          where: { whopCompanyId: company.id }
+        });
+        
+        if (!tenant) {
+          tenant = await prisma.tenant.create({
+            data: {
+              name: company.name || `Company ${company.id}`,
+              whopCompanyId: company.id
+            }
+          });
+          console.log(`🆕 Created tenant for company: ${company.name} (${company.id})`);
+        }
+
+        // Create or update user for this tenant
+        await prisma.user.upsert({
+          where: { 
+            whopUserId: session.userId 
+          },
+          update: {
+            email: session.email,
+            name: session.username || session.email.split('@')[0],
+            role: 'ADMIN',
+            whopCompanyId: company.id,
+            isFreeTier: false,
+            tier: 'enterprise'
+          },
+          create: {
+            email: session.email,
+            name: session.username || session.email.split('@')[0],
+            role: 'ADMIN',
+            tenantId: tenant.id,
+            whopUserId: session.userId,
+            whopCompanyId: company.id,
+            isFreeTier: false,
+            subscriptionStatus: 'active',
+            tier: 'enterprise'
+          }
+        });
+
+        console.log(`🔑 Company owner ${session.email} granted admin access for ${company.name}`);
+      }
+    } else {
+      // Fallback: Create default tenant if no companies found
+      let tenant = await prisma.tenant.findFirst();
+      
+      if (!tenant) {
+        tenant = await prisma.tenant.create({
+          data: {
+            name: 'Default Organization'
+          }
+        });
+      }
+
+      await prisma.user.upsert({
+        where: { 
+          whopUserId: session.userId 
+        },
+        update: {
+          email: session.email,
+          name: session.username || session.email.split('@')[0],
+          role: 'USER',
+          isFreeTier: true,
+          tier: 'basic'
+        },
+        create: {
+          email: session.email,
+          name: session.username || session.email.split('@')[0],
+          role: 'USER',
+          tenantId: tenant.id,
+          whopUserId: session.userId,
+          isFreeTier: true,
+          subscriptionStatus: 'active',
+          tier: 'basic'
+        }
+      });
+    }
   } catch (error) {
     console.error('Error creating/updating admin user:', error);
   }
@@ -192,36 +250,44 @@ export async function isAppCreator(userId: string): Promise<boolean> {
 
 /**
  * Get user role based on Whop membership and creator status
+ * MULTI-TENANT: Each company owner is admin of their own company
  */
 export async function getUserRole(session: WhopSession): Promise<'ADMIN' | 'USER'> {
   try {
-    // FOR WHOP EXPERIENCE APPS: Check if user's company matches our target company
-    // This means they are the company owner (app installer)
-    if (session.companyId === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID) {
-      console.log('🔑 User is company owner (app installer) - granting admin access');
-      return 'ADMIN';
+    // MULTI-TENANT APPROACH: Check if user owns ANY company
+    // If they own a company, they are admin for that company's challenges
+    
+    const userCompaniesResponse = await fetch(`https://api.whop.com/v5/users/${session.userId}/companies`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (userCompaniesResponse.ok) {
+      const userCompanies = await userCompaniesResponse.json();
+      const ownedCompanies = userCompanies.data || [];
+      
+      console.log('🔍 User owned companies:', ownedCompanies.map((c: any) => ({ id: c.id, name: c.name })));
+      
+      // If user owns any companies, they are an admin
+      if (ownedCompanies.length > 0) {
+        console.log('🔑 User owns companies - granting admin access');
+        return 'ADMIN';
+      }
     }
 
-    // Check if user has any memberships to our company (they are members)
-    const hasCompanyMembership = session.memberships.some(m => 
-      m.companyId === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID && 
-      m.valid && 
-      m.status === 'active'
+    // Check if user has memberships (they are a member of communities)
+    const hasAnyMembership = session.memberships.some(m => 
+      m.valid && m.status === 'active'
     );
     
-    if (hasCompanyMembership) {
-      console.log('🔑 User has valid membership - user access');
+    if (hasAnyMembership) {
+      console.log('🔑 User has valid memberships - user access');
       return 'USER';
     }
 
-    // Fallback: Check if user is verified company owner via API
-    const isCreator = await isAppCreator(session.userId);
-    if (isCreator) {
-      console.log('🔑 User is verified company owner - granting admin access');
-      return 'ADMIN';
-    }
-
-    console.log('❌ User has no access to this company');
+    console.log('❌ User has no companies or memberships');
     return 'USER';
   } catch (error) {
     console.error('Error determining user role:', error);

@@ -27,6 +27,7 @@ model Tenant {
   id         String      @id @default(cuid())
   name       String
   createdAt  DateTime    @default(now())
+  whopCompanyId String?  @unique  // Whop Company ID for multi-tenant support
   users      User[]
   challenges Challenge[]
 }

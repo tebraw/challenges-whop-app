@@ -88,38 +88,74 @@ export async function getCurrentUser() {
   
   if (whopUser) {
     // For Experience apps, auto-create user if needed
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { whopUserId: whopUser.userId }
     });
     
     if (!user) {
-      // Auto-create user from Experience headers
-      const isOwner = whopUser.companyId === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID;
+      // MULTI-TENANT: Determine user's company and role
+      const userCompanyId = whopUser.companyId;
       
-      const tenant = await prisma.tenant.findFirst() || await prisma.tenant.create({
-        data: { name: 'Default Organization' }
+      // Get or create tenant for this company
+      let tenant = await prisma.tenant.findFirst({
+        where: { whopCompanyId: userCompanyId }
       });
       
-      const newUser = await prisma.user.create({
+      if (!tenant) {
+        tenant = await prisma.tenant.create({
+          data: {
+            name: `Company ${userCompanyId?.slice(-6) || 'Unknown'}`,
+            whopCompanyId: userCompanyId
+          }
+        });
+        console.log(`🆕 Created tenant for company: ${userCompanyId}`);
+      }
+      
+      // Check if user owns this company (admin) or is a member (user)
+      const isOwner = await isUserCompanyOwner(whopUser.userId, userCompanyId);
+      
+      user = await prisma.user.create({
         data: {
           email: whopUser.user?.email || `${whopUser.userId}@whop.com`,
           name: whopUser.user?.username || `User ${whopUser.userId.slice(-6)}`,
           role: isOwner ? 'ADMIN' : 'USER',
           tenantId: tenant.id,
           whopUserId: whopUser.userId,
-          whopCompanyId: whopUser.companyId || process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
+          whopCompanyId: userCompanyId,
           isFreeTier: !isOwner,
           subscriptionStatus: 'active',
           tier: isOwner ? 'enterprise' : 'basic'
         }
       });
       
-      console.log(`🆕 Auto-created user: ${newUser.email} (${newUser.role})`);
-      return newUser;
+      console.log(`🆕 Auto-created user: ${user.email} (${user.role}) for company ${userCompanyId}`);
     }
     
     return user;
   }
   
   return null;
+}
+
+// Helper function to check if user owns a company
+async function isUserCompanyOwner(userId: string, companyId: string | null | undefined): Promise<boolean> {
+  if (!companyId) return false;
+  
+  try {
+    const userCompaniesResponse = await fetch(`https://api.whop.com/v5/users/${userId}/companies`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (userCompaniesResponse.ok) {
+      const userCompanies = await userCompaniesResponse.json();
+      return userCompanies.data?.some((company: any) => company.id === companyId) || false;
+    }
+  } catch (error) {
+    console.error('Error checking company ownership:', error);
+  }
+  
+  return false;
 }
