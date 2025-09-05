@@ -1,13 +1,28 @@
 // app/page.tsx
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import ChallengeListClient from "./challenges/ChallengeListClient";
+import { getCurrentUser } from "@/lib/auth";
 
 // Force dynamic rendering to prevent build-time database access
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
+  // Check if user is a Company Owner and redirect to admin
+  try {
+    const currentUser = await getCurrentUser();
+    
+    // If user is ADMIN with whopCompanyId (= Company Owner), redirect to admin
+    if (currentUser && currentUser.role === 'ADMIN' && currentUser.whopCompanyId) {
+      redirect('/admin');
+    }
+  } catch (error) {
+    // Continue with normal flow if auth fails
+    console.log('Auth check failed on homepage:', error);
+  }
+
   // For now, show recent challenges as feed (later: filter by followed creators from Whop API)
   const recentChallenges = await prisma.challenge.findMany({
     take: 5,
