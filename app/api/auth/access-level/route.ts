@@ -4,10 +4,18 @@ import { getCurrentUser } from "@/lib/auth";
 
 export async function GET() {
   try {
+    console.log('🔍 Access Level API: Getting current user...');
     const currentUser = await getCurrentUser();
+    console.log('👤 Current user result:', currentUser ? {
+      id: currentUser.id,
+      email: currentUser.email,
+      role: currentUser.role,
+      whopCompanyId: currentUser.whopCompanyId,
+    } : 'null');
     
     if (!currentUser) {
       // Gast-Benutzer - nur öffentliche Bereiche
+      console.log('🚪 No user found, returning guest access');
       return NextResponse.json({
         accessLevel: {
           userType: 'guest',
@@ -21,6 +29,7 @@ export async function GET() {
 
     // Company Owner = ADMIN Rolle + hat whopCompanyId
     if (currentUser.role === 'ADMIN' && currentUser.whopCompanyId) {
+      console.log('👑 User is company owner - granting full access');
       return NextResponse.json({
         accessLevel: {
           userType: 'company_owner',
@@ -35,6 +44,7 @@ export async function GET() {
     }
 
     // Customer = USER Rolle oder ADMIN ohne Company ID
+    console.log('👤 User is customer - granting limited access');
     return NextResponse.json({
       accessLevel: {
         userType: 'customer',
@@ -48,7 +58,7 @@ export async function GET() {
     });
 
   } catch (error) {
-    console.error('Error determining user access level:', error);
+    console.error('❌ Error determining user access level:', error);
     // Bei Fehler als Gast behandeln
     return NextResponse.json({
       accessLevel: {
