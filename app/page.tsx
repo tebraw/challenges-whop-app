@@ -4,6 +4,9 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import ChallengeListClient from "./challenges/ChallengeListClient";
 
+// Force dynamic rendering to prevent build-time database access
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   // For now, show recent challenges as feed (later: filter by followed creators from Whop API)
   const recentChallenges = await prisma.challenge.findMany({

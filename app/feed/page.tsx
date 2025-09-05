@@ -4,6 +4,9 @@ import Link from "next/link";
 import ChallengeListClient from "../challenges/ChallengeListClient";
 import { getChallengesFromFollowedCreators } from "@/lib/whopApi";
 
+// Force dynamic rendering to prevent build-time database access
+export const dynamic = 'force-dynamic';
+
 export default async function FeedPage() {
   // TODO: Get the current user's Whop ID from session/auth
   const currentUserWhopId = "mock_user_id"; // This should come from authentication

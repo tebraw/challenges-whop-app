@@ -9,6 +9,9 @@ import UserMonetization from "@/components/user/UserMonetization";
 import ChallengeAccessGate from "@/components/ChallengeAccessGate";
 import { calculateChallengeProgress, isChallengeActive, isChallengeEnded } from "@/lib/challengeRules";
 
+// Force dynamic rendering to prevent build-time database access
+export const dynamic = 'force-dynamic';
+
 export default async function ChallengePublicPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 

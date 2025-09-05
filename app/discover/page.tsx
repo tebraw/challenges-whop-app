@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import ChallengeListClient from "../challenges/ChallengeListClient";
 import { getWhopCategories } from "@/lib/whopApi";
 
+// Force dynamic rendering to prevent build-time database access
+export const dynamic = 'force-dynamic';
+
 export default async function DiscoverPage() {
   // Get all challenges
   const allChallenges = await prisma.challenge.findMany({

@@ -2,6 +2,9 @@
 import { prisma } from "@/lib/prisma";
 import ChallengeListClient from "./ChallengeListClient";
 
+// Force dynamic rendering to prevent build-time database access
+export const dynamic = 'force-dynamic';
+
 export default async function PublicChallengesPage() {
   const rows = await prisma.challenge.findMany({
     orderBy: { createdAt: "desc" },
