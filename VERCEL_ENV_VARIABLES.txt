@@ -1,0 +1,24 @@
+# VERCEL ENVIRONMENT VARIABLES
+# Kopieren Sie diese Werte in Vercel Dashboard > Settings > Environment Variables
+
+NODE_ENV=production
+ENABLE_DEV_AUTH=false
+
+# Whop Integration (EXACT KOPIEREN)
+WHOP_API_KEY=wFOmsD0dVhxcv6mCo3zJRwHgY9_xZXet2rfy9Rney-o
+NEXT_PUBLIC_WHOP_APP_ID=app_zPVd4wYq8wpnEr
+NEXT_PUBLIC_WHOP_AGENT_USER_ID=user_1HN0I5krNDWlS
+NEXT_PUBLIC_WHOP_COMPANY_ID=biz_YoIIIT73rXwrtK
+
+# Database (Vercel Postgres empfohlen)
+DATABASE_URL=postgresql://username:password@hostname:port/database
+
+# NextAuth (ÄNDERN für Produktion)
+NEXTAUTH_URL=https://your-app-name.vercel.app
+NEXTAUTH_SECRET=your-super-secret-production-key-minimum-32-characters
+
+# Email (Optional für Start)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password

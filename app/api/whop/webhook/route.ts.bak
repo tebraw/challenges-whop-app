@@ -1,0 +1,309 @@
+// app/api/whop/webhook/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { getWhopIntegration } from '@/lib/whop/client';
+import { prisma } from '@/lib/prisma';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.text();
+    const signature = request.headers.get('whop-signature');
+    
+    if (!signature) {
+      return NextResponse.json({ error: 'Missing Whop signature' }, { status: 400 });
+    }
+
+    // Verify webhook signature with Whop webhook secret
+    const webhookSecret = process.env.WHOP_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      console.error('WHOP_WEBHOOK_SECRET not configured');
+      return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
+    }
+
+    // TODO: Implement proper signature verification
+    // const isValid = await verifyWhopSignature(body, signature, webhookSecret);
+    // if (!isValid) {
+    //   return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    // }
+
+    const payload = JSON.parse(body);
+    console.log('📦 Whop webhook received:', payload.event, payload.data?.id);
+    
+    // Handle different webhook events
+    switch (payload.event) {
+      case 'membership.created':
+        await handleMembershipCreated(payload.data);
+        break;
+      case 'membership.cancelled':
+        await handleMembershipCancelled(payload.data);
+        break;
+      case 'membership.updated':
+        await handleMembershipUpdated(payload.data);
+        break;
+      case 'payment.completed':
+        await handlePaymentCompleted(payload.data);
+        break;
+      case 'payment.succeeded':
+        await handlePaymentSucceeded(payload.data);
+        break;
+      case 'special_offer.purchased':
+        await handleSpecialOfferPurchased(payload.data);
+        break;
+      case 'subscription.created':
+        await handleSubscriptionCreated(payload.data);
+        break;
+      case 'subscription.cancelled':
+        await handleSubscriptionCancelled(payload.data);
+        break;
+      case 'payment.failed':
+        await handlePaymentFailed(payload.data);
+        break;
+      case 'user.created':
+        await handleUserCreated(payload.data);
+        break;
+      default:
+        console.log('📦 Unhandled webhook event:', payload.event);
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('❌ Webhook error:', error);
+    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
+  }
+}
+
+async function handleMembershipCreated(data: any) {
+  try {
+    const { user_id, product_id, company_id, id: membership_id } = data;
+    
+    // Get user info from Whop
+    const whopClient = getWhopIntegration();
+    const whopUser = await whopClient.getUser(user_id);
+    
+    if (!whopUser) {
+      console.error('Could not fetch user from Whop:', user_id);
+      return;
+    }
+
+    // Determine subscription tier based on product
+    const product = await whopClient.getProduct(product_id);
+    let tier = 'USER';
+    
+    if (product?.title?.toLowerCase().includes('enterprise')) {
+      tier = 'ADMIN';
+    } else if (product?.title?.toLowerCase().includes('vip')) {
+      tier = 'ADMIN';
+    }
+
+    // Create or update user in local database
+    await prisma.user.upsert({
+      where: { whopUserId: user_id },
+      create: {
+        email: whopUser.email,
+        name: whopUser.username || whopUser.email,
+        whopUserId: user_id,
+        membershipId: membership_id,
+        role: tier as any,
+        tenantId: 'default-tenant',
+      },
+      update: {
+        membershipId: membership_id,
+        role: tier as any,
+      },
+    });
+
+    console.log('✅ User synced after membership creation:', user_id);
+  } catch (error) {
+    console.error('❌ Error handling membership creation:', error);
+  }
+}
+
+async function handleMembershipCancelled(data: any) {
+  try {
+    const { user_id, id: membership_id } = data;
+    
+    // Update user subscription status
+    await prisma.user.updateMany({
+      where: { whopUserId: user_id },
+      data: {
+        membershipId: null,
+        role: 'USER',
+      },
+    });
+
+    console.log('✅ User subscription cancelled:', user_id);
+  } catch (error) {
+    console.error('❌ Error handling membership cancellation:', error);
+  }
+}
+
+async function handleMembershipUpdated(data: any) {
+  try {
+    const { user_id, status, product_id } = data;
+    
+    // Update user based on new membership status
+    if (status === 'active') {
+      await handleMembershipCreated(data);
+    } else if (status === 'cancelled' || status === 'expired') {
+      await handleMembershipCancelled(data);
+    }
+
+    console.log('✅ User membership updated:', user_id, 'status:', status);
+  } catch (error) {
+    console.error('❌ Error handling membership update:', error);
+  }
+}
+
+async function handlePaymentCompleted(data: any) {
+  try {
+    const { user_id, amount, currency, product_id } = data;
+    
+    // Track revenue analytics
+    console.log('💰 Payment completed:', {
+      user: user_id,
+      amount: amount,
+      currency: currency,
+      product: product_id
+    });
+
+    // You could implement revenue tracking here
+    // await trackRevenue({ userId: user_id, amount, currency, productId: product_id });
+
+  } catch (error) {
+    console.error('❌ Error handling payment completion:', error);
+  }
+}
+
+async function handlePaymentSucceeded(data: any) {
+  // Same as payment completed
+  await handlePaymentCompleted(data);
+}
+
+async function handlePaymentFailed(data: any) {
+  try {
+    const { user_id, amount, currency, reason } = data;
+    
+    console.log('💸 Payment failed:', {
+      user: user_id,
+      amount: amount,
+      currency: currency,
+      reason: reason
+    });
+
+    // You could implement failed payment handling here
+    // await handleFailedPayment({ userId: user_id, amount, currency, reason });
+
+  } catch (error) {
+    console.error('❌ Error handling payment failure:', error);
+  }
+}
+
+async function handleUserCreated(data: any) {
+  try {
+    const { id: user_id, email, username } = data;
+    
+    // Create user in local database
+    await prisma.user.upsert({
+      where: { whopUserId: user_id },
+      create: {
+        email: email,
+        name: username || email,
+        whopUserId: user_id,
+        role: 'USER',
+        tenantId: 'default-tenant',
+      },
+      update: {
+        email: email,
+        name: username || email,
+      }
+    });
+
+    console.log('👤 User created/updated:', user_id, email);
+
+  } catch (error) {
+    console.error('❌ Error handling user creation:', error);
+  }
+}
+
+async function handleSpecialOfferPurchased(data: any) {
+  try {
+    const totalAmount = data.amount; // in cents
+    const creatorId = data.creator_id;
+    const offerId = data.offer_id;
+    const userId = data.user_id;
+    
+    // Calculate 10% platform fee
+    const platformFee = Math.floor(totalAmount * 0.10);
+    const creatorAmount = totalAmount - platformFee;
+    
+    console.log('🎯 Special offer purchased:', {
+      offer: offerId,
+      creator: creatorId,
+      user: userId,
+      total: `$${totalAmount/100}`,
+      creatorEarns: `$${creatorAmount/100}`,
+      platformFee: `$${platformFee/100}`
+    });
+    
+    // TODO: Record the transaction in database
+    // await recordSpecialOfferSale({
+    //   offerId,
+    //   creatorId,
+    //   userId,
+    //   totalAmount,
+    //   creatorAmount,
+    //   platformFee
+    // });
+    
+  } catch (error) {
+    console.error('❌ Error handling special offer purchase:', error);
+  }
+}
+
+async function handleSubscriptionCreated(data: any) {
+  try {
+    const whopUserId = data.user_id;
+    const productId = data.product_id;
+    const tierInfo = data.metadata?.tier_id;
+    
+    console.log('📋 Subscription created:', {
+      user: whopUserId,
+      product: productId,
+      tier: tierInfo
+    });
+    
+    // Update user subscription status
+    await prisma.user.updateMany({
+      where: { whopUserId: whopUserId },
+      data: {
+        tier: tierInfo || 'starter',
+        subscriptionStatus: 'active',
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error handling subscription creation:', error);
+  }
+}
+
+async function handleSubscriptionCancelled(data: any) {
+  try {
+    const whopUserId = data.user_id;
+    const productId = data.product_id;
+    
+    console.log('❌ Subscription cancelled:', {
+      user: whopUserId,
+      product: productId
+    });
+    
+    // Update user subscription status
+    await prisma.user.updateMany({
+      where: { whopUserId: whopUserId },
+      data: {
+        subscriptionStatus: 'cancelled',
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error handling subscription cancellation:', error);
+  }
+}

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mobile Test - QR Code</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .qr-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        h1 { color: #333; }
+        .url { 
+            background: #e8f4f8; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin: 20px 0;
+            word-break: break-all;
+        }
+        .instructions {
+            text-align: left;
+            margin-top: 20px;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f9f9f9;
+            border-left: 4px solid #007acc;
+        }
+    </style>
+</head>
+<body>
+    <div class="qr-container">
+        <h1>📱 Mobile Test Access</h1>
+        
+        <div class="url">
+            <strong>Network URL:</strong><br>
+            http://192.168.100.11:3000
+        </div>
+        
+        <div id="qrcode"></div>
+        
+        <div class="instructions">
+            <h3>📋 Test Steps:</h3>
+            
+            <div class="step">
+                <strong>1. QR-Code scannen</strong><br>
+                Mit Handy-Kamera den QR-Code scannen
+            </div>
+            
+            <div class="step">
+                <strong>2. Oder URL eingeben</strong><br>
+                192.168.100.11:3000 im Handy-Browser
+            </div>
+            
+            <div class="step">
+                <strong>3. Features testen</strong><br>
+                • Challenge erstellen<br>
+                • Dateien hochladen<br>
+                • Navigation testen<br>
+                • Touch-Gesten prüfen
+            </div>
+            
+            <div class="step">
+                <strong>4. Verschiedene Geräte</strong><br>
+                • iPhone (Safari)<br>
+                • Android (Chrome)<br>
+                • Tablet (iPad/Android)
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script>
+        // Generate QR Code
+        QRCode.toCanvas(document.getElementById('qrcode'), 'http://192.168.100.11:3000', {
+            width: 200,
+            margin: 2,
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            }
+        });
+    </script>
+</body>
+</html>

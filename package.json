@@ -1,0 +1,39 @@
+{
+  "name": "challenges-fresh",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "whop-proxy --command 'next dev'",
+    "build": "npx prisma generate && npx prisma migrate deploy && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "production:prepare": "node scripts/prepare-production.js",
+    "production:build": "npm run db:generate && npm run build",
+    "production:deploy": "npm run production:prepare && npm run production:build"
+  },
+  "dependencies": {
+    "@prisma/client": "6.15.0",
+    "@types/nodemailer": "^7.0.1",
+    "@whop/api": "^0.0.44",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "lucide-react": "^0.468.0",
+    "next": "15.5.2",
+    "nodemailer": "^6.10.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.45",
+    "prisma": "6.15.0",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.3"
+  }
+}
