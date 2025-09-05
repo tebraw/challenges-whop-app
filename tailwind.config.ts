@@ -1,30 +1,40 @@
 import type { Config } from "tailwindcss";
+import { frostedThemePlugin } from "@whop/react/tailwind";
 
 export default {
   content: [
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
   ],
-  darkMode: 'class', // Enable dark mode with class strategy
+  darkMode: 'class',
+  plugins: [frostedThemePlugin()],
   theme: {
     extend: {
       colors: {
-        brand: "var(--brand)",
+        background: "var(--bg)",
+        foreground: "var(--fg)",
         panel: "var(--panel)",
+        border: "var(--border)",
         muted: "var(--muted)",
+        brand: "var(--brand)",
       },
-      borderColor: {
-        DEFAULT: "var(--border)",
+      fontFamily: {
+        'sans': ['Inter', 'ui-sans-serif', 'system-ui'],
       },
-      borderRadius: {
-        xl: "16px",
-        "2xl": "24px"
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-in-out',
+        'slide-in': 'slideIn 0.3s ease-out',
       },
-      boxShadow: {
-        card: "0 8px 24px rgba(0,0,0,0.08)",
-        'card-dark': "0 8px 24px rgba(0,0,0,0.3)"
-      }
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideIn: {
+          '0%': { transform: 'translateY(-10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+      },
     },
   },
-  plugins: [],
 } satisfies Config;

@@ -64,6 +64,35 @@ export async function getCurrentUser() {
     return await getDevUser();
   }
   
+  // DEMO AUTH: Check for demo session cookie (fallback for testing)
+  try {
+    const cookieStore = await cookies();
+    const demoUserId = cookieStore.get('demo-user-id')?.value;
+    
+    if (demoUserId) {
+      console.log('🧪 Using demo authentication');
+      const demoUser = await prisma.user.findUnique({
+        where: { id: demoUserId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          createdAt: true,
+          whopCompanyId: true,
+          whopUserId: true
+        }
+      });
+      
+      if (demoUser) {
+        console.log('✅ Demo user found:', demoUser.email);
+        return demoUser;
+      }
+    }
+  } catch (error) {
+    console.log('No demo session found, continuing with other auth methods...');
+  }
+  
   // PRIORITY 1: Experience App Context (most common for Whop apps)
   try {
     const experienceContext = await getExperienceContext();

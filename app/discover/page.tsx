@@ -1,135 +1,136 @@
-// app/discover/page.tsx
-import { prisma } from "@/lib/prisma";
-import ChallengeListClient from "../challenges/ChallengeListClient";
-import { getWhopCategories } from "@/lib/whopApi";
-
-// Force dynamic rendering to prevent build-time database access
-export const dynamic = 'force-dynamic';
-
-export default async function DiscoverPage() {
-  // Get all challenges
-  const allChallenges = await prisma.challenge.findMany({
-    orderBy: [
-      { createdAt: "desc" },
-      { startAt: "desc" }
-    ],
-    select: {
-      id: true,
-      tenantId: true,
-      title: true,
-      description: true,
-      startAt: true,
-      endAt: true,
-      proofType: true,
-      rules: true,
-      createdAt: true,
-      imageUrl: true,
-      // TODO: Add after migration
-      // whopCategoryId: true,
-      // whopCategoryName: true,
-      // whopTags: true,
-    },
-  });
-
-  // Get Whop categories
-  const whopCategories = await getWhopCategories();
-
-  // Convert the data to match the ChallengeListClient interface
-  const challengesForClient = allChallenges.map(challenge => ({
-    ...challenge,
-    rules: JSON.stringify(challenge.rules),
-    proofType: challenge.proofType as string,
-    // TODO: Add after migration
-    // whopTags: challenge.whopTags ? JSON.stringify(challenge.whopTags) : null,
-  }));
-
+export default function DiscoverPage() {
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-extrabold mb-4">
-          Discover Challenges
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="max-w-4xl mx-auto px-4 py-16">
+        {/* Title */}
+        <h1 className="text-5xl font-bold text-gray-900 mb-6 text-center">
+          Challenges App Discovery
         </h1>
-        <p className="text-lg text-[var(--muted)] max-w-2xl">
-          Find new challenges from various creators and expand your horizons.
-        </p>
-      </div>
+        {/* Main Description Card */}
+        <div className="bg-white rounded-xl p-8 shadow-md text-center mb-16">
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-4">
+            Transform your community with engaging challenges that drive member participation and retention.
+          </p>
+          <p className="text-base text-gray-500 max-w-2xl mx-auto mb-2">
+            Create custom challenges, track progress, and reward winners. Perfect for fitness communities, 
+            educational groups, and professional development programs.
+          </p>
+          <p className="text-sm text-gray-400 max-w-2xl mx-auto">
+            💡 <strong>Tip:</strong> Install this app to unlock powerful community engagement features 
+            that keep your members active and connected.
+          </p>
+        </div>
 
-      {/* Categories Section */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4">Categories</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-          {whopCategories.map((category) => (
-            <div
-              key={category.id}
-              className="flex flex-col items-center p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 hover:border-white/20 transition-all cursor-pointer group"
-              style={{ 
-                background: `linear-gradient(135deg, ${category.color}15, transparent)`,
-                borderColor: `${category.color}30`
-              }}
-            >
-              <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">
-                {category.icon}
-              </span>
-              <span className="text-xs font-medium text-center leading-tight">
-                {category.name}
-              </span>
+        {/* Feature Cards */}
+        <div className="grid md:grid-cols-2 gap-6 mb-10">
+          <div className="bg-white rounded-xl p-6 shadow-md flex flex-col gap-2">
+            <h3 className="font-semibold text-gray-900">
+              📈 Boost Engagement
+            </h3>
+            <p className="text-sm text-gray-600">
+              Create challenges that motivate members to participate daily and interact with your community.
+            </p>
+          </div>
+          <div className="bg-white rounded-xl p-6 shadow-md flex flex-col gap-2">
+            <h3 className="font-semibold text-gray-900">
+              🏆 Reward Systems
+            </h3>
+            <p className="text-sm text-gray-600">
+              Built-in winner selection and progress tracking to celebrate member achievements.
+            </p>
+          </div>
+          <div className="bg-white rounded-xl p-6 shadow-md flex flex-col gap-2">
+            <h3 className="font-semibold text-gray-900">
+              🎯 Custom Rules
+            </h3>
+            <p className="text-sm text-gray-600">
+              Flexible challenge types with custom durations, entry requirements, and participation rules.
+            </p>
+          </div>
+          <div className="bg-white rounded-xl p-6 shadow-md flex flex-col gap-2">
+            <h3 className="font-semibold text-gray-900">
+              📊 Analytics
+            </h3>
+            <p className="text-sm text-gray-600">
+              Track participation rates, member engagement, and challenge performance to optimize your community.
+            </p>
+          </div>
+        </div>
+
+        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+          Success Stories
+        </h2>
+
+        {/* Success Story Cards */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Success Story Card 1 */}
+          <div className="bg-white rounded-xl p-6 shadow-md flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">
+                FitPro Community
+              </h3>
+              <p className="text-xs text-gray-500 mb-2">Fitness & Wellness</p>
+              <p className="text-gray-700 mb-4 text-sm">
+                "Member engagement increased by{" "}
+                <span className="font-bold text-blue-600">240%</span> after introducing 
+                weekly fitness challenges. Daily active users jumped from 50 to{" "}
+                <span className="font-bold text-blue-600">170</span>!"
+              </p>
             </div>
-          ))}
+            <a
+              href={`https://whop.com/fitpro/?a=${process.env.NEXT_PUBLIC_WHOP_APP_ID}`}
+              className="mt-auto block w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-center text-sm"
+            >
+              Visit FitPro Community
+            </a>
+          </div>
+
+          {/* Success Story Card 2 */}
+          <div className="bg-white rounded-xl p-6 shadow-md flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">
+                TradingMasters
+              </h3>
+              <p className="text-xs text-gray-500 mb-2">Trading Education</p>
+              <p className="text-gray-700 mb-4 text-sm">
+                "Retention rate improved to{" "}
+                <span className="font-bold text-blue-600">85%</span> with monthly trading 
+                challenges. Members love competing and learning from each other!"
+              </p>
+            </div>
+            <a
+              href={`https://whop.com/tradingmasters/?a=${process.env.NEXT_PUBLIC_WHOP_APP_ID}`}
+              className="mt-auto block w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-center text-sm"
+            >
+              Visit TradingMasters
+            </a>
+          </div>
+        </div>
+
+        {/* Installation CTA */}
+        <div className="mt-16 text-center">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-8">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">
+              Ready to Transform Your Community?
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Install Challenges App today and start creating engaging experiences for your members.
+            </p>
+            {process.env.NEXT_PUBLIC_WHOP_APP_ID ? (
+              <a
+                href={`https://whop.com/apps/${process.env.NEXT_PUBLIC_WHOP_APP_ID}/install`}
+                className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+              >
+                Install Challenges App
+              </a>
+            ) : (
+              <p className="text-amber-600">
+                App ID not configured for installation link
+              </p>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Filter/Search Section */}
-      <div className="mb-6 p-4 bg-white/5 rounded-xl border border-white/10">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Search for challenges..."
-              className="w-full px-4 py-2 bg-transparent border border-white/20 rounded-lg focus:border-[var(--brand)] focus:outline-none"
-              disabled
-            />
-          </div>
-          <select
-            className="px-4 py-2 bg-transparent border border-white/20 rounded-lg focus:border-[var(--brand)] focus:outline-none min-w-[200px]"
-            disabled
-          >
-            <option>All Categories</option>
-            {whopCategories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.icon} {category.name}
-              </option>
-            ))}
-          </select>
-          <select
-            className="px-4 py-2 bg-transparent border border-white/20 rounded-lg focus:border-[var(--brand)] focus:outline-none min-w-[150px]"
-            disabled
-          >
-            <option>All Status</option>
-            <option>Live</option>
-            <option>Planned</option>
-            <option>Ended</option>
-          </select>
-        </div>
-        <p className="text-sm text-[var(--muted)] mt-2">
-          🚧 Filters and search coming soon! Categories will be automatically synchronized from Whop.
-        </p>
-      </div>
-
-      {/* Challenges Grid */}
-      {challengesForClient.length > 0 ? (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">
-              All Challenges ({challengesForClient.length})
-            </h2>
-          </div>
-          <ChallengeListClient rows={challengesForClient} />
-        </div>
-      ) : (
-        <div className="card p-8 text-center text-[var(--muted)]">
-          <p>No challenges found.</p>
-        </div>
-      )}
-    </main>
+    </div>
   );
 }

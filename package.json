@@ -16,7 +16,9 @@
   "dependencies": {
     "@prisma/client": "6.15.0",
     "@types/nodemailer": "^7.0.1",
+    "@vercel/functions": "^3.0.0",
     "@whop/api": "^0.0.44",
+    "@whop/react": "^0.2.41",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "lucide-react": "^0.468.0",

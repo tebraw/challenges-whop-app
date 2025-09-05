@@ -75,6 +75,10 @@ export default function WhopLoginTest() {
     setLoading(false);
   };
 
+  const tryDemoLogin = () => {
+    window.location.href = '/api/auth/demo-login';
+  };
+
   const tryWhopLogin = () => {
     window.location.href = '/api/auth/whop/login';
   };
@@ -98,6 +102,9 @@ export default function WhopLoginTest() {
         </Button>
         <Button onClick={tryWhopLogin} disabled={loading}>
           Try Whop Login
+        </Button>
+        <Button onClick={tryDemoLogin} disabled={loading} className="bg-green-600 hover:bg-green-700">
+          🧪 Demo Login
         </Button>
       </div>
 
@@ -128,11 +135,21 @@ export default function WhopLoginTest() {
           </ul>
         </div>
         
+        <div className="mt-3 p-2 bg-green-100 rounded">
+          <strong>🧪 Demo Login (Temporäre Lösung):</strong>
+          <ul className="text-xs mt-1 space-y-1">
+            <li>• <strong>Demo Login:</strong> Erstellt temporären Admin User für Testing</li>
+            <li>• <strong>Funktionen:</strong> Challenge Creation, Multi-Tenant, Admin Dashboard</li>
+            <li>• <strong>Später:</strong> Echte Whop Integration wenn OAuth konfiguriert</li>
+          </ul>
+        </div>
+        
         <div className="mt-3 p-2 bg-orange-100 rounded">
           <strong>🔧 Kein Login? Versuche:</strong>
           <ul className="text-xs mt-1 space-y-1">
             <li>• <strong>Experience URL:</strong> whop.com/company/[COMPANY]/experiences/[APP]</li>
             <li>• <strong>OAuth Login:</strong> Klicke "Try Whop Login" unten</li>
+            <li>• <strong>Demo Login:</strong> Sofortiger Admin-Zugang für Testing</li>
             <li>• <strong>Developer Portal:</strong> Prüfe App Installation</li>
           </ul>
         </div>

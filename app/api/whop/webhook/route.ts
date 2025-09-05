@@ -178,17 +178,18 @@ async function handleEvent(event: string, data: any) {
 export async function POST(request: NextRequest) {
   try {
     // Validate webhook with new SDK
-    const { event, data } = await validateWebhook(request);
+    const webhookData = await validateWebhook(request);
     
-    if (!event) {
+    if (!webhookData) {
       console.log('🪝 Webhook received but validation failed');
       return NextResponse.json({ error: 'Invalid webhook' }, { status: 400 });
     }
 
-    console.log(`🪝 Processing webhook event: ${event}`);
+    const { action, data } = webhookData;
+    console.log(`🪝 Processing webhook event: ${action}`);
     
     // Process the webhook event
-    await handleEvent(event, data);
+    await handleEvent(action, data);
     
     return NextResponse.json({ ok: true, event, processed: true });
   } catch (err) {

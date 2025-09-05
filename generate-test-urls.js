@@ -5,8 +5,8 @@
  * Generates the correct URLs to test the Experience App
  */
 
-const WHOP_APP_ID = 'app_zPVd4wYq8wpnEr';
-const WHOP_COMPANY_ID = 'biz_YoIIIT73rXwrtK';
+const WHOP_APP_ID = 'app_ZYUHlzHinpA5Ce'; // ECHTE App ID
+const WHOP_COMPANY_ID = 'biz_YoIIIT73rXwrtK'; // Company ID (muss noch verifiziert werden)
 const APP_URL = 'https://challenges-whop-app-sqmr.vercel.app';
 
 console.log('🖼️ WHOP EXPERIENCE APP TEST URLS\n');
