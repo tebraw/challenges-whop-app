@@ -13,7 +13,38 @@ export default function WhopLoginTest() {
     try {
       const response = await fetch('/api/debug/whop-headers');
       const data = await response.json();
-      setDebugInfo(data);
+      
+      // Also check current page context
+      const pageContext = {
+        url: window.location.href,
+        referrer: document.referrer,
+        userAgent: navigator.userAgent,
+        isInIframe: window !== window.top,
+        parentOrigin: window !== window.top ? document.referrer : 'not-in-iframe'
+      };
+      
+      setDebugInfo({ 
+        headerTest: data, 
+        pageContext,
+        analysis: {
+          isWhopDomain: window.location.href.includes('whop.com'),
+          hasWhopReferrer: document.referrer.includes('whop.com'),
+          inIframe: window !== window.top,
+          directAccess: !document.referrer.includes('whop.com')
+        }
+      });
+    } catch (error) {
+      setDebugInfo({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+    setLoading(false);
+  };
+
+  const runWhopDetection = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/debug/whop-detection');
+      const data = await response.json();
+      setDebugInfo({ detection: data, status: response.status });
     } catch (error) {
       setDebugInfo({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
@@ -53,6 +84,9 @@ export default function WhopLoginTest() {
       <h1 className="text-2xl font-bold">🔍 Whop Login Debug Test</h1>
       
       <div className="flex gap-2 flex-wrap">
+        <Button onClick={runWhopDetection} disabled={loading}>
+          🔍 Auto-Diagnose
+        </Button>
         <Button onClick={checkWhopHeaders} disabled={loading}>
           Check Whop Headers
         </Button>
@@ -91,6 +125,15 @@ export default function WhopLoginTest() {
             <li>• App muss in Whop Company installiert und über Whop aufgerufen werden</li>
             <li>• Experience Apps laufen in iFrame mit automatischen Headers</li>
             <li>• Direkte URL-Aufrufe funktionieren nicht mit Experience Apps</li>
+          </ul>
+        </div>
+        
+        <div className="mt-3 p-2 bg-orange-100 rounded">
+          <strong>🔧 Kein Login? Versuche:</strong>
+          <ul className="text-xs mt-1 space-y-1">
+            <li>• <strong>Experience URL:</strong> whop.com/company/[COMPANY]/experiences/[APP]</li>
+            <li>• <strong>OAuth Login:</strong> Klicke "Try Whop Login" unten</li>
+            <li>• <strong>Developer Portal:</strong> Prüfe App Installation</li>
           </ul>
         </div>
       </Card>
