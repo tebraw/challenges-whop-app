@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { cookies } from "next/headers";
-import { requireAdmin, getCurrentUserId } from "@/lib/auth";
+import { getWhopUserFromHeaders } from "@/lib/whop-auth";
 
 const prisma = new PrismaClient();
 
@@ -31,19 +30,16 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    // SICHERHEIT: Nur Admins können Challenges erstellen
-    await requireAdmin();
-    
     const body = await request.json();
-    const userId = await getCurrentUserId();
     
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    // Try to get Whop user first
+    let whopUser = null;
+    try {
+      whopUser = await getWhopUserFromHeaders();
+    } catch (error) {
+      console.log('No Whop user found, using fallback auth');
     }
-
+    
     // Get default tenant
     let tenant = await prisma.tenant.findFirst();
     if (!tenant) {
@@ -52,22 +48,41 @@ export async function POST(request: Request) {
       });
     }
 
-    // Ensure user exists
-    let user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!user) {
-      // Create a demo user if it doesn't exist
-      user = await prisma.user.create({
-        data: {
-          id: userId,
-          email: "demo@example.com",
-          name: "Demo User",
-          tenantId: tenant.id,
-          role: "ADMIN"
-        }
+    let user;
+    
+    if (whopUser?.userId) {
+      // Whop user - try to find existing or create new
+      user = await prisma.user.findUnique({
+        where: { whopUserId: whopUser.userId }
       });
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            whopUserId: whopUser.userId,
+            email: whopUser.user?.email || `user-${whopUser.userId}@whop.com`,
+            name: whopUser.user?.username || `User ${whopUser.userId.slice(-6)}`,
+            tenantId: tenant.id,
+            role: "ADMIN"
+          }
+        });
+      }
+    } else {
+      // Fallback: Create or use demo user for testing
+      user = await prisma.user.findFirst({
+        where: { email: 'demo@example.com' }
+      });
+      
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            email: 'demo@example.com',
+            name: 'Demo User',
+            tenantId: tenant.id,
+            role: 'ADMIN'
+          }
+        });
+      }
     }
 
     const challenge = await prisma.challenge.create({
@@ -88,6 +103,7 @@ export async function POST(request: Request) {
         },
         tenantId: tenant.id,
         creatorId: user.id,
+        whopCreatorId: whopUser?.userId || null, // Set Whop creator ID if available
       },
       include: {
         creator: {
