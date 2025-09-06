@@ -121,6 +121,9 @@ export default function NewChallengePage() {
       } else {
         const errorMessage = data.error || data.message || 'Unknown error';
         console.error("❌ Failed to create challenge:", errorMessage);
+        console.error("❌ Full error response:", data);
+        console.error("❌ Response status:", response.status);
+        console.error("❌ Response headers:", Object.fromEntries(response.headers.entries()));
         alert(`Failed to create challenge: ${errorMessage}`);
       }
     } catch (error) {
