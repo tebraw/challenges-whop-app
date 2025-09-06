@@ -34,6 +34,10 @@ interface Challenge {
     daysElapsed: number;
     daysRemaining: number;
   };
+  rewards?: {
+    place: number;
+    title: string;
+  }[];
 }
 
 export default function CustomerChallenges({ experienceId, user, whopUser }: CustomerChallengesProps) {
@@ -54,25 +58,47 @@ export default function CustomerChallenges({ experienceId, user, whopUser }: Cus
 
         // Load enhanced participation status for each challenge
         const challengesWithEnhancedData = await Promise.all(
-          challengesWithStatus.map(async (challenge: Challenge) => {
-            if (challenge.isParticipating) {
+          challengesWithStatus.map(async (challenge: any) => {
+            // Transform rewards from rules.rewards object to array
+            let rewards: { place: number; title: string }[] = [];
+            if (challenge.rules?.rewards) {
+              const rewardsObj = challenge.rules.rewards;
+              if (rewardsObj.first) rewards.push({ place: 1, title: rewardsObj.first });
+              if (rewardsObj.second) rewards.push({ place: 2, title: rewardsObj.second });
+              if (rewardsObj.third) rewards.push({ place: 3, title: rewardsObj.third });
+            }
+
+            const transformedChallenge = {
+              id: challenge.id,
+              title: challenge.title,
+              description: challenge.description,
+              imageUrl: challenge.imageUrl,
+              endAt: challenge.endAt,
+              participantCount: challenge._count?.enrollments || 0,
+              isParticipating: !!challenge.enrollment,
+              status: challenge.isActive ? 'active' as const : 'ended' as const,
+              proofType: challenge.proofType,
+              rewards: rewards
+            };
+
+            if (transformedChallenge.isParticipating) {
               try {
                 const statusResponse = await fetch(`/api/challenges/${challenge.id}/status`);
                 if (statusResponse.ok) {
                   const statusData = await statusResponse.json();
                   return {
-                    ...challenge,
+                    ...transformedChallenge,
                     userStats: statusData.userParticipation?.stats,
                     progress: statusData.challenge?.progress
                   };
                 }
-                return challenge;
+                return transformedChallenge;
               } catch (error) {
                 console.error(`Error loading status for challenge ${challenge.id}:`, error);
-                return challenge;
+                return transformedChallenge;
               }
             }
-            return challenge;
+            return transformedChallenge;
           })
         );
         
@@ -282,6 +308,32 @@ export default function CustomerChallenges({ experienceId, user, whopUser }: Cus
                   <p className="text-gray-600 text-sm mb-4 line-clamp-3">
                     {challenge.description}
                   </p>
+                  
+                  {/* Rewards Section */}
+                  {challenge.rewards && challenge.rewards.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-1">
+                        🏆 Rewards
+                      </h4>
+                      <div className="space-y-1">
+                        {challenge.rewards.slice(0, 3).map((reward, index) => (
+                          <div key={index} className="flex items-center justify-between text-xs bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+                            <span className="font-medium text-yellow-800">
+                              #{reward.place} Place
+                            </span>
+                            <span className="text-yellow-700">
+                              {reward.title}
+                            </span>
+                          </div>
+                        ))}
+                        {challenge.rewards.length > 3 && (
+                          <div className="text-xs text-gray-500 text-center">
+                            +{challenge.rewards.length - 3} more rewards
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Meta Info */}
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-gray-500 mb-4 gap-2">
