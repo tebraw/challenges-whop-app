@@ -14,6 +14,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log('📝 Received challenge data:', body);
+    
     const {
       title,
       description,
@@ -23,7 +25,10 @@ export async function POST(request: NextRequest) {
       endAt,
       proofType,
       cadence,
-      rules
+      rules,
+      maxParticipants,
+      rewards,
+      policy
     } = body;
 
     // Validate required fields
@@ -43,17 +48,18 @@ export async function POST(request: NextRequest) {
         imageUrl: imageUrl || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=500&h=300&fit=crop',
         whopCategoryName: whopCategoryName || 'General',
         startAt: startAt ? new Date(startAt) : new Date(),
-        endAt: endAt ? new Date(endAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        endAt: endAt ? new Date(endAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         proofType: proofType || 'PHOTO',
         cadence: cadence || 'DAILY',
         rules: rules || {
           minParticipants: 1,
-          maxParticipants: 100,
-          dailyCheckIn: true
+          maxParticipants: maxParticipants || 100,
+          dailyCheckIn: true,
+          rewards: rewards || [{ place: 1, title: 'Winner', desc: 'Congratulations!' }],
+          policy: policy || 'Standard challenge policy'
         },
         createdAt: new Date(),
-        updatedAt: new Date(),
-        tenantId: currentUser.id // Using user ID as tenant for now
+        tenantId: currentUser.id
       };
 
       console.log('✅ Mock challenge created:', mockChallenge.title);
@@ -77,10 +83,12 @@ export async function POST(request: NextRequest) {
         cadence: cadence || 'DAILY',
         rules: rules || {
           minParticipants: 1,
-          maxParticipants: 100,
-          dailyCheckIn: true
+          maxParticipants: maxParticipants || 100,
+          dailyCheckIn: true,
+          rewards: rewards || [{ place: 1, title: 'Winner', desc: 'Congratulations!' }],
+          policy: policy || 'Standard challenge policy'
         },
-        tenantId: currentUser.id, // Using user ID as tenant for now
+        tenantId: currentUser.id,
         creatorId: currentUser.id
       }
     });

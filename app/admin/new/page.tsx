@@ -51,19 +51,19 @@ export default function NewChallengePage() {
   });
 
   const handleSubmit = async () => {
-    // Convert to the correct schema format
-    const challengeData: Partial<ChallengeAdminInput> = {
+    // Convert to the correct schema format with proper JSON serialization
+    const challengeData = {
       title: form.title,
       description: form.description,
-      startAt: new Date(form.startAt),
-      endAt: new Date(form.endAt),
+      startAt: form.startAt, // Keep as string for JSON
+      endAt: form.endAt, // Keep as string for JSON
       proofType: form.proofType as "TEXT" | "PHOTO" | "LINK",
       cadence: form.cadence as "DAILY" | "END_OF_CHALLENGE",
       maxParticipants: form.maxParticipants,
       rewards: form.rewards,
       policy: form.policy,
       imageUrl: form.imageUrl,
-      difficulty: form.difficulty as "BEGINNER" | "INTERMEDIATE" | "ADVANCED"
+      whopCategoryName: form.difficulty || "General" // Map difficulty to category
     };
 
     console.log("Submitting challenge data:", challengeData);
