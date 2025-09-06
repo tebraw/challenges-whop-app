@@ -48,18 +48,15 @@ export default function AppHeader() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
-          {/* Home - nur für Customers und Guests, nicht für Admins */}
-          {!userAccess?.canViewAdmin && (
-            <Link 
-              href="/" 
-              className="text-sm font-medium text-foreground hover:text-brand transition-colors"
-            >
-              Home
-            </Link>
-          )}
+          <Link 
+            href="/" 
+            className="text-sm font-medium text-foreground hover:text-brand transition-colors"
+          >
+            Home
+          </Link>
 
-          {/* My Feed - nur für Customers, nicht für Admins */}
-          {userAccess?.canViewMyFeed && !userAccess?.canViewAdmin && (
+          {/* Customer Navigation */}
+          {userAccess?.canViewMyFeed && (
             <Link 
               href="/feed" 
               className="text-sm font-medium text-foreground hover:text-brand transition-colors"
@@ -68,7 +65,6 @@ export default function AppHeader() {
             </Link>
           )}
 
-          {/* Discover - für alle */}
           {userAccess?.canViewDiscover && (
             <Link 
               href="/discover" 
@@ -78,14 +74,14 @@ export default function AppHeader() {
             </Link>
           )}
 
-          {/* Admin Navigation - nur für Company Owner */}
+          {/* Company Owner Navigation */}
           {userAccess?.canViewAdmin && (
             <>
               <Link 
                 href="/admin" 
                 className="text-sm font-medium text-foreground hover:text-brand transition-colors"
               >
-                Admin Dashboard
+                Admin
               </Link>
               <Link 
                 href="/admin/new" 
@@ -135,58 +131,50 @@ export default function AppHeader() {
       {isMobileMenuOpen && (
         <div className="md:hidden bg-[#0B0F12]/95 backdrop-blur border-b border-white/10">
           <nav className="px-4 py-4 space-y-3">
-            {/* Home - nur für Customers und Guests, nicht für Admins */}
-            {!userAccess?.canViewAdmin && (
+            <Link 
+              href="/" 
+              className="block py-2 text-base font-medium hover:text-[var(--brand)] transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              🏠 Home
+            </Link>
+            <Link 
+              href="/dashboard" 
+              className="block py-2 text-base font-medium hover:text-[var(--brand)] transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              📊 Dashboard
+            </Link>
+            <Link 
+              href="/feed" 
+              className="block py-2 text-base font-medium hover:text-[var(--brand)] transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              📱 My Feed
+            </Link>
+            <Link 
+              href="/discover" 
+              className="block py-2 text-base font-medium hover:text-[var(--brand)] transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              🔍 Discover
+            </Link>
+            <Link 
+              href="/challenges" 
+              className="block py-2 text-base font-medium hover:text-[var(--brand)] transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              🏆 All Challenges
+            </Link>
+            <AdminOnly>
               <Link 
-                href="/" 
+                href="/admin" 
                 className="block py-2 text-base font-medium hover:text-[var(--brand)] transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                🏠 Home
+                ⚙️ Admin
               </Link>
-            )}
-            
-            {/* My Feed - nur für Customers, nicht für Admins */}
-            {userAccess?.canViewMyFeed && !userAccess?.canViewAdmin && (
-              <Link 
-                href="/feed" 
-                className="block py-2 text-base font-medium hover:text-[var(--brand)] transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                📱 My Feed
-              </Link>
-            )}
-            
-            {/* Discover - für alle */}
-            {userAccess?.canViewDiscover && (
-              <Link 
-                href="/discover" 
-                className="block py-2 text-base font-medium hover:text-[var(--brand)] transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                🔍 Discover
-              </Link>
-            )}
-            
-            {/* Admin Navigation - nur für Company Owner */}
-            {userAccess?.canViewAdmin && (
-              <>
-                <Link 
-                  href="/admin" 
-                  className="block py-2 text-base font-medium hover:text-[var(--brand)] transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  ⚙️ Admin Dashboard
-                </Link>
-                <Link 
-                  href="/admin/new" 
-                  className="block py-2 text-base font-medium hover:text-[var(--brand)] transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  ➕ Create Challenge
-                </Link>
-              </>
-            )}
+            </AdminOnly>
           </nav>
         </div>
       )}
