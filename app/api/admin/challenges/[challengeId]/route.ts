@@ -74,6 +74,44 @@ export async function GET(
       joinedAt: enrollment.joinedAt.toISOString(),
     }));
 
+    // Calculate total streaks (sum of all user streaks)
+    let totalStreaks = 0;
+    leaderboard.forEach(enrollment => {
+      const streak = calculateStreak(enrollment.proofs);
+      totalStreaks += streak;
+    });
+
+    // Helper function to calculate current streak
+    function calculateStreak(checkins: any[]): number {
+      if (checkins.length === 0) return 0;
+      
+      let streak = 0;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Sort checkins by date (most recent first)
+      const sortedCheckins = checkins.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      
+      // Check consecutive days backwards from today
+      for (let i = 0; i < sortedCheckins.length; i++) {
+        const checkinDate = new Date(sortedCheckins[i].createdAt);
+        checkinDate.setHours(0, 0, 0, 0);
+        
+        const expectedDate = new Date(today);
+        expectedDate.setDate(today.getDate() - streak);
+        
+        if (checkinDate.getTime() === expectedDate.getTime()) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+      
+      return streak;
+    }
+
     // Transform the data for the frontend
     const transformedChallenge = {
       id: challenge.id,
@@ -87,7 +125,9 @@ export async function GET(
       status: new Date() < challenge.startAt ? 'UPCOMING' : 
               new Date() > challenge.endAt ? 'ENDED' : 'ACTIVE',
       participants: challenge._count.enrollments,
-      checkins: checkinCount,
+      checkIns: checkinCount,
+      totalStreaks: totalStreaks,
+      leaderboard: transformedLeaderboard,
       // Handle different data structures in rules field
       rewards: (() => {
         if (!challenge.rules) return [];

@@ -125,11 +125,11 @@ export default function AdminChallengeDetailPage({
           policy: data.rules,
           status: getChallengeStatus(data.startAt, data.endAt),
           participants: data.participants || 0,
-          checkins: data.checkins || 0,
-          totalStreaks: data.checkins || 0,
+          checkins: data.checkIns || 0,
+          totalStreaks: data.totalStreaks || 0,
           imageUrl: data.imageUrl,
           rewards: data.rewards || [],
-          leaderboard: [
+          leaderboard: data.leaderboard || [
             {
               id: "demo-user",
               username: "Demo User",
