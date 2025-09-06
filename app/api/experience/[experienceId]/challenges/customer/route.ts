@@ -102,11 +102,7 @@ export async function GET(
           },
           select: {
             id: true,
-            joinedAt: true,
-            status: true,
-            currentStreak: true,
-            totalCheckIns: true,
-            lastCheckIn: true
+            joinedAt: true
           }
         },
         _count: {
@@ -123,8 +119,7 @@ export async function GET(
     // Transform the data to include enrollment info directly
     const transformedChallenges = challenges.map(challenge => ({
       ...challenge,
-      enrollment: challenge.enrollments[0] || null,
-      enrollments: undefined
+      enrollment: challenge.enrollments[0] || null
     }));
 
     return NextResponse.json({ challenges: transformedChallenges });
