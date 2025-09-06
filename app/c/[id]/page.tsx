@@ -64,6 +64,60 @@ export default function ChallengePage({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [challengeId, setChallengeId] = useState<string>("");
 
+  // Helper function to compress images on client side
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      // If file is already small enough, return as is
+      if (file.size <= 500 * 1024) {
+        resolve(file);
+        return;
+      }
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      img.onload = () => {
+        // Calculate new dimensions (max 1200px)
+        let { width, height } = img;
+        const maxSize = 1200;
+        
+        if (width > height && width > maxSize) {
+          height = (height * maxSize) / width;
+          width = maxSize;
+        } else if (height > maxSize) {
+          width = (width * maxSize) / height;
+          height = maxSize;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // Draw and compress
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file); // fallback to original
+            }
+          },
+          'image/jpeg',
+          0.8 // 80% quality
+        );
+      };
+
+      img.onerror = () => resolve(file); // fallback to original
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   useEffect(() => {
     async function loadChallenge() {
       try {
@@ -151,8 +205,12 @@ export default function ChallengePage({
           alert('Please select a photo');
           return;
         }
+        
+        // Compress image for mobile compatibility
+        const compressedFile = await compressImage(selectedFile);
+        
         const formData = new FormData();
-        formData.append('file', selectedFile);
+        formData.append('file', compressedFile);
         
         const uploadResponse = await fetch('/api/upload', {
           method: 'POST',
@@ -574,7 +632,13 @@ export default function ChallengePage({
                   className="w-full p-4 bg-gray-800 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-purple-500"
                 />
                 {selectedFile && (
-                  <p className="text-sm text-gray-400 mt-2">Selected: {selectedFile.name}</p>
+                  <div className="mt-2 text-sm text-gray-400">
+                    <p>Selected: {selectedFile.name}</p>
+                    <p>Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    {selectedFile.size > 500 * 1024 && (
+                      <p className="text-yellow-400">ℹ️ Large image will be automatically compressed for mobile compatibility</p>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -591,7 +655,9 @@ export default function ChallengePage({
                 disabled={submittingProof}
                 className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 py-3"
               >
-                {submittingProof ? 'Submitting...' : 'Submit Proof'}
+                {submittingProof ? (
+                  challenge?.proofType === 'PHOTO' ? 'Uploading & Submitting...' : 'Submitting...'
+                ) : 'Submit Proof'}
               </Button>
             </div>
           </div>
