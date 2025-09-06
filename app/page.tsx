@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import ChallengeListClient from "./challenges/ChallengeListClient";
 import { getCurrentUser } from "@/lib/auth";
 import { whopSdk } from "@/lib/whop-sdk";
 

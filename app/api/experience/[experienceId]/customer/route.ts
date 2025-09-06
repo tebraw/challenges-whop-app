@@ -54,8 +54,8 @@ export async function GET(
     }
 
     // This will need to be fixed when Prisma schema is corrected
-    const challenges = []; // Placeholder
-    
+    const challenges: any[] = []; // Placeholder with explicit type
+
     return NextResponse.json({ challenges });
   } catch (error) {
     console.error('Customer GET error:', error);
