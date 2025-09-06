@@ -261,7 +261,7 @@ export default function AdminList() {
                           <BarChart3 className="h-4 w-4" />
                         </button>
                       </Link>
-                      <Link href={`/admin/c/${c.id}`}>
+                      <Link href={`/admin/edit/${c.id}`}>
                         <button className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors" title="Edit">
                           <Pencil className="h-4 w-4" />
                         </button>

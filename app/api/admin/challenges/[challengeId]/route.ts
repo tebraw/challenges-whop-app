@@ -106,11 +106,29 @@ export async function PUT(
         proofType: data.proofType,
         cadence: data.cadence,
         imageUrl: data.imageUrl,
-        rules: data.rules,
+        rules: data.policy || data.rules || null, // Map policy to rules field
+      },
+      include: {
+        creator: true,
+        enrollments: {
+          include: {
+            user: true,
+          },
+        },
+        winners: true,
+        challengeOffers: true,
+        _count: {
+          select: {
+            enrollments: true,
+          },
+        },
       },
     });
 
-    return NextResponse.json(updatedChallenge);
+    return NextResponse.json({ 
+      success: true, 
+      challenge: updatedChallenge 
+    });
   } catch (error) {
     console.error("Error updating challenge:", error);
     return NextResponse.json(
