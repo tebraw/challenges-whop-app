@@ -64,7 +64,53 @@ export async function POST(request: NextRequest) {
 
     console.log('📝 Creating challenge with user:', currentUser.email);
 
+    // Test database connection first
+    let databaseAvailable = true;
+    try {
+      console.log('🔌 Testing database connection...');
+      await prisma.$queryRaw`SELECT 1`;
+      console.log('✅ Database connection successful');
+    } catch (dbTestError) {
+      console.error('❌ Database connection failed:', dbTestError);
+      databaseAvailable = false;
+      
+      // For now, return a detailed error but allow for fallback in the future
+      return NextResponse.json(
+        { 
+          error: 'Database connection failed',
+          details: process.env.NODE_ENV === 'development' ? (dbTestError as Error).message : 'Internal error',
+          suggestion: 'Please ensure DATABASE_URL environment variable is set correctly'
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!databaseAvailable) {
+      // Fallback mode - return mock success for now
+      console.log('🚨 Database unavailable, using fallback mode');
+      const mockChallenge = {
+        id: `challenge-${Date.now()}`,
+        title,
+        description,
+        imageUrl: imageUrl || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=500&h=300&fit=crop',
+        whopCategoryName: whopCategoryName || 'General',
+        startAt: startAt ? new Date(startAt) : new Date(),
+        endAt: endAt ? new Date(endAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        proofType: proofType || 'PHOTO',
+        cadence: cadence || 'DAILY',
+        createdAt: new Date(),
+        tenantId: currentUser.id
+      };
+      
+      return NextResponse.json({
+        success: true,
+        challenge: mockChallenge,
+        message: 'Challenge created (fallback mode - database unavailable)'
+      });
+    }
+
     // Create challenge in database
+    console.log('💾 Attempting to create challenge in database...');
     const challenge = await prisma.challenge.create({
       data: {
         title,

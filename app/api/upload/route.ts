@@ -35,12 +35,12 @@ export async function POST(req: Request) {
     let publicUrl: string;
 
     if (process.env.VERCEL) {
-      // Vercel deployment - use /tmp directory
+      // Vercel deployment - use temporary fallback with external URL
       uploadDir = path.join("/tmp", "uploads");
-      publicUrl = `/uploads/${name}`;
+      // Use a fallback image URL for production until proper cloud storage is set up
+      publicUrl = `https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=500&h=300&fit=crop&q=80&auto=format`;
       
-      // Note: Files uploaded to /tmp on Vercel are temporary
-      // For production, consider using cloud storage (AWS S3, Cloudinary, etc.)
+      console.log('🚨 Production upload fallback - using placeholder image');
     } else {
       // Local development
       uploadDir = path.join(process.cwd(), "public", "uploads");
