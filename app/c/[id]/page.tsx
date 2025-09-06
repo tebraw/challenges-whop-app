@@ -58,6 +58,7 @@ export default function ChallengePage({
   const [joining, setJoining] = useState(false);
   const [submittingProof, setSubmittingProof] = useState(false);
   const [showProofModal, setShowProofModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [proofText, setProofText] = useState("");
   const [proofLink, setProofLink] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -96,6 +97,13 @@ export default function ChallengePage({
 
   const handleJoinChallenge = async () => {
     if (!challengeId) return;
+    
+    // Show terms modal first
+    setShowTermsModal(true);
+  };
+
+  const handleAcceptTermsAndJoin = async () => {
+    setShowTermsModal(false);
     
     try {
       setJoining(true);
@@ -254,27 +262,35 @@ export default function ChallengePage({
               <p className="text-gray-300 text-base lg:text-lg mb-6 max-w-3xl">{challenge.description}</p>
               
               {/* Rewards Section */}
-              {challenge.rules?.rewards && (
+              {challenge.rules?.rewards && Array.isArray(challenge.rules.rewards) && challenge.rules.rewards.length > 0 && (
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-yellow-500" />
                     Rewards & Prizes
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {typeof challenge.rules.rewards === 'object' && Object.entries(challenge.rules.rewards).map(([place, reward], index) => (
+                    {challenge.rules.rewards.map((reward: any, index: number) => (
                       <div
-                        key={place}
+                        key={index}
                         className="bg-gradient-to-br from-yellow-600/20 to-orange-600/20 border border-yellow-500/30 rounded-lg p-4 text-center"
                       >
                         <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-yellow-500 to-orange-500 text-black font-bold text-sm rounded-full mb-2 mx-auto">
-                          #{index + 1}
+                          #{reward.place || index + 1}
                         </div>
                         <h4 className="font-semibold text-yellow-200 text-sm mb-1">
-                          {place === 'first' ? '🥇 1st Place' : place === 'second' ? '🥈 2nd Place' : place === 'third' ? '🥉 3rd Place' : `🏆 ${place}`}
+                          {reward.place === 1 ? '🥇 1st Place' : 
+                           reward.place === 2 ? '🥈 2nd Place' : 
+                           reward.place === 3 ? '🥉 3rd Place' : 
+                           `🏆 Place ${reward.place || index + 1}`}
                         </h4>
-                        <p className="text-gray-300 text-sm">
-                          {typeof reward === 'string' ? reward : JSON.stringify(reward)}
+                        <p className="text-gray-300 text-sm font-medium mb-1">
+                          {reward.title}
                         </p>
+                        {reward.desc && (
+                          <p className="text-gray-400 text-xs">
+                            {reward.desc}
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -576,6 +592,52 @@ export default function ChallengePage({
                 className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 py-3"
               >
                 {submittingProof ? 'Submitting...' : 'Submit Proof'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Terms & Policy Modal */}
+      {showTermsModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl border border-gray-700 max-h-[80vh] overflow-hidden flex flex-col">
+            <h3 className="text-2xl font-bold mb-4 text-center">Terms & Policy</h3>
+            
+            <div className="flex-1 overflow-y-auto mb-6 pr-2">
+              <div className="prose prose-gray prose-invert max-w-none">
+                {challenge.rules?.policy ? (
+                  <div className="whitespace-pre-wrap text-gray-300 text-sm leading-relaxed">
+                    {challenge.rules.policy}
+                  </div>
+                ) : (
+                  <div className="text-gray-300 text-sm">
+                    <p className="mb-4">By joining this challenge, you agree to:</p>
+                    <ul className="list-disc pl-6 space-y-2">
+                      <li>Participate honestly and submit genuine proof of completion</li>
+                      <li>Follow the challenge requirements and guidelines</li>
+                      <li>Respect other participants and maintain a positive environment</li>
+                      <li>Accept that rewards are distributed based on performance and completion</li>
+                      <li>Understand that participation is voluntary and you can withdraw at any time</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setShowTermsModal(false)}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 py-3"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAcceptTermsAndJoin}
+                disabled={joining}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 py-3"
+              >
+                {joining ? 'Joining...' : 'Accept & Join Challenge'}
               </Button>
             </div>
           </div>
