@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { ArrowLeft, Users, Calendar, Trophy, Settings, Eye, BarChart3, Flame, Camera, Zap, DollarSign, Target, TrendingUp, Pencil } from "lucide-react";
+import { ArrowLeft, Users, Calendar, Trophy, Settings, Eye, BarChart3, Flame, Camera, Zap, DollarSign, Target, TrendingUp, Pencil, Trash2 } from "lucide-react";
 import EditChallengeModal from "@/components/admin/EditChallengeModal";
 
 type ChallengeDetailData = {
@@ -101,6 +101,8 @@ export default function AdminChallengeDetailPage({
   }>>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [creatingOffer, setCreatingOffer] = useState<'completion' | 'mid-challenge' | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     async function loadChallenge() {
@@ -246,6 +248,34 @@ export default function AdminChallengeDetailPage({
     }
   }
 
+  async function handleDeleteChallenge() {
+    if (!challengeId || deleting) return;
+    
+    try {
+      setDeleting(true);
+      
+      const response = await fetch(`/api/admin/challenges/${challengeId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete challenge');
+      }
+
+      // Success - redirect to admin dashboard
+      alert('✅ Challenge deleted successfully!');
+      router.push('/admin');
+      
+    } catch (error) {
+      console.error('Error deleting challenge:', error);
+      alert(`❌ Failed to delete challenge: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white">
@@ -345,6 +375,14 @@ export default function AdminChallengeDetailPage({
             >
               <Pencil className="h-4 w-4 mr-2" />
               Edit Challenge
+            </Button>
+            <Button
+              onClick={() => setShowDeleteConfirm(true)}
+              variant="outline"
+              className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
             </Button>
           </div>
         </div>
@@ -690,6 +728,46 @@ export default function AdminChallengeDetailPage({
               window.location.reload();
             }}
           />
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-8 h-8 text-red-600" />
+                </div>
+                
+                <h3 className="text-xl font-bold text-white mb-2">
+                  Delete Challenge
+                </h3>
+                
+                <p className="text-gray-400 mb-6">
+                  Are you sure you want to delete "{challenge?.title}"? This action cannot be undone.
+                  All participants, check-ins, and data will be permanently removed.
+                </p>
+                
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    variant="outline"
+                    className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleDeleteChallenge}
+                    disabled={deleting}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    {deleting ? 'Deleting...' : 'Delete Challenge'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

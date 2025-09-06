@@ -251,6 +251,55 @@ export async function DELETE(
 
     const { challengeId } = await params;
 
+    // Check if challenge exists and user has permission
+    const challenge = await prisma.challenge.findUnique({
+      where: { id: challengeId },
+      include: {
+        tenant: true,
+      },
+    });
+
+    if (!challenge) {
+      return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
+    }
+
+    // Check if user has permission to delete this challenge
+    // Only admin users or users from the same tenant can delete challenges
+    const userTenant = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { tenantId: true }
+    });
+    
+    if (user.role !== 'ADMIN' && (!userTenant || challenge.tenantId !== userTenant.tenantId)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Delete in correct order to respect foreign key constraints
+    // 1. First delete all proofs
+    await prisma.proof.deleteMany({
+      where: {
+        enrollment: {
+          challengeId: challengeId
+        }
+      }
+    });
+
+    // 2. Delete all enrollments
+    await prisma.enrollment.deleteMany({
+      where: { challengeId: challengeId }
+    });
+
+    // 3. Delete winners
+    await prisma.challengeWinner.deleteMany({
+      where: { challengeId: challengeId }
+    });
+
+    // 4. Delete challenge offers
+    await prisma.challengeOffer.deleteMany({
+      where: { challengeId: challengeId }
+    });
+
+    // 4. Finally delete the challenge
     await prisma.challenge.delete({
       where: { id: challengeId },
     });
