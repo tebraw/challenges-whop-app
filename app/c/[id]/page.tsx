@@ -1,29 +1,49 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, Users, Upload, Trophy, ArrowLeft, MessageCircle, BarChart3 } from "lucide-react";
+import { Calendar, Users, Upload, Trophy, ArrowLeft, Flame, CheckCircle, Clock, Star } from "lucide-react";
 import Link from "next/link";
+import { Card } from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
 
-interface Challenge {
+interface ChallengeData {
   id: string;
   title: string;
   description: string;
   startAt: string;
   endAt: string;
+  proofType: string;
+  cadence: string;
   imageUrl?: string;
-  participants: number;
-  isParticipating: boolean;
-  rewards: Array<{
-    rank: number;
-    title: string;
-    description: string;
-  }>;
-  stats: {
+  rules?: any;
+  participantCount: number;
+  status: 'upcoming' | 'active' | 'ended';
+  progress: {
     totalDays: number;
-    completed: number;
-    remaining: number;
-    participants: number;
+    daysElapsed: number;
+    daysRemaining: number;
   };
+}
+
+interface UserParticipation {
+  isParticipating: boolean;
+  stats?: {
+    currentStreak: number;
+    totalCheckIns: number;
+    canCheckInToday: boolean;
+    hasCheckedInToday: boolean;
+    joinedAt: string;
+    lastCheckin?: string;
+  };
+}
+
+interface LeaderboardEntry {
+  rank: number;
+  userId: string;
+  username: string;
+  currentStreak: number;
+  totalCheckIns: number;
+  points: number;
 }
 
 export default function ChallengePage({
@@ -31,55 +51,39 @@ export default function ChallengePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [challenge, setChallenge] = useState<ChallengeData | null>(null);
+  const [userParticipation, setUserParticipation] = useState<UserParticipation>({ isParticipating: false });
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [joining, setJoining] = useState(false);
+  const [submittingProof, setSubmittingProof] = useState(false);
   const [showProofModal, setShowProofModal] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [proofText, setProofText] = useState("");
   const [proofLink, setProofLink] = useState("");
-  const [activeProofType, setActiveProofType] = useState<"file" | "text" | "link">("file");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [challengeId, setChallengeId] = useState<string>("");
 
   useEffect(() => {
     async function loadChallenge() {
       try {
         const resolvedParams = await params;
+        setChallengeId(resolvedParams.id);
         
-        // Mock data based on screenshots
-        const mockChallenge: Challenge = {
-          id: resolvedParams.id,
-          title: "15K Steps Challenge",
-          description: "ENTER the Challenge and send daily proof to WIN a 1 on 1 coaching session",
-          startAt: "2025-04-09",
-          endAt: "2025-11-09",
-          imageUrl: "/api/placeholder/300/200",
-          participants: 1,
-          isParticipating: true,
-          rewards: [
-            {
-              rank: 1,
-              title: "1 on 1 Coaching Session",
-              description: "Live coaching with me"
-            },
-            {
-              rank: 2,
-              title: "1 Week Meal Plan",
-              description: ""
-            },
-            {
-              rank: 3,
-              title: "Free Abs Workout PDF",
-              description: ""
-            }
-          ],
-          stats: {
-            totalDays: 7,
-            completed: 0,
-            remaining: 7,
-            participants: 1
-          }
-        };
+        // Load challenge status
+        const statusResponse = await fetch(`/api/challenges/${resolvedParams.id}/status`);
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          setChallenge(statusData.challenge);
+          setUserParticipation(statusData.userParticipation);
+        }
+
+        // Load leaderboard
+        const leaderboardResponse = await fetch(`/api/challenges/${resolvedParams.id}/leaderboard`);
+        if (leaderboardResponse.ok) {
+          const leaderboardData = await leaderboardResponse.json();
+          setLeaderboard(leaderboardData.leaderboard.slice(0, 10)); // Top 10
+        }
         
-        setChallenge(mockChallenge);
       } catch (error) {
         console.error("Error loading challenge:", error);
       } finally {
@@ -90,33 +94,128 @@ export default function ChallengePage({
     loadChallenge();
   }, [params]);
 
-  const handleJoinChallenge = () => {
-    if (challenge) {
-      setChallenge({
-        ...challenge,
-        isParticipating: true,
-        participants: challenge.participants + 1
+  const handleJoinChallenge = async () => {
+    if (!challengeId) return;
+    
+    try {
+      setJoining(true);
+      const response = await fetch(`/api/challenges/${challengeId}/join`, {
+        method: 'POST'
       });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        alert(data.error || 'Failed to join challenge');
+      }
+    } catch (error) {
+      console.error('Error joining challenge:', error);
+      alert('Failed to join challenge');
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const handleSubmitProof = async () => {
+    if (!challengeId) return;
+
+    try {
+      setSubmittingProof(true);
+      
+      let proofData: any = {};
+      
+      if (challenge?.proofType === 'TEXT') {
+        if (!proofText.trim()) {
+          alert('Please enter your proof text');
+          return;
+        }
+        proofData.text = proofText.trim();
+      } else if (challenge?.proofType === 'LINK') {
+        if (!proofLink.trim()) {
+          alert('Please enter a valid link');
+          return;
+        }
+        proofData.linkUrl = proofLink.trim();
+      } else if (challenge?.proofType === 'PHOTO') {
+        if (!selectedFile) {
+          alert('Please select a photo');
+          return;
+        }
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload photo');
+        }
+        
+        const uploadData = await uploadResponse.json();
+        proofData.imageUrl = uploadData.url;
+      }
+
+      const response = await fetch(`/api/challenges/${challengeId}/checkin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(proofData)
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        alert('Check-in erfolgreich! 🎉');
+        setShowProofModal(false);
+        setProofText('');
+        setProofLink('');
+        setSelectedFile(null);
+        window.location.reload();
+      } else {
+        alert(data.error || 'Failed to submit proof');
+      }
+    } catch (error) {
+      console.error('Error submitting proof:', error);
+      alert('Failed to submit proof');
+    } finally {
+      setSubmittingProof(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('de-DE', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const getStatusBadge = () => {
+    if (!challenge) return null;
+    
+    if (challenge.status === 'upcoming') {
+      return <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 text-sm rounded-full">Startet bald</span>;
+    } else if (challenge.status === 'active') {
+      return <span className="px-3 py-1 bg-green-500/20 text-green-400 text-sm rounded-full flex items-center gap-1">
+        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+        Live
+      </span>;
+    } else {
+      return <span className="px-3 py-1 bg-gray-500/20 text-gray-400 text-sm rounded-full">Beendet</span>;
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white pt-20">
-        <div className="max-w-6xl mx-auto p-6">
-          <div className="animate-pulse">
-            <div className="h-64 bg-gray-800 rounded-2xl mb-8"></div>
-            <div className="grid lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
-                <div className="h-48 bg-gray-800 rounded-xl"></div>
-                <div className="h-64 bg-gray-800 rounded-xl"></div>
-              </div>
-              <div className="space-y-6">
-                <div className="h-32 bg-gray-800 rounded-xl"></div>
-                <div className="h-48 bg-gray-800 rounded-xl"></div>
-              </div>
-            </div>
-          </div>
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-gray-400 text-lg">Challenge wird geladen...</p>
         </div>
       </div>
     );
@@ -124,11 +223,12 @@ export default function ChallengePage({
 
   if (!challenge) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white pt-20 flex items-center justify-center">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Challenge not found</h1>
-          <Link href="/discover" className="text-blue-400 hover:text-blue-300">
-            ← Back to Discover
+          <h1 className="text-3xl font-bold mb-4">Challenge nicht gefunden</h1>
+          <p className="text-gray-400 mb-8">Die gesuchte Challenge existiert nicht.</p>
+          <Link href="/discover">
+            <Button className="bg-purple-600 hover:bg-purple-700">Challenges entdecken</Button>
           </Link>
         </div>
       </div>
@@ -136,158 +236,322 @@ export default function ChallengePage({
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white pt-20">
-      <div className="max-w-6xl mx-auto p-6">
-        {/* Hero Section */}
-        <div className="relative bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 rounded-2xl p-8 mb-8 overflow-hidden">
-          <div className="absolute inset-0 bg-black/20"></div>
-          <div className="relative z-10 flex items-center space-x-6">
-            {challenge.imageUrl && (
-              <div className="w-32 h-32 rounded-xl overflow-hidden flex-shrink-0">
-                <img
-                  src={challenge.imageUrl}
-                  alt={challenge.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
+    <div className="min-h-screen bg-black text-white">
+      <div className="border-b border-gray-800">
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <Link href="/discover" className="inline-flex items-center text-gray-400 hover:text-white mb-6 transition-colors">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Zurück zu Challenges
+          </Link>
+          
+          <div className="flex items-start justify-between">
             <div className="flex-1">
-              {challenge.isParticipating && (
-                <div className="inline-flex items-center bg-green-600 text-white px-3 py-1 rounded-full text-sm font-medium mb-3">
-                  ✓ You're participating!
-                </div>
-              )}
-              <h1 className="text-4xl font-bold mb-4">{challenge.title}</h1>
-              <p className="text-xl text-white/90 mb-4 flex items-center">
-                🔥 {challenge.description} 🔥
-              </p>
-              <div className="flex items-center space-x-6 text-white/80">
-                <div className="flex items-center">
-                  <Calendar className="w-5 h-5 mr-2" />
-                  {new Date(challenge.startAt).toLocaleDateString()} - {new Date(challenge.endAt).toLocaleDateString()}
-                </div>
-                <div className="flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Daily commitment
-                </div>
+              <div className="flex items-center gap-3 mb-3">
+                <h1 className="text-4xl font-bold">{challenge.title}</h1>
+                {getStatusBadge()}
+              </div>
+              
+              <p className="text-gray-300 text-lg mb-6 max-w-3xl">{challenge.description}</p>
+              
+              <div className="flex items-center gap-6 text-sm text-gray-400">
+                <span className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  {formatDate(challenge.startAt)} - {formatDate(challenge.endAt)}
+                </span>
+                <span className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  {challenge.participantCount} Teilnehmer
+                </span>
+                <span className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  {challenge.progress.totalDays} Tage
+                </span>
               </div>
             </div>
-            {!challenge.isParticipating && (
-              <button
-                onClick={handleJoinChallenge}
-                className="bg-white text-purple-600 px-8 py-3 rounded-xl font-semibold text-lg hover:bg-gray-100 transition-colors flex items-center"
-              >
-                🚀 Join Challenge
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Rewards Section */}
-            <div>
-              <h2 className="text-2xl font-bold mb-6 flex items-center">
-                🏆 Rewards & Prizes
-              </h2>
-              <div className="grid md:grid-cols-3 gap-4">
-                {challenge.rewards.map((reward) => (
-                  <div
-                    key={reward.rank}
-                    className="bg-gradient-to-br from-yellow-600 to-orange-600 rounded-xl p-6 text-center"
-                  >
-                    <div className="text-2xl font-bold mb-2">
-                      #{reward.rank}
-                    </div>
-                    <h3 className="font-semibold mb-2">{reward.title}</h3>
-                    {reward.description && (
-                      <p className="text-sm text-white/80">{reward.description}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Challenge Info */}
-            <div className="bg-gray-800 rounded-xl p-6">
-              <div className="flex items-center mb-4">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                  ℹ️
-                </div>
-                <div>
-                  <h3 className="font-semibold">Challenge starts on {new Date(challenge.startAt).toLocaleDateString()}</h3>
-                  <p className="text-gray-400 text-sm">{challenge.stats.totalDays} days • {challenge.participants} participants</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Motivational Sections */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-gray-800 rounded-xl p-6">
-                <div className="flex items-center mb-4">
-                  <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center mr-4">
-                    🎯
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">Challenge Yourself</h3>
-                  </div>
-                </div>
-                <p className="text-gray-300">
-                  Join a community of motivated individuals working towards their goals. Track your progress and stay accountable with daily check-ins.
-                </p>
-              </div>
-
-              <div className="bg-gray-800 rounded-xl p-6">
-                <div className="flex items-center mb-4">
-                  <div className="w-12 h-12 bg-yellow-600 rounded-full flex items-center justify-center mr-4">
-                    🏆
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">Earn Recognition</h3>
-                  </div>
-                </div>
-                <p className="text-gray-300">
-                  Complete the challenge to earn your spot on the leaderboard and gain recognition for your dedication and consistency.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            {/* Participation Status */}
-            {challenge.isParticipating && (
-              <div className="bg-gray-800 rounded-xl p-6">
-                <h3 className="font-semibold mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center text-green-400">
-                    ✓ You're participating!
-                    <br />
-                    <span className="text-sm text-gray-400">Good luck with your challenge 🎯</span>
-                  </div>
-                  <button className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
-                    💬 Join Community Chat
-                  </button>
-                  <button className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
-                    📊 View My Stats
-                  </button>
+            
+            {userParticipation.isParticipating && (
+              <div className="ml-6">
+                <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 rounded-full text-sm font-medium">
+                  ✨ Du nimmst teil!
                 </div>
               </div>
             )}
-
-            {/* Motivation Card */}
-            <div className="bg-gray-800 rounded-xl p-6 text-center">
-              <div className="text-4xl mb-3">💪</div>
-              <h3 className="font-semibold text-lg mb-2">Stay Strong!</h3>
-              <p className="text-gray-300 text-sm">
-                Every day you complete brings you closer to your goal. You've got this!
-              </p>
-            </div>
           </div>
         </div>
       </div>
+
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            {userParticipation.isParticipating ? (
+              <div className="space-y-6">
+                <Card className="bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-bold flex items-center gap-3">
+                        <Flame className="w-6 h-6 text-orange-500" />
+                        Dein Fortschritt
+                      </h2>
+                      <div className="text-right">
+                        <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">
+                          {userParticipation.stats?.currentStreak || 0}
+                        </div>
+                        <p className="text-sm text-gray-400">Tage Streak</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                      <div className="text-center p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                        <div className="text-2xl font-bold text-blue-400 mb-1">
+                          {userParticipation.stats?.totalCheckIns || 0}
+                        </div>
+                        <p className="text-xs text-gray-400">Check-ins</p>
+                      </div>
+                      <div className="text-center p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                        <div className="text-2xl font-bold text-green-400 mb-1">
+                          {challenge.progress.daysRemaining}
+                        </div>
+                        <p className="text-xs text-gray-400">Tage übrig</p>
+                      </div>
+                      <div className="text-center p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                        <div className="text-2xl font-bold text-purple-400 mb-1">
+                          {Math.round(((userParticipation.stats?.totalCheckIns || 0) / (challenge.progress.daysElapsed || 1)) * 100) || 0}%
+                        </div>
+                        <p className="text-xs text-gray-400">Erfolgsrate</p>
+                      </div>
+                    </div>
+
+                    {userParticipation.stats?.canCheckInToday && challenge.status === 'active' && (
+                      <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-xl p-6">
+                        <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+                          <Upload className="w-5 h-5" />
+                          Heute beweisen
+                        </h3>
+                        <p className="text-gray-300 mb-4">
+                          Beweis-Typ: <span className="font-semibold text-white">{challenge.proofType}</span>
+                        </p>
+                        <Button 
+                          onClick={() => setShowProofModal(true)}
+                          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 text-lg"
+                        >
+                          Jetzt beweisen! 🚀
+                        </Button>
+                      </div>
+                    )}
+
+                    {userParticipation.stats?.hasCheckedInToday && (
+                      <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl p-6">
+                        <div className="flex items-center gap-3 text-green-400 mb-2">
+                          <CheckCircle className="w-6 h-6" />
+                          <span className="font-bold text-lg">Heute schon erledigt! 🎉</span>
+                        </div>
+                        <p className="text-gray-300">Komm morgen wieder, um deinen Streak fortzusetzen</p>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            ) : (
+              <Card className="bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700">
+                <div className="p-8 text-center">
+                  <div className="mb-6">
+                    <div className="text-6xl mb-4">🎯</div>
+                    <h2 className="text-3xl font-bold mb-4">Bereit mitzumachen?</h2>
+                    <p className="text-gray-300 text-lg max-w-md mx-auto">
+                      Tritt dieser Challenge bei und starte deine Reise noch heute!
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-8 max-w-lg mx-auto">
+                    <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                      <div className="text-2xl mb-2">💪</div>
+                      <h3 className="font-semibold text-blue-400 mb-1">Herausforderung</h3>
+                      <p className="text-sm text-gray-400">Baue Konstanz auf und erreiche deine Ziele</p>
+                    </div>
+                    <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                      <div className="text-2xl mb-2">🏆</div>
+                      <h3 className="font-semibold text-green-400 mb-1">Anerkennung</h3>
+                      <p className="text-sm text-gray-400">Konkurriere mit anderen und gewinne Preise</p>
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={handleJoinChallenge}
+                    disabled={joining || challenge.status !== 'active'}
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-4 px-8 text-lg disabled:opacity-50"
+                  >
+                    {joining ? 'Trete bei...' : challenge.status === 'active' ? '🚀 Challenge beitreten' : 'Challenge nicht aktiv'}
+                  </Button>
+                </div>
+              </Card>
+            )}
+
+            <Card className="bg-gray-900 border-gray-800">
+              <div className="p-6">
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                  <Trophy className="w-6 h-6 text-yellow-500" />
+                  Bestenliste
+                </h2>
+                
+                {leaderboard.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="text-4xl mb-4">🏁</div>
+                    <p className="text-gray-400 text-lg">Noch keine Teilnehmer. Sei der erste!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {leaderboard.map((participant, index) => (
+                      <div 
+                        key={participant.userId}
+                        className={`flex items-center justify-between p-4 rounded-xl ${
+                          index < 3 
+                            ? 'bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30' 
+                            : 'bg-gray-800/50 border border-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
+                            index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-black' :
+                            index === 1 ? 'bg-gradient-to-r from-gray-300 to-gray-500 text-black' :
+                            index === 2 ? 'bg-gradient-to-r from-orange-400 to-orange-600 text-black' :
+                            'bg-gray-700 text-gray-300'
+                          }`}>
+                            {index < 3 ? (
+                              index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'
+                            ) : (
+                              participant.rank
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-lg">{participant.username}</p>
+                            <p className="text-sm text-gray-400">
+                              {participant.currentStreak} Tage Streak • {participant.totalCheckIns} Check-ins
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-yellow-500" />
+                            <span className="font-bold text-lg text-purple-400">{participant.points}</span>
+                          </div>
+                          <p className="text-xs text-gray-400">Punkte</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card className="bg-gray-900 border-gray-800">
+              <div className="p-6">
+                <h3 className="font-bold text-lg mb-4">Challenge Details</h3>
+                <div className="space-y-4 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Dauer:</span>
+                    <span className="font-semibold">{challenge.progress.totalDays} Tage</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Teilnehmer:</span>
+                    <span className="font-semibold">{challenge.participantCount}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Beweis-Typ:</span>
+                    <span className="font-semibold">{challenge.proofType}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Häufigkeit:</span>
+                    <span className="font-semibold">{challenge.cadence}</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-purple-900/50 to-blue-900/50 border-purple-500/20">
+              <div className="p-6 text-center">
+                <div className="text-4xl mb-3">💪</div>
+                <h3 className="font-bold text-lg mb-2">Bleib stark!</h3>
+                <p className="text-gray-300 text-sm">
+                  Jeder Tag, den du abschließt, bringt dich deinem Ziel näher. Du schaffst das!
+                </p>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      {showProofModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl p-8 w-full max-w-md border border-gray-700">
+            <h3 className="text-2xl font-bold mb-6 text-center">Beweis einreichen</h3>
+            
+            {challenge.proofType === 'TEXT' && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-300 mb-3">
+                  Beschreibe deinen heutigen Fortschritt:
+                </label>
+                <textarea
+                  value={proofText}
+                  onChange={(e) => setProofText(e.target.value)}
+                  className="w-full p-4 bg-gray-800 border border-gray-600 rounded-xl text-white resize-none focus:ring-2 focus:ring-purple-500"
+                  rows={4}
+                  placeholder="Teile Details über deinen Fortschritt..."
+                />
+              </div>
+            )}
+
+            {challenge.proofType === 'LINK' && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-300 mb-3">
+                  Teile einen Link als Beweis:
+                </label>
+                <input
+                  type="url"
+                  value={proofLink}
+                  onChange={(e) => setProofLink(e.target.value)}
+                  className="w-full p-4 bg-gray-800 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-purple-500"
+                  placeholder="https://..."
+                />
+              </div>
+            )}
+
+            {challenge.proofType === 'PHOTO' && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-300 mb-3">
+                  Lade ein Foto als Beweis hoch:
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="w-full p-4 bg-gray-800 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-purple-500"
+                />
+                {selectedFile && (
+                  <p className="text-sm text-gray-400 mt-2">Ausgewählt: {selectedFile.name}</p>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setShowProofModal(false)}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 py-3"
+              >
+                Abbrechen
+              </Button>
+              <Button
+                onClick={handleSubmitProof}
+                disabled={submittingProof}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 py-3"
+              >
+                {submittingProof ? 'Wird eingereicht...' : 'Beweis einreichen'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
