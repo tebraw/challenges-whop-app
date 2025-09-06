@@ -23,13 +23,13 @@ export const challengeAdminSchema = z
       .min(1, "At least one reward is required")
       .max(3),
     policy: z.string().min(10, "Policy/Terms text is required"),
-    // allows http(s) OR a local path like "/uploads/…"
+    // allows http(s), local paths OR data URLs
     imageUrl: z
       .string()
       .optional()
       .refine(
-        (v) => !v || /^https?:\/\//.test(v) || v.startsWith("/"),
-        { message: "Image must be http(s) or a local path (/uploads/...)" }
+        (v) => !v || /^https?:\/\//.test(v) || v.startsWith("/") || v.startsWith("data:"),
+        { message: "Image must be http(s), a local path (/uploads/...), or a data URL" }
       ),
     // Marketing & Monetization fields
     tags: z.array(z.string()).max(5).optional(),
