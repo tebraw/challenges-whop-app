@@ -256,18 +256,26 @@ export default function ChallengePage({
               {/* Rewards Section */}
               {challenge.rules?.rewards && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-yellow-500" />
-                    Rewards
+                    Rewards & Prizes
                   </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(challenge.rules.rewards).map(([place, reward]) => (
-                      <span
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {typeof challenge.rules.rewards === 'object' && Object.entries(challenge.rules.rewards).map(([place, reward], index) => (
+                      <div
                         key={place}
-                        className="px-3 py-1 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 text-yellow-200 text-sm rounded-full"
+                        className="bg-gradient-to-br from-yellow-600/20 to-orange-600/20 border border-yellow-500/30 rounded-lg p-4 text-center"
                       >
-                        {place === 'first' ? '🥇' : place === 'second' ? '🥈' : place === 'third' ? '🥉' : '🏆'} {String(reward)}
-                      </span>
+                        <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-yellow-500 to-orange-500 text-black font-bold text-sm rounded-full mb-2 mx-auto">
+                          #{index + 1}
+                        </div>
+                        <h4 className="font-semibold text-yellow-200 text-sm mb-1">
+                          {place === 'first' ? '🥇 1st Place' : place === 'second' ? '🥈 2nd Place' : place === 'third' ? '🥉 3rd Place' : `🏆 ${place}`}
+                        </h4>
+                        <p className="text-gray-300 text-sm">
+                          {typeof reward === 'string' ? reward : JSON.stringify(reward)}
+                        </p>
+                      </div>
                     ))}
                   </div>
                 </div>
