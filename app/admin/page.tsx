@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { Copy, Trash2, Pencil, BarChart3, Users, TrendingUp, DollarSign, Trophy } from "lucide-react";
 import ChallengeCountdown from "@/components/ui/ChallengeCountdown";
+import EditChallengeModal from "@/components/admin/EditChallengeModal";
 
 type Challenge = {
   imageUrl: any;
@@ -34,6 +35,8 @@ export default function AdminList() {
   const [items, setItems] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editChallengeId, setEditChallengeId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -66,6 +69,11 @@ export default function AdminList() {
       alert(e?.message || "Delete failed");
     }
   }
+
+  const onEdit = (id: string) => {
+    setEditChallengeId(id);
+    setEditModalOpen(true);
+  };
 
   async function onDuplicate(id: string) {
     try {
@@ -261,11 +269,13 @@ export default function AdminList() {
                           <BarChart3 className="h-4 w-4" />
                         </button>
                       </Link>
-                      <Link href={`/admin/edit/${c.id}`}>
-                        <button className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors" title="Edit">
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                      </Link>
+                      <button 
+                        onClick={() => onEdit(c.id)}
+                        className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors" 
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
                       <button 
                         onClick={() => onDuplicate(c.id)} 
                         className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors" 
@@ -288,6 +298,21 @@ export default function AdminList() {
           </div>
         )}
       </main>
+
+      {/* Edit Modal */}
+      {editChallengeId && (
+        <EditChallengeModal
+          isOpen={editModalOpen}
+          onClose={() => {
+            setEditModalOpen(false);
+            setEditChallengeId(null);
+          }}
+          challengeId={editChallengeId}
+          onSuccess={() => {
+            load(); // Refresh the list after successful edit
+          }}
+        />
+      )}
     </div>
   );
 }
