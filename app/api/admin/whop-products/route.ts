@@ -34,12 +34,18 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    console.log('Challenge found:', challenge);
+
     try {
       // Try to load real creator products from Whop API
       const creatorWhopId = challenge.whopCreatorId || challenge.creatorId;
       
+      console.log(`Attempting to fetch Whop products for creator: ${creatorWhopId}`);
+      
       if (creatorWhopId) {
         const whopProducts = await getCreatorProducts(creatorWhopId);
+
+        console.log(`Fetched ${whopProducts.length} products from Whop API`);
 
         if (whopProducts && whopProducts.length > 0) {
           const products = whopProducts.map((product) => ({
@@ -57,25 +63,50 @@ export async function GET(req: NextRequest) {
           return NextResponse.json({
             products,
             source: 'whop_api',
-            message: `Loaded ${products.length} products from your Whop account`
+            message: `Loaded ${products.length} products from your Whop account`,
+            debug: {
+              challengeId,
+              creatorWhopId,
+              whopApiKey: process.env.WHOP_API_KEY ? 'configured' : 'missing'
+            }
           });
         }
       }
     } catch (whopError) {
-      console.warn('Failed to load from Whop API:', whopError);
+      console.error('Failed to load from Whop API:', whopError);
+      
+      return NextResponse.json({
+        products: [],
+        source: 'whop_api_error',
+        message: `Error loading products from Whop: ${whopError instanceof Error ? whopError.message : 'Unknown error'}`,
+        debug: {
+          challengeId,
+          creatorWhopId: challenge.whopCreatorId || challenge.creatorId,
+          whopApiKey: process.env.WHOP_API_KEY ? 'configured' : 'missing',
+          error: whopError instanceof Error ? whopError.message : String(whopError)
+        }
+      });
     }
 
     // No fallback - only return real Whop products
     return NextResponse.json({
       products: [],
       source: 'whop_api_only',
-      message: 'No products available. Please connect your Whop account and add products to your Whop store to enable monetization features.'
+      message: 'No products available. Please connect your Whop account and add products to your Whop store to enable monetization features.',
+      debug: {
+        challengeId,
+        creatorWhopId: challenge.whopCreatorId || challenge.creatorId,
+        whopApiKey: process.env.WHOP_API_KEY ? 'configured' : 'missing'
+      }
     });
 
   } catch (error) {
     console.error('Error in whop-products API:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        debug: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }

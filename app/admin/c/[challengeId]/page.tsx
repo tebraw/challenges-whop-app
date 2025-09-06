@@ -162,13 +162,37 @@ export default function AdminChallengeDetailPage({
   async function loadWhopProducts(challengeId: string) {
     try {
       setLoadingProducts(true);
+      console.log(`Loading Whop products for challenge: ${challengeId}`);
+      
       const response = await fetch(`/api/admin/whop-products?challengeId=${challengeId}`);
+      const data = await response.json();
+      
+      console.log('Whop products API response:', data);
+      
       if (response.ok) {
-        const data = await response.json();
         setWhopProducts(data.products || []);
+        
+        // Show debug information in console for troubleshooting
+        if (data.debug) {
+          console.log('Debug information:', data.debug);
+        }
+        
+        // Show user-friendly messages
+        if (data.products && data.products.length > 0) {
+          console.log(`✅ Successfully loaded ${data.products.length} products from Whop`);
+        } else {
+          console.warn('⚠️ No products found:', data.message);
+          if (data.debug) {
+            console.log('Debug details:', data.debug);
+          }
+        }
+      } else {
+        console.error('❌ Failed to load Whop products:', data);
+        setWhopProducts([]);
       }
     } catch (error) {
-      console.error('Failed to load Whop products:', error);
+      console.error('❌ Error loading Whop products:', error);
+      setWhopProducts([]);
     } finally {
       setLoadingProducts(false);
     }
