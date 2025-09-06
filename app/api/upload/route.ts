@@ -1,6 +1,6 @@
 // app/api/upload/route.ts
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
+import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 
@@ -17,11 +17,11 @@ export async function POST(req: Request) {
     const file = form.get("file");
 
     if (!(file instanceof File)) {
-      return new NextResponse("No file", { status: 400 });
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      return new NextResponse("File too large (>5MB)", { status: 413 });
+      return NextResponse.json({ error: "File too large (>5MB)" }, { status: 413 });
     }
 
     const arrayBuffer = await file.arrayBuffer();
@@ -30,15 +30,49 @@ export async function POST(req: Request) {
     const ext = path.extname(file.name || "") || ".bin";
     const name = `${randomUUID()}${ext}`;
 
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await fs.mkdir(uploadDir, { recursive: true });
+    // Handle different environments
+    let uploadDir: string;
+    let publicUrl: string;
+
+    if (process.env.VERCEL) {
+      // Vercel deployment - use /tmp directory
+      uploadDir = path.join("/tmp", "uploads");
+      publicUrl = `/uploads/${name}`;
+      
+      // Note: Files uploaded to /tmp on Vercel are temporary
+      // For production, consider using cloud storage (AWS S3, Cloudinary, etc.)
+    } else {
+      // Local development
+      uploadDir = path.join(process.cwd(), "public", "uploads");
+      publicUrl = `/uploads/${name}`;
+    }
+
+    // Create directory if it doesn't exist
+    try {
+      await mkdir(uploadDir, { recursive: true });
+    } catch (error) {
+      console.log("Directory creation warning:", error);
+      // Continue if directory already exists
+    }
 
     const fullPath = path.join(uploadDir, name);
-    await fs.writeFile(fullPath, buffer);
+    await writeFile(fullPath, buffer);
 
-    return NextResponse.json({ url: `/uploads/${name}` });
-  } catch (e: any) {
-    console.error("UPLOAD ERROR:", e);
-    return new NextResponse(e?.message || "Upload failed", { status: 500 });
+    console.log("✅ File uploaded successfully:", publicUrl);
+    return NextResponse.json({ 
+      success: true,
+      url: publicUrl,
+      message: process.env.VERCEL ? "File uploaded (temporary on Vercel)" : "File uploaded successfully"
+    });
+
+  } catch (error: any) {
+    console.error("❌ UPLOAD ERROR:", error);
+    return NextResponse.json(
+      { 
+        error: error?.message || "Upload failed",
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      }, 
+      { status: 500 }
+    );
   }
 }

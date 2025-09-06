@@ -78,22 +78,42 @@ export default function NewChallengePage() {
 
     setSaving(true);
     try {
-      const response = await fetch("/api/challenges", {
+      const response = await fetch("/api/admin/challenges", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(challengeData)
       });
 
       console.log("Response status:", response.status);
+      console.log("Response headers:", response.headers);
+      
+      // Check if response is actually JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Server did not return JSON response");
+      }
       
       if (response.ok) {
         const data = await response.json();
         console.log("Challenge created successfully:", data);
-        router.push(`/admin/c/${data.id}`);
+        
+        if (data.challenge && data.challenge.id) {
+          router.push(`/admin`); // Redirect to admin dashboard instead
+        } else {
+          alert("Challenge created successfully!");
+          router.push("/admin");
+        }
       } else {
-        const errorData = await response.json();
-        console.error("Failed to create challenge:", errorData);
-        alert(`Failed to create challenge: ${errorData.error || 'Unknown error'}`);
+        let errorMessage = 'Unknown error';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || 'Unknown error';
+        } catch (parseError) {
+          errorMessage = `Server error (${response.status})`;
+        }
+        
+        console.error("Failed to create challenge:", errorMessage);
+        alert(`Failed to create challenge: ${errorMessage}`);
       }
     } catch (error) {
       console.error("Error creating challenge:", error);

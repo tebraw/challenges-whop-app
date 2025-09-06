@@ -24,11 +24,31 @@ export default function ImagePicker({ value, onChange, maxMB = 5 }: Props) {
     setBusy(true);
     try {
       const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const txt = await res.text();
-      if (!res.ok) throw new Error(txt);
-      const j = JSON.parse(txt) as { url: string };
-      onChange(j.url);            // <- z.B. "/uploads/uuid.png"
+      
+      // Check if response is JSON
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Server did not return JSON response");
+      }
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || errorData.message || `Upload failed (${res.status})`);
+      }
+      
+      const data = await res.json();
+      console.log("Upload response:", data);
+      
+      if (data.success && data.url) {
+        onChange(data.url);
+      } else if (data.url) {
+        // Backward compatibility
+        onChange(data.url);
+      } else {
+        throw new Error("No URL returned from upload");
+      }
     } catch (err: any) {
+      console.error("Upload error:", err);
       alert(err?.message || "Upload failed");
     } finally {
       setBusy(false);

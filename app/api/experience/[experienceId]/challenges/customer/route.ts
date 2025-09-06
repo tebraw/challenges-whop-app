@@ -39,11 +39,7 @@ export async function GET(
           },
           enrollment: {
             id: 'enrollment-1',
-            joinedAt: new Date('2025-09-01'),
-            status: 'ACTIVE',
-            currentStreak: 5,
-            totalCheckIns: 5,
-            lastCheckIn: new Date()
+            joinedAt: new Date('2025-09-01')
           },
           _count: { 
             enrollments: 42 
