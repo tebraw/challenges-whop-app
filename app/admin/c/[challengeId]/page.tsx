@@ -90,6 +90,15 @@ export default function AdminChallengeDetailPage({
   const [error, setError] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [challengeId, setChallengeId] = useState<string>("");
+  const [whopProducts, setWhopProducts] = useState<Array<{
+    id: string;
+    name: string;
+    description?: string;
+    price?: number;
+    currency?: string;
+  }>>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [creatingOffer, setCreatingOffer] = useState<'completion' | 'mid-challenge' | null>(null);
 
   useEffect(() => {
     async function loadChallenge() {
@@ -136,6 +145,10 @@ export default function AdminChallengeDetailPage({
         };
         
         setChallenge(mockChallenge);
+        
+        // Load Whop products for this challenge
+        await loadWhopProducts(resolvedParams.challengeId);
+        
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -145,6 +158,67 @@ export default function AdminChallengeDetailPage({
 
     loadChallenge();
   }, [params]);
+
+  async function loadWhopProducts(challengeId: string) {
+    try {
+      setLoadingProducts(true);
+      const response = await fetch(`/api/admin/whop-products?challengeId=${challengeId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setWhopProducts(data.products || []);
+      }
+    } catch (error) {
+      console.error('Failed to load Whop products:', error);
+    } finally {
+      setLoadingProducts(false);
+    }
+  }
+
+  async function createPromoCode(type: 'completion' | 'mid-challenge', productId: string, discount: string) {
+    try {
+      setCreatingOffer(type);
+      
+      // Parse discount (e.g., "15%" or "25%" -> 15 or 25)
+      const discountMatch = discount.match(/(\d+)%?/);
+      if (!discountMatch) {
+        throw new Error('Invalid discount format');
+      }
+      
+      const discountAmount = parseInt(discountMatch[1]);
+      const promoCode = `${type.toUpperCase()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      
+      const response = await fetch('/api/admin/whop-promo-codes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          code: promoCode,
+          amount_off: discountAmount,
+          promo_type: 'percentage',
+          plan_ids: [productId],
+          unlimited_stock: true,
+          new_users_only: false
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create promo code');
+      }
+
+      const result = await response.json();
+      
+      // Show success message
+      alert(`✅ ${type === 'completion' ? 'Completion' : 'Mid-Challenge'} offer created successfully!\n\nPromo Code: ${result.promoCode.code}\nDiscount: ${discountAmount}% off`);
+      
+    } catch (error) {
+      console.error('Error creating promo code:', error);
+      alert(`❌ Failed to create ${type} offer: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setCreatingOffer(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -377,6 +451,21 @@ export default function AdminChallengeDetailPage({
             <h3 className="text-xl font-semibold text-white">Marketing & Monetization</h3>
           </div>
 
+          {/* Whop Connection Status */}
+          {whopProducts.length === 0 && !loadingProducts && (
+            <Card className="p-4 mb-6 bg-yellow-900 border-yellow-700">
+              <div className="flex items-center gap-2 text-yellow-200">
+                <DollarSign className="h-5 w-5" />
+                <div>
+                  <h4 className="font-medium">No Whop Products Found</h4>
+                  <p className="text-sm text-yellow-300">
+                    Connect your Whop account and add products to enable monetization features.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
+
           {/* Monetization Status */}
           <Card className="p-6 mb-6 bg-gray-800 border-gray-700">
             <div className="flex items-center gap-2 mb-4">
@@ -414,22 +503,60 @@ export default function AdminChallengeDetailPage({
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Product</label>
-                  <select className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500">
-                    <option>Select product...</option>
-                  </select>
+                  {loadingProducts ? (
+                    <div className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-400">
+                      Loading products...
+                    </div>
+                  ) : (
+                    <select 
+                      id="completion-product"
+                      className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500"
+                      disabled={whopProducts.length === 0}
+                    >
+                      {whopProducts.length === 0 ? (
+                        <option>No products available - Connect your Whop account</option>
+                      ) : (
+                        <>
+                          <option value="">Select product...</option>
+                          {whopProducts.map((product) => (
+                            <option key={product.id} value={product.id}>
+                              {product.name} {product.price && product.currency ? `(${product.currency} ${product.price})` : ''}
+                            </option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  )}
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Discount</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Discount (%)</label>
                   <input 
-                    type="text" 
-                    defaultValue="15% off"
+                    id="completion-discount"
+                    type="number" 
+                    defaultValue="15"
+                    min="1"
+                    max="100"
                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 
-                <Button className="w-full bg-green-600 hover:bg-green-700">
-                  Create Completion Offer
+                <Button 
+                  className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={whopProducts.length === 0 || creatingOffer === 'completion'}
+                  onClick={() => {
+                    const productSelect = document.getElementById('completion-product') as HTMLSelectElement;
+                    const discountInput = document.getElementById('completion-discount') as HTMLInputElement;
+                    
+                    if (!productSelect.value) {
+                      alert('Please select a product');
+                      return;
+                    }
+                    
+                    createPromoCode('completion', productSelect.value, `${discountInput.value}%`);
+                  }}
+                >
+                  {creatingOffer === 'completion' ? 'Creating...' : 'Create Completion Offer'}
                 </Button>
               </div>
             </Card>
@@ -445,22 +572,60 @@ export default function AdminChallengeDetailPage({
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Product</label>
-                  <select className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500">
-                    <option>Select product...</option>
-                  </select>
+                  {loadingProducts ? (
+                    <div className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-400">
+                      Loading products...
+                    </div>
+                  ) : (
+                    <select 
+                      id="boost-product"
+                      className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500"
+                      disabled={whopProducts.length === 0}
+                    >
+                      {whopProducts.length === 0 ? (
+                        <option>No products available - Connect your Whop account</option>
+                      ) : (
+                        <>
+                          <option value="">Select product...</option>
+                          {whopProducts.map((product) => (
+                            <option key={product.id} value={product.id}>
+                              {product.name} {product.price && product.currency ? `(${product.currency} ${product.price})` : ''}
+                            </option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  )}
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Discount</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Discount (%)</label>
                   <input 
-                    type="text" 
-                    defaultValue="25% off"
+                    id="boost-discount"
+                    type="number" 
+                    defaultValue="25"
+                    min="1"
+                    max="100"
                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                  Create Mid-Challenge Boost
+                <Button 
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={whopProducts.length === 0 || creatingOffer === 'mid-challenge'}
+                  onClick={() => {
+                    const productSelect = document.getElementById('boost-product') as HTMLSelectElement;
+                    const discountInput = document.getElementById('boost-discount') as HTMLInputElement;
+                    
+                    if (!productSelect.value) {
+                      alert('Please select a product');
+                      return;
+                    }
+                    
+                    createPromoCode('mid-challenge', productSelect.value, `${discountInput.value}%`);
+                  }}
+                >
+                  {creatingOffer === 'mid-challenge' ? 'Creating...' : 'Create Mid-Challenge Boost'}
                 </Button>
               </div>
             </Card>
