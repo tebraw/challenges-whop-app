@@ -5,16 +5,31 @@ import { getCurrentUser, requireAdmin } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if user is admin
-    await requireAdmin();
+    console.log('🔄 Starting challenge creation...');
+    
+    // Check if user is admin (with proper error handling)
+    try {
+      await requireAdmin();
+    } catch (authError) {
+      console.error('❌ Admin auth failed:', authError);
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+    
     const currentUser = await getCurrentUser();
+    console.log('👤 Current user:', currentUser?.email || 'No user');
     
     if (!currentUser) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const body = await request.json();
-    console.log('📝 Received challenge data:', body);
+    let body;
+    try {
+      body = await request.json();
+      console.log('📝 Received challenge data:', body);
+    } catch (jsonError) {
+      console.error('❌ Invalid JSON in request:', jsonError);
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
     
     const {
       title,

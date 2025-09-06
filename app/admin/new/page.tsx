@@ -78,45 +78,45 @@ export default function NewChallengePage() {
 
     setSaving(true);
     try {
+      console.log("🚀 Sending request to API...");
+      
       const response = await fetch("/api/admin/challenges", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(challengeData)
       });
 
-      console.log("Response status:", response.status);
-      console.log("Response headers:", response.headers);
+      console.log("📡 Response received:", response.status, response.statusText);
       
-      // Check if response is actually JSON
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Server did not return JSON response");
+      // Get response text first for debugging
+      const responseText = await response.text();
+      console.log("📄 Response text:", responseText);
+      
+      // Try to parse as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("❌ Failed to parse response as JSON:", parseError);
+        throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}`);
       }
       
       if (response.ok) {
-        const data = await response.json();
-        console.log("Challenge created successfully:", data);
+        console.log("✅ Challenge created successfully:", data);
         
         if (data.challenge && data.challenge.id) {
-          router.push(`/admin`); // Redirect to admin dashboard instead
+          router.push(`/admin`);
         } else {
           alert("Challenge created successfully!");
           router.push("/admin");
         }
       } else {
-        let errorMessage = 'Unknown error';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || 'Unknown error';
-        } catch (parseError) {
-          errorMessage = `Server error (${response.status})`;
-        }
-        
-        console.error("Failed to create challenge:", errorMessage);
+        const errorMessage = data.error || data.message || 'Unknown error';
+        console.error("❌ Failed to create challenge:", errorMessage);
         alert(`Failed to create challenge: ${errorMessage}`);
       }
     } catch (error) {
-      console.error("Error creating challenge:", error);
+      console.error("💥 Error creating challenge:", error);
       alert(`Error creating challenge: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setSaving(false);
