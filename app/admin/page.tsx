@@ -59,7 +59,7 @@ export default function AdminList() {
   async function onDelete(id: string) {
     if (!confirm("Really delete challenge?")) return;
     try {
-      const res = await fetch(`/api/challenges/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/challenges/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(await res.text());
       await load();
     } catch (e: any) {
@@ -69,7 +69,7 @@ export default function AdminList() {
 
   async function onDuplicate(id: string) {
     try {
-      const res = await fetch(`/api/challenges/${id}/duplicate`, { method: "POST" });
+      const res = await fetch(`/api/admin/challenges/${id}/duplicate`, { method: "POST" });
       if (!res.ok) throw new Error(await res.text());
       await load();
     } catch (e: any) {
@@ -261,7 +261,7 @@ export default function AdminList() {
                           <BarChart3 className="h-4 w-4" />
                         </button>
                       </Link>
-                      <Link href={`/admin/edit/${c.id}`}>
+                      <Link href={`/admin/c/${c.id}`}>
                         <button className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors" title="Edit">
                           <Pencil className="h-4 w-4" />
                         </button>
