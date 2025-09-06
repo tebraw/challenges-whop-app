@@ -199,14 +199,14 @@ export default function ChallengePage({
     if (!challenge) return null;
     
     if (challenge.status === 'upcoming') {
-      return <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 text-sm rounded-full">Startet bald</span>;
+      return <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 text-sm rounded-full">Starting Soon</span>;
     } else if (challenge.status === 'active') {
       return <span className="px-3 py-1 bg-green-500/20 text-green-400 text-sm rounded-full flex items-center gap-1">
         <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
         Live
       </span>;
     } else {
-      return <span className="px-3 py-1 bg-gray-500/20 text-gray-400 text-sm rounded-full">Beendet</span>;
+      return <span className="px-3 py-1 bg-gray-500/20 text-gray-400 text-sm rounded-full">Ended</span>;
     }
   };
 
@@ -215,7 +215,7 @@ export default function ChallengePage({
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-gray-400 text-lg">Challenge wird geladen...</p>
+          <p className="text-gray-400 text-lg">Loading challenge...</p>
         </div>
       </div>
     );
@@ -225,10 +225,10 @@ export default function ChallengePage({
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-3xl font-bold mb-4">Challenge nicht gefunden</h1>
-          <p className="text-gray-400 mb-8">Die gesuchte Challenge existiert nicht.</p>
+          <h1 className="text-3xl font-bold mb-4">Challenge not found</h1>
+          <p className="text-gray-400 mb-8">The challenge you're looking for doesn't exist.</p>
           <Link href="/discover">
-            <Button className="bg-purple-600 hover:bg-purple-700">Challenges entdecken</Button>
+            <Button className="bg-purple-600 hover:bg-purple-700">Discover Challenges</Button>
           </Link>
         </div>
       </div>
@@ -241,7 +241,7 @@ export default function ChallengePage({
         <div className="max-w-6xl mx-auto px-4 py-6">
           <Link href="/discover" className="inline-flex items-center text-gray-400 hover:text-white mb-6 transition-colors">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Zurück zu Challenges
+            Back to Challenges
           </Link>
           
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
@@ -253,6 +253,26 @@ export default function ChallengePage({
               
               <p className="text-gray-300 text-base lg:text-lg mb-6 max-w-3xl">{challenge.description}</p>
               
+              {/* Rewards Section */}
+              {challenge.rules?.rewards && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-yellow-500" />
+                    Rewards
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(challenge.rules.rewards).map(([place, reward]) => (
+                      <span
+                        key={place}
+                        className="px-3 py-1 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 text-yellow-200 text-sm rounded-full"
+                      >
+                        {place === 'first' ? '🥇' : place === 'second' ? '🥈' : place === 'third' ? '🥉' : '🏆'} {String(reward)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="flex flex-wrap items-center gap-4 md:gap-6 text-sm text-gray-400">
                 <span className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
@@ -261,11 +281,11 @@ export default function ChallengePage({
                 </span>
                 <span className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
-                  {challenge.participantCount} Teilnehmer
+                  {challenge.participantCount} Participants
                 </span>
                 <span className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
-                  {challenge.progress.totalDays} Tage
+                  {challenge.progress.totalDays} Days
                 </span>
               </div>
             </div>
@@ -273,7 +293,7 @@ export default function ChallengePage({
             {userParticipation.isParticipating && (
               <div className="mt-4 lg:mt-0 lg:ml-6 w-full lg:w-auto">
                 <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 rounded-full text-sm font-medium text-center lg:text-left">
-                  ✨ Du nimmst teil!
+                  ✨ You're participating!
                 </div>
               </div>
             )}
@@ -291,13 +311,13 @@ export default function ChallengePage({
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
                       <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-3">
                         <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500" />
-                        Dein Fortschritt
+                        Your Progress
                       </h2>
                       <div className="text-center sm:text-right">
                         <div className="text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">
                           {userParticipation.stats?.currentStreak || 0}
                         </div>
-                        <p className="text-sm text-gray-400">Tage Streak</p>
+                        <p className="text-sm text-gray-400">Day Streak</p>
                       </div>
                     </div>
                     
@@ -312,13 +332,13 @@ export default function ChallengePage({
                         <div className="text-lg sm:text-2xl font-bold text-green-400 mb-1">
                           {challenge.progress.daysRemaining}
                         </div>
-                        <p className="text-xs text-gray-400">Tage übrig</p>
+                        <p className="text-xs text-gray-400">Days left</p>
                       </div>
                       <div className="text-center p-3 sm:p-4 bg-gray-800/50 rounded-xl border border-gray-700">
                         <div className="text-lg sm:text-2xl font-bold text-purple-400 mb-1">
                           {Math.round(((userParticipation.stats?.totalCheckIns || 0) / (challenge.progress.daysElapsed || 1)) * 100) || 0}%
                         </div>
-                        <p className="text-xs text-gray-400">Erfolgsrate</p>
+                        <p className="text-xs text-gray-400">Success Rate</p>
                       </div>
                     </div>
 
@@ -326,16 +346,16 @@ export default function ChallengePage({
                       <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-xl p-6">
                         <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
                           <Upload className="w-5 h-5" />
-                          Heute beweisen
+                          Submit Today's Proof
                         </h3>
                         <p className="text-gray-300 mb-4">
-                          Beweis-Typ: <span className="font-semibold text-white">{challenge.proofType}</span>
+                          Proof Type: <span className="font-semibold text-white">{challenge.proofType}</span>
                         </p>
                         <Button 
                           onClick={() => setShowProofModal(true)}
                           className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 text-lg"
                         >
-                          Jetzt beweisen! 🚀
+                          Submit Proof Now! 🚀
                         </Button>
                       </div>
                     )}
@@ -344,9 +364,9 @@ export default function ChallengePage({
                       <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl p-6">
                         <div className="flex items-center gap-3 text-green-400 mb-2">
                           <CheckCircle className="w-6 h-6" />
-                          <span className="font-bold text-lg">Heute schon erledigt! 🎉</span>
+                          <span className="font-bold text-lg">Already completed today! 🎉</span>
                         </div>
-                        <p className="text-gray-300">Komm morgen wieder, um deinen Streak fortzusetzen</p>
+                        <p className="text-gray-300">Come back tomorrow to continue your streak</p>
                       </div>
                     )}
                   </div>
@@ -357,22 +377,22 @@ export default function ChallengePage({
                 <div className="p-8 text-center">
                   <div className="mb-6">
                     <div className="text-6xl mb-4">🎯</div>
-                    <h2 className="text-3xl font-bold mb-4">Bereit mitzumachen?</h2>
+                    <h2 className="text-3xl font-bold mb-4">Ready to join?</h2>
                     <p className="text-gray-300 text-lg max-w-md mx-auto">
-                      Tritt dieser Challenge bei und starte deine Reise noch heute!
+                      Join this challenge and start your journey today!
                     </p>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 max-w-lg mx-auto">
                     <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                       <div className="text-2xl mb-2">💪</div>
-                      <h3 className="font-semibold text-blue-400 mb-1">Herausforderung</h3>
-                      <p className="text-sm text-gray-400">Baue Konstanz auf und erreiche deine Ziele</p>
+                      <h3 className="font-semibold text-blue-400 mb-1">Challenge</h3>
+                      <p className="text-sm text-gray-400">Build consistency and reach your goals</p>
                     </div>
                     <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                       <div className="text-2xl mb-2">🏆</div>
-                      <h3 className="font-semibold text-green-400 mb-1">Anerkennung</h3>
-                      <p className="text-sm text-gray-400">Konkurriere mit anderen und gewinne Preise</p>
+                      <h3 className="font-semibold text-green-400 mb-1">Recognition</h3>
+                      <p className="text-sm text-gray-400">Compete with others and win prizes</p>
                     </div>
                   </div>
 
@@ -381,7 +401,7 @@ export default function ChallengePage({
                     disabled={joining || challenge.status !== 'active'}
                     className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-4 px-8 text-lg disabled:opacity-50"
                   >
-                    {joining ? 'Trete bei...' : challenge.status === 'active' ? '🚀 Challenge beitreten' : 'Challenge nicht aktiv'}
+                    {joining ? 'Joining...' : challenge.status === 'active' ? '🚀 Join Challenge' : 'Challenge not active'}
                   </Button>
                 </div>
               </Card>
@@ -391,13 +411,13 @@ export default function ChallengePage({
               <div className="p-6">
                 <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
                   <Trophy className="w-6 h-6 text-yellow-500" />
-                  Bestenliste
+                  Leaderboard
                 </h2>
                 
                 {leaderboard.length === 0 ? (
                   <div className="text-center py-12">
                     <div className="text-4xl mb-4">🏁</div>
-                    <p className="text-gray-400 text-lg">Noch keine Teilnehmer. Sei der erste!</p>
+                    <p className="text-gray-400 text-lg">No participants yet. Be the first!</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -426,7 +446,7 @@ export default function ChallengePage({
                           <div>
                             <p className="font-semibold text-lg">{participant.username}</p>
                             <p className="text-sm text-gray-400">
-                              {participant.currentStreak} Tage Streak • {participant.totalCheckIns} Check-ins
+                              {participant.currentStreak} Day Streak • {participant.totalCheckIns} Check-ins
                             </p>
                           </div>
                         </div>
@@ -435,7 +455,7 @@ export default function ChallengePage({
                             <Star className="w-4 h-4 text-yellow-500" />
                             <span className="font-bold text-lg text-purple-400">{participant.points}</span>
                           </div>
-                          <p className="text-xs text-gray-400">Punkte</p>
+                          <p className="text-xs text-gray-400">Points</p>
                         </div>
                       </div>
                     ))}
@@ -451,19 +471,19 @@ export default function ChallengePage({
                 <h3 className="font-bold text-lg mb-4">Challenge Details</h3>
                 <div className="space-y-4 text-sm">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Dauer:</span>
-                    <span className="font-semibold">{challenge.progress.totalDays} Tage</span>
+                    <span className="text-gray-400">Duration:</span>
+                    <span className="font-semibold">{challenge.progress.totalDays} Days</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Teilnehmer:</span>
+                    <span className="text-gray-400">Participants:</span>
                     <span className="font-semibold">{challenge.participantCount}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Beweis-Typ:</span>
+                    <span className="text-gray-400">Proof Type:</span>
                     <span className="font-semibold">{challenge.proofType}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Häufigkeit:</span>
+                    <span className="text-gray-400">Frequency:</span>
                     <span className="font-semibold">{challenge.cadence}</span>
                   </div>
                 </div>
@@ -473,9 +493,9 @@ export default function ChallengePage({
             <Card className="bg-gradient-to-br from-purple-900/50 to-blue-900/50 border-purple-500/20">
               <div className="p-6 text-center">
                 <div className="text-4xl mb-3">💪</div>
-                <h3 className="font-bold text-lg mb-2">Bleib stark!</h3>
+                <h3 className="font-bold text-lg mb-2">Stay strong!</h3>
                 <p className="text-gray-300 text-sm">
-                  Jeder Tag, den du abschließt, bringt dich deinem Ziel näher. Du schaffst das!
+                  Every day you complete brings you closer to your goal. You've got this!
                 </p>
               </div>
             </Card>
@@ -486,19 +506,19 @@ export default function ChallengePage({
       {showProofModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 rounded-2xl p-8 w-full max-w-md border border-gray-700">
-            <h3 className="text-2xl font-bold mb-6 text-center">Beweis einreichen</h3>
+            <h3 className="text-2xl font-bold mb-6 text-center">Submit Proof</h3>
             
             {challenge.proofType === 'TEXT' && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-300 mb-3">
-                  Beschreibe deinen heutigen Fortschritt:
+                  Describe your progress today:
                 </label>
                 <textarea
                   value={proofText}
                   onChange={(e) => setProofText(e.target.value)}
                   className="w-full p-4 bg-gray-800 border border-gray-600 rounded-xl text-white resize-none focus:ring-2 focus:ring-purple-500"
                   rows={4}
-                  placeholder="Teile Details über deinen Fortschritt..."
+                  placeholder="Share details about your progress..."
                 />
               </div>
             )}
@@ -506,7 +526,7 @@ export default function ChallengePage({
             {challenge.proofType === 'LINK' && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-300 mb-3">
-                  Teile einen Link als Beweis:
+                  Share a link as proof:
                 </label>
                 <input
                   type="url"
@@ -521,7 +541,7 @@ export default function ChallengePage({
             {challenge.proofType === 'PHOTO' && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-300 mb-3">
-                  Lade ein Foto als Beweis hoch:
+                  Upload a photo as proof:
                 </label>
                 <input
                   type="file"
@@ -530,7 +550,7 @@ export default function ChallengePage({
                   className="w-full p-4 bg-gray-800 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-purple-500"
                 />
                 {selectedFile && (
-                  <p className="text-sm text-gray-400 mt-2">Ausgewählt: {selectedFile.name}</p>
+                  <p className="text-sm text-gray-400 mt-2">Selected: {selectedFile.name}</p>
                 )}
               </div>
             )}
@@ -540,14 +560,14 @@ export default function ChallengePage({
                 onClick={() => setShowProofModal(false)}
                 className="flex-1 bg-gray-700 hover:bg-gray-600 py-3"
               >
-                Abbrechen
+                Cancel
               </Button>
               <Button
                 onClick={handleSubmitProof}
                 disabled={submittingProof}
                 className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 py-3"
               >
-                {submittingProof ? 'Wird eingereicht...' : 'Beweis einreichen'}
+                {submittingProof ? 'Submitting...' : 'Submit Proof'}
               </Button>
             </div>
           </div>
