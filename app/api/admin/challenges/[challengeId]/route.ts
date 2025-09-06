@@ -113,17 +113,18 @@ export async function PUT(
     const { challengeId } = await params;
     const data = await request.json();
 
-    // Smart handling of rules field: if rewards exist, save them; otherwise save policy
-    let rulesData;
-    if (data.rewards && data.rewards.length > 0 && data.rewards.some((r: any) => r.title?.trim())) {
-      // Save rewards if they exist and are not empty
-      rulesData = data.rewards;
-    } else if (data.policy && data.policy.trim()) {
-      // Save policy text if rewards are empty but policy exists
-      rulesData = data.policy;
-    } else {
-      // Default to null if both are empty
-      rulesData = null;
+    // Enhanced handling: Always save in object format to maintain both policy and rewards
+    let rulesData: any = null;
+    const hasRewards = data.rewards && data.rewards.length > 0 && data.rewards.some((r: any) => r.title?.trim());
+    const hasPolicy = data.policy && data.policy.trim();
+    
+    if (hasRewards || hasPolicy) {
+      // Always use object format to preserve both policy and rewards
+      rulesData = {
+        policy: hasPolicy ? data.policy.trim() : "",
+        rewards: hasRewards ? data.rewards.filter((r: any) => r.title?.trim()) : [],
+        difficulty: "BEGINNER" // Add default difficulty
+      };
     }
 
     const updatedChallenge = await prisma.challenge.update({
