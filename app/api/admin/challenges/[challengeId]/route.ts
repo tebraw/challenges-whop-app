@@ -60,8 +60,13 @@ export async function GET(
               new Date() > challenge.endAt ? 'ENDED' : 'ACTIVE',
       participants: challenge._count.enrollments,
       checkins: checkinCount,
-      rewards: challenge.rules ? 
-        (Array.isArray(challenge.rules) ? challenge.rules : [challenge.rules]) : [],
+      // Handle both rewards array and policy text in rules field
+      rewards: challenge.rules && Array.isArray(challenge.rules) 
+        ? challenge.rules 
+        : [],
+      rules: challenge.rules && !Array.isArray(challenge.rules) 
+        ? challenge.rules 
+        : "",
       creator: challenge.creator ? {
         id: challenge.creator.id,
         name: challenge.creator.name,
@@ -96,6 +101,19 @@ export async function PUT(
     const { challengeId } = await params;
     const data = await request.json();
 
+    // Smart handling of rules field: if rewards exist, save them; otherwise save policy
+    let rulesData;
+    if (data.rewards && data.rewards.length > 0 && data.rewards.some((r: any) => r.title?.trim())) {
+      // Save rewards if they exist and are not empty
+      rulesData = data.rewards;
+    } else if (data.policy && data.policy.trim()) {
+      // Save policy text if rewards are empty but policy exists
+      rulesData = data.policy;
+    } else {
+      // Default to null if both are empty
+      rulesData = null;
+    }
+
     const updatedChallenge = await prisma.challenge.update({
       where: { id: challengeId },
       data: {
@@ -106,7 +124,7 @@ export async function PUT(
         proofType: data.proofType,
         cadence: data.cadence,
         imageUrl: data.imageUrl,
-        rules: data.policy || data.rules || null, // Map policy to rules field
+        rules: rulesData,
       },
       include: {
         creator: true,
