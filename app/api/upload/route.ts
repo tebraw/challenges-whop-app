@@ -18,8 +18,8 @@ export async function POST(req: Request) {
       return new NextResponse("No file", { status: 400 });
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      return new NextResponse("File too large (>10MB)", { status: 413 });
+    if (file.size > 5 * 1024 * 1024) {
+      return new NextResponse("File too large (>5MB)", { status: 413 });
     }
 
     if (!file.type.startsWith('image/')) {
@@ -32,8 +32,8 @@ export async function POST(req: Request) {
     const base64 = buffer.toString('base64');
     const mimeType = file.type;
 
-    // For small images, use data URLs (safer for mobile)
-    if (file.size < 500 * 1024) { // 500KB limit for data URLs to prevent mobile crashes
+    // For development and small images, use data URLs (works everywhere)
+    if (file.size < 2 * 1024 * 1024) { // 2MB limit for data URLs
       const dataUrl = `data:${mimeType};base64,${base64}`;
       return NextResponse.json({ 
         url: dataUrl,

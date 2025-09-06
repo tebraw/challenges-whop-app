@@ -64,60 +64,6 @@ export default function ChallengePage({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [challengeId, setChallengeId] = useState<string>("");
 
-  // Helper function to compress images on client side
-  const compressImage = (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      // If file is already small enough, return as is
-      if (file.size <= 500 * 1024) {
-        resolve(file);
-        return;
-      }
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-
-      img.onload = () => {
-        // Calculate new dimensions (max 1200px)
-        let { width, height } = img;
-        const maxSize = 1200;
-        
-        if (width > height && width > maxSize) {
-          height = (height * maxSize) / width;
-          width = maxSize;
-        } else if (height > maxSize) {
-          width = (width * maxSize) / height;
-          height = maxSize;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        // Draw and compress
-        ctx?.drawImage(img, 0, 0, width, height);
-        
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const compressedFile = new File([blob], file.name, {
-                type: 'image/jpeg',
-                lastModified: Date.now(),
-              });
-              resolve(compressedFile);
-            } else {
-              resolve(file); // fallback to original
-            }
-          },
-          'image/jpeg',
-          0.8 // 80% quality
-        );
-      };
-
-      img.onerror = () => resolve(file); // fallback to original
-      img.src = URL.createObjectURL(file);
-    });
-  };
-
   useEffect(() => {
     async function loadChallenge() {
       try {
@@ -206,11 +152,8 @@ export default function ChallengePage({
           return;
         }
         
-        // Compress image for mobile compatibility
-        const compressedFile = await compressImage(selectedFile);
-        
         const formData = new FormData();
-        formData.append('file', compressedFile);
+        formData.append('file', selectedFile);
         
         const uploadResponse = await fetch('/api/upload', {
           method: 'POST',
