@@ -68,7 +68,7 @@ export default function EditChallengePage({
           endAt: new Date(challenge.endAt).toISOString().slice(0, 16),
           proofType: challenge.proofType,
           cadence: challenge.cadence,
-          policy: challenge.rules || challenge.policy || "", // Map rules to policy field
+          policy: challenge.rules || "", // Use rules field for policy text
           imageUrl: challenge.imageUrl || "",
           rewards: challenge.rewards && challenge.rewards.length > 0 
             ? challenge.rewards.map((r: any) => ({

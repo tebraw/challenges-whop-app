@@ -60,13 +60,25 @@ export async function GET(
               new Date() > challenge.endAt ? 'ENDED' : 'ACTIVE',
       participants: challenge._count.enrollments,
       checkins: checkinCount,
-      // Handle both rewards array and policy text in rules field
-      rewards: challenge.rules && Array.isArray(challenge.rules) 
-        ? challenge.rules 
-        : [],
-      rules: challenge.rules && !Array.isArray(challenge.rules) 
-        ? challenge.rules 
-        : "",
+      // Handle different data structures in rules field
+      rewards: (() => {
+        if (!challenge.rules) return [];
+        if (Array.isArray(challenge.rules)) return challenge.rules;
+        if (typeof challenge.rules === 'object' && challenge.rules !== null && 'rewards' in challenge.rules) {
+          const rulesObj = challenge.rules as { rewards?: any[] };
+          return Array.isArray(rulesObj.rewards) ? rulesObj.rewards : [];
+        }
+        return [];
+      })(),
+      rules: (() => {
+        if (!challenge.rules) return "";
+        if (typeof challenge.rules === 'string') return challenge.rules;
+        if (typeof challenge.rules === 'object' && challenge.rules !== null && 'policy' in challenge.rules) {
+          const rulesObj = challenge.rules as { policy?: string };
+          return rulesObj.policy || "";
+        }
+        return "";
+      })(),
       creator: challenge.creator ? {
         id: challenge.creator.id,
         name: challenge.creator.name,
