@@ -1,177 +1,130 @@
-enum Cadence {
-  DAILY
-  END_OF_CHALLENGE
-}
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-enum Role {
-  USER
-  ADMIN
-}
-
-enum ProofType {
-  NONE
-  TEXT
-  PHOTO
-  LINK
-}
-
 model Tenant {
-  id         String      @id @default(cuid())
-  name       String
-  createdAt  DateTime    @default(now())
-  whopCompanyId String?  @unique  // Whop Company ID for multi-tenant support
-  users      User[]
-  challenges Challenge[]
+  id            String      @id @default(cuid())
+  name          String
+  createdAt     DateTime    @default(now())
+  whopCompanyId String?     @unique
+  challenges    Challenge[]
+  users         User[]
 }
 
 model User {
-  id          String       @id @default(cuid())
-  email       String       @unique
-  name        String?
-  role        Role         @default(USER)
-  createdAt   DateTime     @default(now())
-  tenantId    String
-  tenant      Tenant       @relation(fields: [tenantId], references: [id])
-  enrollments Enrollment[]
-  
-  // Whop integration
-  whopUserId  String?      @unique  // Whop User ID for API calls
-  whopAffiliateLink String?         // Creator's Whop affiliate link for revenue sharing
-  whopCompanyId String?             // Creator's Whop company ID
-  isFreeTier    Boolean @default(true) // Whether creator offers free membership
-  
-  // Whop subscription fields
-  membershipId      String?          // Current Whop membership ID
-  subscriptionStatus String @default("free") // active, cancelled, past_due, inactive, free
-  tier             String @default("free") // free, premium, enterprise
-  
-  // Created challenges (for creators)
-  createdChallenges Challenge[] @relation("Creator")
-  
-  // Whop monetization relationships
-  whopProducts      WhopProduct[] @relation("CreatorProducts")
-  conversions       OfferConversion[] @relation("UserConversions")
-  
-  // Challenge winners
-  winnings          ChallengeWinner[] @relation("Winners")
+  id                 String            @id @default(cuid())
+  email              String            @unique
+  name               String?
+  role               Role              @default(USER)
+  createdAt          DateTime          @default(now())
+  tenantId           String
+  whopUserId         String?           @unique
+  whopAffiliateLink  String?
+  whopCompanyId      String?
+  isFreeTier         Boolean           @default(true)
+  membershipId       String?
+  subscriptionStatus String            @default("free")
+  tier               String            @default("free")
+  createdChallenges  Challenge[]       @relation("Creator")
+  winnings           ChallengeWinner[] @relation("Winners")
+  enrollments        Enrollment[]
+  conversions        OfferConversion[] @relation("UserConversions")
+  tenant             Tenant            @relation(fields: [tenantId], references: [id])
+  whopProducts       WhopProduct[]     @relation("CreatorProducts")
 }
 
 model Challenge {
-  id          String       @id @default(cuid())
-  tenantId    String
-  tenant      Tenant       @relation(fields: [tenantId], references: [id])
-  title       String
-  description String?
-  startAt     DateTime
-  endAt       DateTime
-  proofType   ProofType    @default(NONE)
-  cadence     Cadence      @default(DAILY)
-  rules       Json?
-  imageUrl    String?      // Bild-URL für die Challenge
-  createdAt   DateTime     @default(now())
-  enrollments Enrollment[]
-  
-  // Creator relationship
-  creatorId   String?
-  creator     User?        @relation("Creator", fields: [creatorId], references: [id])
-  
-  // Whop integration
-  whopCreatorId String?    // Whop Creator ID for API integration
-  whopCategoryId String?   // Whop Category ID
-  whopCategoryName String? // Whop Category Name (cached for performance)
-  whopTags     Json?       // Whop Tags array (cached)
-  
-  // Monetization features
-  monetizationRules Json?  // Monetization rules and offers
-  targetAudience   Json?   // Target audience segmentation
-  marketingTags    Json?   // Marketing tags for insights
-  
-  // Whop monetization relationships
-  challengeOffers  ChallengeOffer[]
-  conversions      OfferConversion[] @relation("ChallengeConversions")
-  
-  // Winners
-  winners         ChallengeWinner[]
+  id                String            @id @default(cuid())
+  tenantId          String
+  title             String
+  description       String?
+  startAt           DateTime
+  endAt             DateTime
+  proofType         ProofType         @default(NONE)
+  cadence           Cadence           @default(DAILY)
+  rules             Json?
+  imageUrl          String?
+  createdAt         DateTime          @default(now())
+  creatorId         String?
+  whopCreatorId     String?
+  whopCategoryId    String?
+  whopCategoryName  String?
+  whopTags          Json?
+  monetizationRules Json?
+  targetAudience    Json?
+  marketingTags     Json?
+  creator           User?             @relation("Creator", fields: [creatorId], references: [id])
+  tenant            Tenant            @relation(fields: [tenantId], references: [id])
+  challengeOffers   ChallengeOffer[]
+  winners           ChallengeWinner[]
+  enrollments       Enrollment[]
+  conversions       OfferConversion[] @relation("ChallengeConversions")
 }
 
-// Whop Product Management
 model WhopProduct {
-  id             String   @id @default(cuid())
-  whopProductId  String   @unique
-  name           String
-  description    String?
-  price          Float
-  currency       String   @default("USD")
-  productType    String   // 'course', 'coaching', 'membership', 'community'
-  imageUrl       String?
-  checkoutUrl    String   // Whop checkout URL
-  isActive       Boolean  @default(true)
-  creatorId      String
-  creator        User     @relation("CreatorProducts", fields: [creatorId], references: [id])
-  whopCreatorId  String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
-  // Relationships
+  id              String           @id @default(cuid())
+  whopProductId   String           @unique
+  name            String
+  description     String?
+  price           Float
+  currency        String           @default("USD")
+  productType     String
+  imageUrl        String?
+  checkoutUrl     String
+  isActive        Boolean          @default(true)
+  creatorId       String
+  whopCreatorId   String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   challengeOffers ChallengeOffer[]
-  
+  creator         User             @relation("CreatorProducts", fields: [creatorId], references: [id])
+
   @@index([creatorId])
   @@index([whopCreatorId])
 }
 
-// Challenge-specific offers
 model ChallengeOffer {
-  id                 String    @id @default(cuid())
+  id                 String            @id @default(cuid())
   challengeId        String
-  challenge          Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   whopProductId      String
-  whopProduct        WhopProduct @relation(fields: [whopProductId], references: [id])
-  
-  // Offer configuration
-  offerType          String    // 'completion', 'high_engagement', 'mid_challenge'
+  offerType          String
   discountPercentage Int?
   discountAmount     Float?
   originalPrice      Float
   discountedPrice    Float
-  timeLimit          Int?      // Hours the offer is valid
-  triggerConditions  String?   // JSON string with conditions
+  timeLimit          Int?
+  triggerConditions  String?
   customMessage      String?
-  isActive           Boolean   @default(true)
-  
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  
-  // Conversion tracking
+  isActive           Boolean           @default(true)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  challenge          Challenge         @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  whopProduct        WhopProduct       @relation(fields: [whopProductId], references: [id])
   conversions        OfferConversion[]
-  
+
   @@index([challengeId])
 }
 
-// Conversion tracking
 model OfferConversion {
-  id               String        @id @default(cuid())
+  id               String         @id @default(cuid())
   challengeOfferId String
-  challengeOffer   ChallengeOffer @relation(fields: [challengeOfferId], references: [id], onDelete: Cascade)
   userId           String
-  user             User          @relation("UserConversions", fields: [userId], references: [id])
   challengeId      String
-  challenge        Challenge     @relation("ChallengeConversions", fields: [challengeId], references: [id])
-  
-  conversionType   String        // 'view', 'click', 'purchase'
+  conversionType   String
   whopCheckoutUrl  String?
   revenue          Float?
-  metadata         String?       // JSON for additional tracking data
-  
-  createdAt        DateTime      @default(now())
-  
+  metadata         String?
+  createdAt        DateTime       @default(now())
+  challenge        Challenge      @relation("ChallengeConversions", fields: [challengeId], references: [id])
+  challengeOffer   ChallengeOffer @relation(fields: [challengeOfferId], references: [id], onDelete: Cascade)
+  user             User           @relation("UserConversions", fields: [userId], references: [id])
+
   @@index([challengeId])
   @@index([userId])
 }
@@ -180,26 +133,26 @@ model Enrollment {
   id          String    @id @default(cuid())
   challengeId String
   userId      String
-  challenge   Challenge @relation(fields: [challengeId], references: [id])
-  user        User      @relation(fields: [userId], references: [id])
   joinedAt    DateTime  @default(now())
   checkins    Checkin[]
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
   proofs      Proof[]
 
   @@unique([challengeId, userId])
 }
 
 model Proof {
-  id            String      @id @default(cuid())
-  enrollmentId  String
-  type          ProofType
-  url           String?
-  text          String?
-  version       Int         @default(1)
-  isActive      Boolean     @default(true)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  enrollment    Enrollment  @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  enrollmentId String
+  type         ProofType
+  url          String?
+  text         String?
+  version      Int        @default(1)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
   @@index([enrollmentId, isActive])
 }
@@ -218,12 +171,29 @@ model ChallengeWinner {
   id          String    @id @default(cuid())
   challengeId String
   userId      String
-  place       Int       // 1 for first place, 2 for second, etc.
+  place       Int
   selectedAt  DateTime  @default(now())
   challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   user        User      @relation("Winners", fields: [userId], references: [id])
-  
-  @@unique([challengeId, place]) // Each place can only have one winner per challenge
-  @@unique([challengeId, userId]) // Each user can only win once per challenge
+
+  @@unique([challengeId, place])
+  @@unique([challengeId, userId])
   @@index([challengeId])
+}
+
+enum Cadence {
+  DAILY
+  END_OF_CHALLENGE
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ProofType {
+  NONE
+  TEXT
+  PHOTO
+  LINK
 }
