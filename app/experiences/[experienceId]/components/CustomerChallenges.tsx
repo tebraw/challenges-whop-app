@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { User } from '@prisma/client';
+import { Flame, CheckCircle, Clock, Star } from 'lucide-react';
 
 interface CustomerChallengesProps {
   experienceId: string;
@@ -19,6 +20,20 @@ interface Challenge {
   isParticipating: boolean;
   status: 'active' | 'ended';
   proofType: string;
+  // Enhanced customer fields
+  userStats?: {
+    currentStreak: number;
+    totalCheckIns: number;
+    canCheckInToday: boolean;
+    hasCheckedInToday: boolean;
+    joinedAt: string;
+    lastCheckin?: string;
+  };
+  progress?: {
+    totalDays: number;
+    daysElapsed: number;
+    daysRemaining: number;
+  };
 }
 
 export default function CustomerChallenges({ experienceId, user, whopUser }: CustomerChallengesProps) {
@@ -35,7 +50,33 @@ export default function CustomerChallenges({ experienceId, user, whopUser }: Cus
       const response = await fetch(`/api/experience/${experienceId}/challenges/customer`);
       if (response.ok) {
         const data = await response.json();
-        setChallenges(data.challenges);
+        let challengesWithStatus = data.challenges || [];
+
+        // Load enhanced participation status for each challenge
+        const challengesWithEnhancedData = await Promise.all(
+          challengesWithStatus.map(async (challenge: Challenge) => {
+            if (challenge.isParticipating) {
+              try {
+                const statusResponse = await fetch(`/api/challenges/${challenge.id}/status`);
+                if (statusResponse.ok) {
+                  const statusData = await statusResponse.json();
+                  return {
+                    ...challenge,
+                    userStats: statusData.userParticipation?.stats,
+                    progress: statusData.challenge?.progress
+                  };
+                }
+                return challenge;
+              } catch (error) {
+                console.error(`Error loading status for challenge ${challenge.id}:`, error);
+                return challenge;
+              }
+            }
+            return challenge;
+          })
+        );
+        
+        setChallenges(challengesWithEnhancedData);
       }
     } catch (error) {
       console.error('Error fetching challenges:', error);
@@ -175,12 +216,12 @@ export default function CustomerChallenges({ experienceId, user, whopUser }: Cus
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredChallenges.map((challenge) => (
               <div key={challenge.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden">
                 {/* Challenge Image */}
                 {challenge.imageUrl && (
-                  <div className="h-48 bg-gray-200 overflow-hidden">
+                  <div className="h-32 sm:h-48 bg-gray-200 overflow-hidden">
                     <img 
                       src={challenge.imageUrl} 
                       alt={challenge.title}
@@ -189,7 +230,7 @@ export default function CustomerChallenges({ experienceId, user, whopUser }: Cus
                   </div>
                 )}
                 
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   {/* Header */}
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="font-semibold text-gray-900 text-lg">
@@ -197,10 +238,38 @@ export default function CustomerChallenges({ experienceId, user, whopUser }: Cus
                     </h3>
                     <div className="flex flex-col items-end space-y-1">
                       {challenge.isParticipating && (
-                        <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                          Participating
-                        </span>
+                        <div className="flex flex-wrap gap-1 justify-end">
+                          <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            Participating
+                          </span>
+                          
+                          {/* Enhanced status badges */}
+                          {challenge.userStats && (
+                            <>
+                              <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full flex items-center gap-1">
+                                <Flame className="w-3 h-3" />
+                                {challenge.userStats.currentStreak} streak
+                              </span>
+                              
+                              {challenge.userStats.canCheckInToday && !challenge.userStats.hasCheckedInToday && (
+                                <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  Can check in
+                                </span>
+                              )}
+                              
+                              {challenge.userStats.hasCheckedInToday && (
+                                <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full flex items-center gap-1">
+                                  <Star className="w-3 h-3" />
+                                  Checked in today
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
                       )}
+                      
                       <span className={`px-2 py-1 text-xs rounded-full ${
                         challenge.status === 'active' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
                       }`}>
@@ -215,41 +284,75 @@ export default function CustomerChallenges({ experienceId, user, whopUser }: Cus
                   </p>
                   
                   {/* Meta Info */}
-                  <div className="flex justify-between items-center text-sm text-gray-500 mb-4">
-                    <div>
-                      👥 {challenge.participantCount} participants
-                    </div>
-                    {challenge.endAt && (
-                      <div>
-                        ⏰ Ends {new Date(challenge.endAt).toLocaleDateString()}
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-gray-500 mb-4 gap-2">
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                      <div className="flex items-center gap-1">
+                        👥 <span className="text-xs sm:text-sm">{challenge.participantCount} participants</span>
                       </div>
-                    )}
+                      {challenge.userStats && (
+                        <div className="flex items-center gap-1">
+                          ✅ <span className="text-xs sm:text-sm">{challenge.userStats.totalCheckIns} check-ins</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-start sm:items-end text-xs gap-1">
+                      {challenge.endAt && (
+                        <div className="flex items-center gap-1">
+                          ⏰ Ends {new Date(challenge.endAt).toLocaleDateString()}
+                        </div>
+                      )}
+                      {challenge.progress && (
+                        <div className="flex items-center gap-1">
+                          📅 {challenge.progress.daysRemaining} days left
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Actions */}
                   <div className="space-y-2">
                     {challenge.isParticipating ? (
                       <div className="space-y-2">
-                        <button className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors">
+                        <button 
+                          onClick={() => window.open(`/c/${challenge.id}`, '_blank')}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white py-2 sm:py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base"
+                        >
                           View My Progress
                         </button>
-                        {challenge.proofType && (
-                          <button className="w-full border border-green-600 text-green-600 hover:bg-green-50 py-2 px-4 rounded-lg font-medium transition-colors">
-                            Submit {challenge.proofType === 'image' ? 'Photo' : 'Proof'}
-                          </button>
-                        )}
+                        
+                        <div className="grid grid-cols-1 gap-2">
+                          {challenge.userStats?.canCheckInToday && !challenge.userStats?.hasCheckedInToday && (
+                            <button 
+                              onClick={() => window.open(`/c/${challenge.id}#checkin`, '_blank')}
+                              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg font-medium transition-colors text-sm flex items-center justify-center gap-2"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                              Quick Check-in
+                            </button>
+                          )}
+                          
+                          {challenge.proofType && (
+                            <button 
+                              onClick={() => window.open(`/c/${challenge.id}#proof`, '_blank')}
+                              className="border border-green-600 text-green-600 hover:bg-green-50 py-2 px-3 rounded-lg font-medium transition-colors text-sm flex items-center justify-center gap-2"
+                            >
+                              <Star className="w-4 h-4" />
+                              Submit {challenge.proofType === 'image' ? 'Photo' : 'Proof'}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ) : challenge.status === 'active' ? (
                       <button 
                         onClick={() => joinChallenge(challenge.id)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 sm:py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base"
                       >
                         Join Challenge
                       </button>
                     ) : (
                       <button 
                         disabled
-                        className="w-full bg-gray-300 text-gray-500 py-2 px-4 rounded-lg font-medium cursor-not-allowed"
+                        className="w-full bg-gray-300 text-gray-500 py-2 sm:py-3 px-4 rounded-lg font-medium cursor-not-allowed text-sm sm:text-base"
                       >
                         Challenge Ended
                       </button>

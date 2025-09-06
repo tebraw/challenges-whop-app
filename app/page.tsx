@@ -189,7 +189,7 @@ export default async function Home() {
             <div className="space-y-4">
               {challengesForClient.slice(0, 3).map((challenge) => (
                 <div key={challenge.id} className="bg-gray-800 rounded-xl p-6 hover:bg-gray-750 transition-colors">
-                  <Link href={`/challenges/${challenge.id}`} className="block">
+                  <Link href={`/c/${challenge.id}`} className="block">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
                         <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
