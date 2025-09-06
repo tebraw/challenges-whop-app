@@ -33,6 +33,8 @@ export default function ImagePicker({ value, onChange, maxMB = 5 }: Props) {
     setBusy(true);
     
     try {
+      console.log('Uploading file:', f.name, 'Size:', Math.round(f.size / 1024), 'KB');
+      
       const res = await fetch("/api/upload", { 
         method: "POST", 
         body: fd 
@@ -44,9 +46,11 @@ export default function ImagePicker({ value, onChange, maxMB = 5 }: Props) {
       }
       
       const result = await res.json();
+      console.log('Upload result:', result);
       
       if (result.url) {
         onChange(result.url);
+        console.log('Image uploaded successfully via', result.method || 'unknown method');
       } else {
         throw new Error('No URL returned from upload');
       }

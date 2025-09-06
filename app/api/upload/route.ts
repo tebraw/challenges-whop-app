@@ -22,41 +22,98 @@ export async function POST(req: Request) {
       return new NextResponse("File too large (>5MB)", { status: 413 });
     }
 
-    // Convert file to base64 for imgbb upload
+    if (!file.type.startsWith('image/')) {
+      return new NextResponse("File must be an image", { status: 400 });
+    }
+
+    // Convert file to base64
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const base64 = buffer.toString('base64');
+    const mimeType = file.type;
 
-    // Upload to imgbb (free image hosting service)
-    const imgbbResponse = await fetch(`https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY || '7d8b9c7b9d6f8e4c2a1b3c5d7e9f1a2b'}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `image=${encodeURIComponent(base64)}&name=${randomUUID()}`
+    // For development and small images, use data URLs (works everywhere)
+    if (file.size < 2 * 1024 * 1024) { // 2MB limit for data URLs
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+      return NextResponse.json({ 
+        url: dataUrl,
+        method: 'data-url',
+        size: file.size,
+        type: mimeType
+      });
+    }
+
+    // For larger images, try external services
+    const fileName = `challenge-${randomUUID()}.${file.name.split('.').pop() || 'jpg'}`;
+
+    // Try postimages.org (free service, no API key needed)
+    try {
+      const formData = new FormData();
+      formData.append('upload', file);
+      formData.append('optsize', '0'); // Keep original size
+      formData.append('expire', '0'); // Never expire
+
+      const postImagesResponse = await fetch('https://postimg.cc/json', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (postImagesResponse.ok) {
+        const data = await postImagesResponse.json();
+        if (data.status === 'OK' && data.url) {
+          return NextResponse.json({ 
+            url: data.url,
+            method: 'postimages',
+            size: file.size,
+            type: mimeType
+          });
+        }
+      }
+    } catch (error) {
+      console.log('postimages.org failed, trying alternatives...');
+    }
+
+    // Try imgur as backup (if client ID is available)
+    if (process.env.IMGUR_CLIENT_ID) {
+      try {
+        const imgurResponse = await fetch('https://api.imgur.com/3/image', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `image=${encodeURIComponent(base64)}&type=base64&name=${fileName}`
+        });
+
+        if (imgurResponse.ok) {
+          const imgurData = await imgurResponse.json();
+          if (imgurData.success && imgurData.data?.link) {
+            return NextResponse.json({ 
+              url: imgurData.data.link,
+              method: 'imgur',
+              size: file.size,
+              type: mimeType
+            });
+          }
+        }
+      } catch (error) {
+        console.log('imgur failed...');
+      }
+    }
+
+    // Final fallback: Use data URL even for larger images 
+    // (might be slow but will show the actual image)
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+    return NextResponse.json({ 
+      url: dataUrl,
+      method: 'data-url-fallback',
+      size: file.size,
+      type: mimeType,
+      warning: 'Large image using data URL - consider compressing'
     });
-
-    if (!imgbbResponse.ok) {
-      // Fallback: Use a placeholder service if imgbb fails
-      const placeholderUrl = `https://picsum.photos/seed/${randomUUID()}/800/600`;
-      return NextResponse.json({ url: placeholderUrl });
-    }
-
-    const imgbbData = await imgbbResponse.json();
-    
-    if (imgbbData.success && imgbbData.data?.url) {
-      return NextResponse.json({ url: imgbbData.data.url });
-    }
-
-    // Fallback: Generate a placeholder image
-    const placeholderUrl = `https://picsum.photos/seed/${randomUUID()}/800/600`;
-    return NextResponse.json({ url: placeholderUrl });
 
   } catch (e: any) {
     console.error("UPLOAD ERROR:", e);
-    
-    // Fallback: Return a placeholder image even on error
-    const placeholderUrl = `https://picsum.photos/seed/${randomUUID()}/800/600`;
-    return NextResponse.json({ url: placeholderUrl });
+    return new NextResponse(`Upload failed: ${e.message}`, { status: 500 });
   }
 }
