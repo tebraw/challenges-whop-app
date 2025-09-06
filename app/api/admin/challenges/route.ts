@@ -54,45 +54,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Always use development mode for now (skip database operations)
-    // if (process.env.NODE_ENV === 'development') {
-    if (true) {
-      const mockChallenge = {
-        id: `challenge-${Date.now()}`,
-        title,
-        description,
-        imageUrl: imageUrl || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=500&h=300&fit=crop',
-        whopCategoryName: whopCategoryName || 'General',
-        startAt: startAt ? new Date(startAt) : new Date(),
-        endAt: endAt ? new Date(endAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        proofType: proofType || 'PHOTO',
-        cadence: cadence || 'DAILY',
-        rules: rules || {
-          minParticipants: 1,
-          maxParticipants: maxParticipants || 100,
-          dailyCheckIn: true,
-          rewards: rewards || [{ place: 1, title: 'Winner', desc: 'Congratulations!' }],
-          policy: policy || 'Standard challenge policy'
-        },
-        createdAt: new Date(),
-        tenantId: currentUser.id
-      };
-
-      console.log('✅ Mock challenge created:', mockChallenge.title);
-      return NextResponse.json({ 
-        success: true,
-        challenge: mockChallenge,
-        message: 'Challenge created successfully (mock mode)'
-      });
+    // Validate user authentication and admin access
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
     }
 
-    // Production mode - create in database (disabled for now)
-    /* 
+    console.log('📝 Creating challenge with user:', currentUser.email);
+
+    // Create challenge in database
     const challenge = await prisma.challenge.create({
       data: {
         title,
         description,
-        imageUrl,
+        imageUrl: imageUrl || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=500&h=300&fit=crop',
         whopCategoryName: whopCategoryName || 'General',
         startAt: startAt ? new Date(startAt) : new Date(),
         endAt: endAt ? new Date(endAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -116,7 +93,6 @@ export async function POST(request: NextRequest) {
       challenge,
       message: 'Challenge created successfully'
     });
-    */
 
   } catch (error: any) {
     console.error('❌ Challenge creation error:', error);
@@ -146,28 +122,7 @@ export async function GET() {
   try {
     await requireAdmin();
     
-    // Development mode - return mock challenges
-    if (process.env.NODE_ENV === 'development') {
-      const mockChallenges = [
-        {
-          id: 'cmf7lrtlq000314ehs17u67jy',
-          title: '30-Day Fitness Challenge',
-          description: 'Transform your fitness in 30 days',
-          imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=500&h=300&fit=crop',
-          whopCategoryName: 'Fitness',
-          startAt: new Date('2025-09-01'),
-          endAt: new Date('2025-09-30'),
-          proofType: 'PHOTO',
-          cadence: 'DAILY',
-          createdAt: new Date(),
-          _count: { enrollments: 42 }
-        }
-      ];
-
-      return NextResponse.json({ challenges: mockChallenges });
-    }
-
-    // Production mode - fetch from database
+    // Fetch challenges from database
     const challenges = await prisma.challenge.findMany({
       include: {
         _count: {
