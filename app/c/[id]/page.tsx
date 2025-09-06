@@ -244,19 +244,20 @@ export default function ChallengePage({
             Zurück zu Challenges
           </Link>
           
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-3">
-                <h1 className="text-4xl font-bold">{challenge.title}</h1>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">{challenge.title}</h1>
                 {getStatusBadge()}
               </div>
               
-              <p className="text-gray-300 text-lg mb-6 max-w-3xl">{challenge.description}</p>
+              <p className="text-gray-300 text-base lg:text-lg mb-6 max-w-3xl">{challenge.description}</p>
               
-              <div className="flex items-center gap-6 text-sm text-gray-400">
+              <div className="flex flex-wrap items-center gap-4 md:gap-6 text-sm text-gray-400">
                 <span className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  {formatDate(challenge.startAt)} - {formatDate(challenge.endAt)}
+                  <span className="hidden sm:inline">{formatDate(challenge.startAt)} - {formatDate(challenge.endAt)}</span>
+                  <span className="sm:hidden">{new Date(challenge.startAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} - {new Date(challenge.endAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}</span>
                 </span>
                 <span className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
@@ -270,8 +271,8 @@ export default function ChallengePage({
             </div>
             
             {userParticipation.isParticipating && (
-              <div className="ml-6">
-                <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 rounded-full text-sm font-medium">
+              <div className="mt-4 lg:mt-0 lg:ml-6 w-full lg:w-auto">
+                <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 rounded-full text-sm font-medium text-center lg:text-left">
                   ✨ Du nimmst teil!
                 </div>
               </div>
@@ -287,34 +288,34 @@ export default function ChallengePage({
               <div className="space-y-6">
                 <Card className="bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700">
                   <div className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold flex items-center gap-3">
-                        <Flame className="w-6 h-6 text-orange-500" />
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+                      <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-3">
+                        <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500" />
                         Dein Fortschritt
                       </h2>
-                      <div className="text-right">
-                        <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">
+                      <div className="text-center sm:text-right">
+                        <div className="text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">
                           {userParticipation.stats?.currentStreak || 0}
                         </div>
                         <p className="text-sm text-gray-400">Tage Streak</p>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-4 mb-6">
-                      <div className="text-center p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-                        <div className="text-2xl font-bold text-blue-400 mb-1">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+                      <div className="text-center p-3 sm:p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                        <div className="text-lg sm:text-2xl font-bold text-blue-400 mb-1">
                           {userParticipation.stats?.totalCheckIns || 0}
                         </div>
                         <p className="text-xs text-gray-400">Check-ins</p>
                       </div>
-                      <div className="text-center p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-                        <div className="text-2xl font-bold text-green-400 mb-1">
+                      <div className="text-center p-3 sm:p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                        <div className="text-lg sm:text-2xl font-bold text-green-400 mb-1">
                           {challenge.progress.daysRemaining}
                         </div>
                         <p className="text-xs text-gray-400">Tage übrig</p>
                       </div>
-                      <div className="text-center p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-                        <div className="text-2xl font-bold text-purple-400 mb-1">
+                      <div className="text-center p-3 sm:p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                        <div className="text-lg sm:text-2xl font-bold text-purple-400 mb-1">
                           {Math.round(((userParticipation.stats?.totalCheckIns || 0) / (challenge.progress.daysElapsed || 1)) * 100) || 0}%
                         </div>
                         <p className="text-xs text-gray-400">Erfolgsrate</p>
@@ -362,7 +363,7 @@ export default function ChallengePage({
                     </p>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4 mb-8 max-w-lg mx-auto">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 max-w-lg mx-auto">
                     <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                       <div className="text-2xl mb-2">💪</div>
                       <h3 className="font-semibold text-blue-400 mb-1">Herausforderung</h3>
