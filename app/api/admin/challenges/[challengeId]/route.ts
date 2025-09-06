@@ -22,6 +22,11 @@ export async function GET(
         enrollments: {
           include: {
             user: true,
+            proofs: {
+              orderBy: {
+                createdAt: 'asc'
+              }
+            }
           },
         },
         winners: true,
@@ -48,25 +53,8 @@ export async function GET(
       },
     });
 
-    // Get leaderboard data with check-ins per user
-    const leaderboard = await prisma.enrollment.findMany({
-      where: {
-        challengeId: challengeId,
-      },
-      include: {
-        user: true,
-        proofs: true,
-      },
-      orderBy: {
-        proofs: {
-          _count: 'desc',
-        },
-      },
-      take: 10, // Top 10 participants
-    });
-
-    // Transform leaderboard data
-    const transformedLeaderboard = leaderboard.map(enrollment => {
+    // Generate leaderboard from the challenge enrollments (already includes proofs)
+    const leaderboardData = challenge.enrollments.map(enrollment => {
       const streak = calculateStreak(enrollment.proofs);
       return {
         id: enrollment.user.id,
@@ -74,14 +62,23 @@ export async function GET(
         email: enrollment.user.email,
         checkIns: enrollment.proofs.length,
         currentStreak: streak,
-        points: streak * 10 + enrollment.proofs.length * 5, // Calculate points like customer leaderboard
+        points: streak * 10 + enrollment.proofs.length * 5,
         joinedAt: enrollment.joinedAt.toISOString(),
       };
     });
 
+    // Sort leaderboard by points (highest first)
+    const transformedLeaderboard = leaderboardData
+      .sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.currentStreak !== a.currentStreak) return b.currentStreak - a.currentStreak;
+        return b.checkIns - a.checkIns;
+      })
+      .slice(0, 10); // Top 10 participants
+
     // Calculate total streaks (sum of all user streaks)
     let totalStreaks = 0;
-    leaderboard.forEach(enrollment => {
+    challenge.enrollments.forEach(enrollment => {
       const streak = calculateStreak(enrollment.proofs);
       totalStreaks += streak;
     });
