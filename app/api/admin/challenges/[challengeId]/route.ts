@@ -66,13 +66,18 @@ export async function GET(
     });
 
     // Transform leaderboard data
-    const transformedLeaderboard = leaderboard.map(enrollment => ({
-      id: enrollment.user.id,
-      username: enrollment.user.name || 'Unknown User',
-      email: enrollment.user.email,
-      checkIns: enrollment.proofs.length,
-      joinedAt: enrollment.joinedAt.toISOString(),
-    }));
+    const transformedLeaderboard = leaderboard.map(enrollment => {
+      const streak = calculateStreak(enrollment.proofs);
+      return {
+        id: enrollment.user.id,
+        username: enrollment.user.name || 'Unknown User',
+        email: enrollment.user.email,
+        checkIns: enrollment.proofs.length,
+        currentStreak: streak,
+        points: streak * 10 + enrollment.proofs.length * 5, // Calculate points like customer leaderboard
+        joinedAt: enrollment.joinedAt.toISOString(),
+      };
+    });
 
     // Calculate total streaks (sum of all user streaks)
     let totalStreaks = 0;

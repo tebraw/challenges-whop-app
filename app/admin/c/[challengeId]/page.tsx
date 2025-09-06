@@ -31,6 +31,8 @@ type ChallengeDetailData = {
     username: string;
     email: string;
     checkIns: number;
+    currentStreak?: number;
+    points?: number;
     joinedAt: string;
   }>;
   revenue?: {
@@ -435,27 +437,48 @@ export default function AdminChallengeDetailPage({
           </div>
           
           <Card className="p-6 bg-gray-800 border-gray-700">
-            <h4 className="text-lg font-medium text-white mb-4">Leaderboard - Admin View</h4>
+            <h4 className="text-lg font-medium text-white mb-4">Leaderboard</h4>
             
             {challenge.leaderboard && challenge.leaderboard.length > 0 ? (
               <div className="space-y-3">
                 {challenge.leaderboard.map((participant, index) => (
-                  <div key={participant.id} className="flex items-center justify-between p-3 bg-gray-750 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full font-semibold">
-                        {index + 1}
+                  <div 
+                    key={participant.id}
+                    className={`flex items-center justify-between p-4 rounded-xl ${
+                      index < 3 
+                        ? 'bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30' 
+                        : 'bg-gray-800/50 border border-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
+                        index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-black' :
+                        index === 1 ? 'bg-gradient-to-r from-gray-300 to-gray-500 text-black' :
+                        index === 2 ? 'bg-gradient-to-r from-orange-400 to-orange-600 text-black' :
+                        'bg-gray-700 text-gray-300'
+                      }`}>
+                        {index < 3 ? (
+                          index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'
+                        ) : (
+                          index + 1
+                        )}
                       </div>
                       <div>
-                        <div className="font-medium text-white">{participant.username}</div>
-                        <div className="text-sm text-gray-400">{participant.email}</div>
-                        <div className="text-xs text-gray-500">
-                          Joined {formatDate(participant.joinedAt)}
-                        </div>
+                        <p className="font-semibold text-lg text-white">{participant.username}</p>
+                        <p className="text-sm text-gray-400">{participant.email}</p>
+                        <p className="text-sm text-gray-400">
+                          {participant.currentStreak || 0} Day Streak • {participant.checkIns} Check-ins
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-bold text-blue-400">{participant.checkIns}</div>
-                      <div className="text-sm text-gray-400">Check-ins</div>
+                      <div className="flex items-center gap-1">
+                        <span className="font-bold text-lg text-purple-400">{participant.points || 0}</span>
+                      </div>
+                      <p className="text-xs text-gray-400">Points</p>
+                      <p className="text-xs text-gray-500">
+                        Joined {formatDate(participant.joinedAt)}
+                      </p>
                     </div>
                   </div>
                 ))}
