@@ -17,11 +17,6 @@ export async function isAdmin(): Promise<boolean> {
     const currentUser = await getCurrentUser();
     if (!currentUser) return false;
     
-    // DEVELOPMENT: Allow ADMIN role users in development mode
-    if (process.env.NODE_ENV === 'development') {
-      return currentUser.role === 'ADMIN';
-    }
-    
     // PRODUCTION SECURITY: Only the app installer (company owner) is admin
     // Must have ADMIN role AND valid Whop company ID
     return currentUser.role === 'ADMIN' && !!currentUser.whopCompanyId;

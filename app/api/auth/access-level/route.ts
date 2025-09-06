@@ -27,8 +27,8 @@ export async function GET() {
       });
     }
 
-    // Company Owner = ADMIN Rolle + hat whopCompanyId (or ADMIN in development)
-    if (currentUser.role === 'ADMIN' && (currentUser.whopCompanyId || process.env.NODE_ENV === 'development')) {
+    // Company Owner = ADMIN Rolle + hat whopCompanyId
+    if (currentUser.role === 'ADMIN' && currentUser.whopCompanyId) {
       console.log('👑 User is company owner - granting full access');
       return NextResponse.json({
         accessLevel: {
@@ -38,7 +38,7 @@ export async function GET() {
           canViewMyFeed: true,
           canViewDiscover: true,
           userId: currentUser.id,
-          companyId: currentUser.whopCompanyId || 'dev-company',
+          companyId: currentUser.whopCompanyId,
         }
       });
     }

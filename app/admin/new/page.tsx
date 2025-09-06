@@ -51,19 +51,19 @@ export default function NewChallengePage() {
   });
 
   const handleSubmit = async () => {
-    // Convert to the correct schema format with proper JSON serialization
-    const challengeData = {
+    // Convert to the correct schema format
+    const challengeData: Partial<ChallengeAdminInput> = {
       title: form.title,
       description: form.description,
-      startAt: new Date(form.startAt), // Convert to Date for validation
-      endAt: new Date(form.endAt), // Convert to Date for validation
+      startAt: new Date(form.startAt),
+      endAt: new Date(form.endAt),
       proofType: form.proofType as "TEXT" | "PHOTO" | "LINK",
       cadence: form.cadence as "DAILY" | "END_OF_CHALLENGE",
       maxParticipants: form.maxParticipants,
       rewards: form.rewards,
       policy: form.policy,
       imageUrl: form.imageUrl,
-      difficulty: form.difficulty as "BEGINNER" | "INTERMEDIATE" | "ADVANCED" || undefined
+      difficulty: form.difficulty as "BEGINNER" | "INTERMEDIATE" | "ADVANCED"
     };
 
     console.log("Submitting challenge data:", challengeData);
@@ -76,58 +76,27 @@ export default function NewChallengePage() {
       return;
     }
 
-    // Convert dates back to strings for JSON serialization
-    const challengeDataForAPI = {
-      ...challengeData,
-      startAt: form.startAt, // Send as ISO string
-      endAt: form.endAt, // Send as ISO string
-      whopCategoryName: form.difficulty || "General" // Add this for backend
-    };
-
     setSaving(true);
     try {
-      console.log("🚀 Sending request to API...");
-      
-      const response = await fetch("/api/admin/challenges", {
+      const response = await fetch("/api/challenges", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(challengeDataForAPI)
+        body: JSON.stringify(challengeData)
       });
 
-      console.log("📡 Response received:", response.status, response.statusText);
-      
-      // Get response text first for debugging
-      const responseText = await response.text();
-      console.log("📄 Response text:", responseText);
-      
-      // Try to parse as JSON
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error("❌ Failed to parse response as JSON:", parseError);
-        throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}`);
-      }
+      console.log("Response status:", response.status);
       
       if (response.ok) {
-        console.log("✅ Challenge created successfully:", data);
-        
-        if (data.challenge && data.challenge.id) {
-          router.push(`/admin`);
-        } else {
-          alert("Challenge created successfully!");
-          router.push("/admin");
-        }
+        const data = await response.json();
+        console.log("Challenge created successfully:", data);
+        router.push(`/admin/c/${data.id}`);
       } else {
-        const errorMessage = data.error || data.message || 'Unknown error';
-        console.error("❌ Failed to create challenge:", errorMessage);
-        console.error("❌ Full error response:", data);
-        console.error("❌ Response status:", response.status);
-        console.error("❌ Response headers:", Object.fromEntries(response.headers.entries()));
-        alert(`Failed to create challenge: ${errorMessage}`);
+        const errorData = await response.json();
+        console.error("Failed to create challenge:", errorData);
+        alert(`Failed to create challenge: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error("💥 Error creating challenge:", error);
+      console.error("Error creating challenge:", error);
       alert(`Error creating challenge: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setSaving(false);
