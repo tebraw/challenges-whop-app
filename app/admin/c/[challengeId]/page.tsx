@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { ArrowLeft, Users, Calendar, Trophy, Settings, Eye, BarChart3 } from "lucide-react";
+import { ArrowLeft, Users, Calendar, Trophy, Settings, Eye, BarChart3, Flame, Camera, Zap, DollarSign, Target, TrendingUp, Pencil } from "lucide-react";
+import EditChallengeModal from "@/components/admin/EditChallengeModal";
 
 type ChallengeDetailData = {
   id: string;
@@ -18,25 +19,64 @@ type ChallengeDetailData = {
   status: string;
   participants: number;
   checkins: number;
+  totalStreaks: number;
+  imageUrl?: string;
   rewards?: Array<{
     place: number;
     title: string;
     description?: string;
   }>;
+  leaderboard?: Array<{
+    id: string;
+    username: string;
+    email: string;
+    checkIns: number;
+    joinedAt: string;
+  }>;
+  revenue?: {
+    total: number;
+    conversions: number;
+  };
 };
 
 function formatDate(dateString: string) {
   try {
-    return new Date(dateString).toLocaleString("de-DE", {
+    return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "2-digit", 
       day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
     });
   } catch {
     return dateString;
   }
+}
+
+function getTimeRemaining(endDate: string) {
+  try {
+    const end = new Date(endDate);
+    const now = new Date();
+    const diff = end.getTime() - now.getTime();
+    
+    if (diff <= 0) return "Ended";
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return `${days}d ${hours}h ${minutes}m`;
+  } catch {
+    return "Invalid date";
+  }
+}
+
+function getChallengeStatus(startAt: string, endAt: string) {
+  const now = new Date();
+  const start = new Date(startAt);
+  const end = new Date(endAt);
+  
+  if (now < start) return "Scheduled";
+  if (now > end) return "Ended";
+  return "Live";
 }
 
 export default function AdminChallengeDetailPage({
@@ -48,48 +88,70 @@ export default function AdminChallengeDetailPage({
   const [challenge, setChallenge] = useState<ChallengeDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [resolvedParams, setResolvedParams] = useState<{ challengeId: string } | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [challengeId, setChallengeId] = useState<string>("");
 
   useEffect(() => {
-    params.then(setResolvedParams);
-  }, [params]);
-
-  useEffect(() => {
-    if (!resolvedParams?.challengeId) return;
-
-    const fetchChallengeDetails = async () => {
+    async function loadChallenge() {
       try {
-        setLoading(true);
-        const res = await fetch(`/api/admin/challenges/${resolvedParams.challengeId}`);
+        const resolvedParams = await params;
+        setChallengeId(resolvedParams.challengeId);
         
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const response = await fetch(`/api/admin/challenges/${resolvedParams.challengeId}`);
+        if (!response.ok) {
+          throw new Error("Failed to load challenge");
         }
         
-        const data = await res.json();
-        setChallenge(data);
+        const data = await response.json();
+        
+        // Prepare challenge data for the new dashboard
+        const mockChallenge: ChallengeDetailData = {
+          id: data.id,
+          title: data.title || "Untitled Challenge",
+          description: data.description,
+          startAt: data.startAt,
+          endAt: data.endAt,
+          proofType: data.proofType || "TEXT",
+          cadence: data.cadence || "DAILY",
+          policy: data.rules,
+          status: getChallengeStatus(data.startAt, data.endAt),
+          participants: data._count?.enrollments || 0,
+          checkins: data.streakCount || 0,
+          totalStreaks: data.streakCount || 0,
+          imageUrl: data.imageUrl,
+          rewards: data.rewards || [],
+          leaderboard: [
+            {
+              id: "demo-user",
+              username: "Demo User",
+              email: "demo@example.com",
+              checkIns: 1,
+              joinedAt: new Date().toISOString()
+            }
+          ],
+          revenue: {
+            total: 0,
+            conversions: 0
+          }
+        };
+        
+        setChallenge(mockChallenge);
       } catch (err) {
-        console.error("Error fetching challenge details:", err);
-        setError(err instanceof Error ? err.message : "Failed to fetch challenge details");
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
       }
-    };
+    }
 
-    fetchChallengeDetails();
-  }, [resolvedParams]);
+    loadChallenge();
+  }, [params]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 w-48 bg-gray-300 rounded mb-6"></div>
-            <div className="space-y-4">
-              <div className="h-32 bg-gray-300 rounded"></div>
-              <div className="h-24 bg-gray-300 rounded"></div>
-              <div className="h-24 bg-gray-300 rounded"></div>
-            </div>
+      <div className="min-h-screen bg-gray-900 text-white">
+        <div className="max-w-6xl mx-auto p-6">
+          <div className="text-center py-8">
+            <div className="text-gray-400">Loading challenge data...</div>
           </div>
         </div>
       </div>
@@ -98,25 +160,25 @@ export default function AdminChallengeDetailPage({
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-gray-900 text-white">
+        <div className="max-w-6xl mx-auto p-6">
           <Button
             onClick={() => router.back()}
             variant="outline"
             className="mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurück
+            Back to Overview
           </Button>
           
-          <Card className="p-6">
+          <Card className="p-6 bg-gray-800 border-gray-700">
             <div className="text-center">
-              <h2 className="text-xl font-semibold text-red-600 mb-2">
-                Fehler beim Laden
+              <h2 className="text-xl font-semibold text-red-400 mb-2">
+                Error Loading Challenge
               </h2>
-              <p className="text-gray-600 mb-4">{error}</p>
+              <p className="text-gray-400 mb-4">{error}</p>
               <Button onClick={() => window.location.reload()}>
-                Neu laden
+                Reload
               </Button>
             </div>
           </Card>
@@ -127,24 +189,24 @@ export default function AdminChallengeDetailPage({
 
   if (!challenge) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-gray-900 text-white">
+        <div className="max-w-6xl mx-auto p-6">
           <Button
             onClick={() => router.back()}
             variant="outline"
             className="mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurück
+            Back to Overview
           </Button>
           
-          <Card className="p-6">
+          <Card className="p-6 bg-gray-800 border-gray-700">
             <div className="text-center">
-              <h2 className="text-xl font-semibold text-gray-600 mb-2">
-                Challenge nicht gefunden
+              <h2 className="text-xl font-semibold text-gray-300 mb-2">
+                Challenge Not Found
               </h2>
-              <p className="text-gray-500">
-                Die angeforderte Challenge existiert nicht oder wurde gelöscht.
+              <p className="text-gray-400">
+                The requested challenge does not exist or has been deleted.
               </p>
             </div>
           </Card>
@@ -154,164 +216,269 @@ export default function AdminChallengeDetailPage({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-900 text-white">
+      <div className="max-w-6xl mx-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <Button
             onClick={() => router.back()}
             variant="outline"
+            className="border-gray-600 text-gray-300 hover:bg-gray-800"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurück
+            Back to Overview
           </Button>
           
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+              challenge.status === "Live" 
+                ? "bg-green-600 text-green-100" 
+                : challenge.status === "Scheduled"
+                ? "bg-blue-600 text-blue-100"
+                : "bg-gray-600 text-gray-100"
+            }`}>
+              {challenge.status}
+            </span>
             <Button
-              onClick={() => router.push(`/admin/c/${challenge.id}/analytics`)}
-              variant="outline"
+              onClick={() => setEditModalOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700"
             >
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Analytics
-            </Button>
-            <Button
-              onClick={() => router.push(`/admin/c/${challenge.id}/settings`)}
-              variant="outline"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Einstellungen
-            </Button>
-            <Button
-              onClick={() => router.push(`/c/${challenge.id}`)}
-              variant="outline"
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              Vorschau
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit Challenge
             </Button>
           </div>
         </div>
 
-        {/* Challenge Info */}
-        <Card className="p-6 mb-6">
-          <div className="flex items-start justify-between">
+        {/* Challenge Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Challenge Dashboard</h1>
+          <p className="text-gray-400">Advanced analytics and marketing insights</p>
+        </div>
+
+        {/* Challenge Info Card */}
+        <Card className="p-6 mb-6 bg-gray-800 border-gray-700">
+          <div className="flex items-start gap-6">
+            {/* Challenge Image */}
+            <div className="shrink-0">
+              <img
+                src={challenge.imageUrl || "/logo-mark.png"}
+                alt={challenge.title}
+                className="h-24 w-24 rounded-xl object-cover border border-gray-600"
+              />
+            </div>
+            
+            {/* Challenge Details */}
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                {challenge.title}
-              </h1>
+              <h2 className="text-2xl font-bold text-white mb-2">{challenge.title}</h2>
               {challenge.description && (
-                <p className="text-gray-600 mb-4">
-                  {challenge.description}
-                </p>
+                <p className="text-gray-300 mb-4">{challenge.description}</p>
               )}
-              <div className="flex items-center gap-4 text-sm text-gray-500">
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  {formatDate(challenge.startAt)} - {formatDate(challenge.endAt)}
-                </span>
-                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
-                  {challenge.status}
-                </span>
+              
+              <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
+                <Calendar className="h-4 w-4" />
+                <span>{formatDate(challenge.startAt)} - {formatDate(challenge.endAt)}</span>
+                <span>•</span>
+                <span>{getTimeRemaining(challenge.endAt)}</span>
+              </div>
+              
+              {/* Metrics Row */}
+              <div className="grid grid-cols-4 gap-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-600 rounded-lg">
+                    <Flame className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-white">{challenge.totalStreaks}</div>
+                    <div className="text-sm text-gray-400">Total Streaks</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-600 rounded-lg">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-white">{challenge.participants}</div>
+                    <div className="text-sm text-gray-400">Participants</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-600 rounded-lg">
+                    {challenge.proofType === "PHOTO" ? <Camera className="h-5 w-5 text-white" /> : 
+                     challenge.proofType === "LINK" ? <Target className="h-5 w-5 text-white" /> :
+                     <BarChart3 className="h-5 w-5 text-white" />}
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-white">{challenge.proofType}</div>
+                    <div className="text-sm text-gray-400">Proof Type</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-yellow-600 rounded-lg">
+                    <Zap className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-white">{challenge.cadence}</div>
+                    <div className="text-sm text-gray-400">Cadence</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </Card>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Users className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Teilnehmer</p>
-                <p className="text-xl font-semibold text-gray-900">
-                  {challenge.participants}
-                </p>
-              </div>
-            </div>
-          </Card>
+        {/* Participants Section */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="h-5 w-5 text-blue-400" />
+            <h3 className="text-xl font-semibold text-white">Participants</h3>
+          </div>
           
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Calendar className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Check-ins</p>
-                <p className="text-xl font-semibold text-gray-900">
-                  {challenge.checkins}
-                </p>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Trophy className="h-5 w-5 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Preise</p>
-                <p className="text-xl font-semibold text-gray-900">
-                  {challenge.rewards?.length || 0}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Challenge Details */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Settings */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Challenge-Einstellungen
-            </h3>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Nachweis-Typ:</span>
-                <span className="font-medium">{challenge.proofType}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Rhythmus:</span>
-                <span className="font-medium">{challenge.cadence}</span>
-              </div>
-              {challenge.policy && (
-                <div>
-                  <span className="text-gray-500">Richtlinien:</span>
-                  <p className="mt-1 text-sm text-gray-700">
-                    {challenge.policy}
-                  </p>
-                </div>
-              )}
-            </div>
-          </Card>
-
-          {/* Rewards */}
-          {challenge.rewards && challenge.rewards.length > 0 && (
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Belohnungen
-              </h3>
+          <Card className="p-6 bg-gray-800 border-gray-700">
+            <h4 className="text-lg font-medium text-white mb-4">Leaderboard - Admin View</h4>
+            
+            {challenge.leaderboard && challenge.leaderboard.length > 0 ? (
               <div className="space-y-3">
-                {challenge.rewards.map((reward, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-center w-8 h-8 bg-yellow-100 text-yellow-600 rounded-full font-semibold">
-                      {reward.place}
+                {challenge.leaderboard.map((participant, index) => (
+                  <div key={participant.id} className="flex items-center justify-between p-3 bg-gray-750 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full font-semibold">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <div className="font-medium text-white">{participant.username}</div>
+                        <div className="text-sm text-gray-400">{participant.email}</div>
+                        <div className="text-xs text-gray-500">
+                          Joined {formatDate(participant.joinedAt)}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{reward.title}</p>
-                      {reward.description && (
-                        <p className="text-sm text-gray-500">{reward.description}</p>
-                      )}
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-blue-400">{participant.checkIns}</div>
+                      <div className="text-sm text-gray-400">Check-ins</div>
                     </div>
                   </div>
                 ))}
               </div>
-            </Card>
-          )}
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-400">No entries yet.</div>
+              </div>
+            )}
+          </Card>
         </div>
+
+        {/* Marketing & Monetization Section */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <DollarSign className="h-5 w-5 text-green-400" />
+            <h3 className="text-xl font-semibold text-white">Marketing & Monetization</h3>
+          </div>
+
+          {/* Monetization Status */}
+          <Card className="p-6 mb-6 bg-gray-800 border-gray-700">
+            <div className="flex items-center gap-2 mb-4">
+              <Target className="h-5 w-5 text-green-400" />
+              <h4 className="text-lg font-medium text-white">Monetization Status</h4>
+              <span className="text-sm text-gray-400">Active offers and revenue tracking</span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-8">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-400 mb-1">
+                  ${challenge.revenue?.total || 0}
+                </div>
+                <div className="text-gray-400">Total Revenue</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-400 mb-1">
+                  {challenge.revenue?.conversions || 0}
+                </div>
+                <div className="text-gray-400">Total Conversions</div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Marketing Offers */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Challenge Completion Offer */}
+            <Card className="p-6 bg-gray-800 border-gray-700">
+              <div className="flex items-center gap-2 mb-4">
+                <Trophy className="h-5 w-5 text-green-400" />
+                <h4 className="text-lg font-medium text-white">Challenge Completion</h4>
+              </div>
+              <p className="text-gray-400 text-sm mb-4">Reward users who complete the challenge</p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Product</label>
+                  <select className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500">
+                    <option>Select product...</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Discount</label>
+                  <input 
+                    type="text" 
+                    defaultValue="15% off"
+                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <Button className="w-full bg-green-600 hover:bg-green-700">
+                  Create Completion Offer
+                </Button>
+              </div>
+            </Card>
+
+            {/* Mid-Challenge Boost */}
+            <Card className="p-6 bg-gray-800 border-gray-700">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="h-5 w-5 text-blue-400" />
+                <h4 className="text-lg font-medium text-white">Mid-Challenge Boost</h4>
+              </div>
+              <p className="text-gray-400 text-sm mb-4">Motivate users during the challenge</p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Product</label>
+                  <select className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500">
+                    <option>Select product...</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Discount</label>
+                  <input 
+                    type="text" 
+                    defaultValue="25% off"
+                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                  Create Mid-Challenge Boost
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Edit Modal */}
+        {challengeId && (
+          <EditChallengeModal
+            isOpen={editModalOpen}
+            onClose={() => setEditModalOpen(false)}
+            challengeId={challengeId}
+            onSuccess={() => {
+              // Refresh challenge data after successful edit
+              window.location.reload();
+            }}
+          />
+        )}
       </div>
     </div>
   );
