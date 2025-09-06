@@ -55,15 +55,15 @@ export default function NewChallengePage() {
     const challengeData = {
       title: form.title,
       description: form.description,
-      startAt: form.startAt, // Keep as string for JSON
-      endAt: form.endAt, // Keep as string for JSON
+      startAt: new Date(form.startAt), // Convert to Date for validation
+      endAt: new Date(form.endAt), // Convert to Date for validation
       proofType: form.proofType as "TEXT" | "PHOTO" | "LINK",
       cadence: form.cadence as "DAILY" | "END_OF_CHALLENGE",
       maxParticipants: form.maxParticipants,
       rewards: form.rewards,
       policy: form.policy,
       imageUrl: form.imageUrl,
-      whopCategoryName: form.difficulty || "General" // Map difficulty to category
+      difficulty: form.difficulty as "BEGINNER" | "INTERMEDIATE" | "ADVANCED" || undefined
     };
 
     console.log("Submitting challenge data:", challengeData);
@@ -76,6 +76,14 @@ export default function NewChallengePage() {
       return;
     }
 
+    // Convert dates back to strings for JSON serialization
+    const challengeDataForAPI = {
+      ...challengeData,
+      startAt: form.startAt, // Send as ISO string
+      endAt: form.endAt, // Send as ISO string
+      whopCategoryName: form.difficulty || "General" // Add this for backend
+    };
+
     setSaving(true);
     try {
       console.log("🚀 Sending request to API...");
@@ -83,7 +91,7 @@ export default function NewChallengePage() {
       const response = await fetch("/api/admin/challenges", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(challengeData)
+        body: JSON.stringify(challengeDataForAPI)
       });
 
       console.log("📡 Response received:", response.status, response.statusText);
