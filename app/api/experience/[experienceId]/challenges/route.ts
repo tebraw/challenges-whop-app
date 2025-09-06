@@ -42,11 +42,10 @@ export async function GET(
 
     // Production: Get challenges from database
     const challenges = await prisma.challenge.findMany({
-      where: { experienceId },
       include: {
-        participants: true,
+        enrollments: true,
         _count: {
-          select: { participants: true }
+          select: { enrollments: true }
         }
       },
       orderBy: { createdAt: 'desc' }
