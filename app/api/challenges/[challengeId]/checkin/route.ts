@@ -35,7 +35,7 @@ export async function POST(
             endAt: true
           }
         },
-        checkins: {
+        proofs: {
           orderBy: { createdAt: 'desc' },
           take: 1
         }
@@ -64,7 +64,7 @@ export async function POST(
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const todayCheckin = await prisma.checkin.findFirst({
+      const todayProof = await prisma.proof.findFirst({
         where: {
           enrollmentId: enrollment.id,
           createdAt: {
@@ -73,7 +73,7 @@ export async function POST(
         }
       });
 
-      if (todayCheckin) {
+      if (todayProof) {
         return NextResponse.json({ error: 'Already checked in today' }, { status: 400 });
       }
     }
@@ -90,35 +90,35 @@ export async function POST(
       return NextResponse.json({ error: 'Link proof is required' }, { status: 400 });
     }
 
-    // Create check-in
-    const checkin = await prisma.checkin.create({
+    // Create proof (check-in)
+    const proof = await prisma.proof.create({
       data: {
         enrollmentId: enrollment.id,
+        type: proofType,
         text: text || null,
-        imageUrl: imageUrl || null,
-        linkUrl: linkUrl || null,
+        url: imageUrl || linkUrl || null,
         createdAt: new Date()
       }
     });
 
     // Calculate streak and total check-ins
-    const allCheckins = await prisma.checkin.findMany({
+    const allProofs = await prisma.proof.findMany({
       where: { enrollmentId: enrollment.id },
       orderBy: { createdAt: 'desc' }
     });
 
-    const currentStreak = calculateStreak(allCheckins);
-    const totalCheckIns = allCheckins.length;
+    const currentStreak = calculateStreak(allProofs);
+    const totalCheckIns = allProofs.length;
 
     return NextResponse.json({
       success: true,
       message: 'Check-in successful!',
       checkin: {
-        id: checkin.id,
-        createdAt: checkin.createdAt,
-        text: checkin.text,
-        imageUrl: checkin.imageUrl,
-        linkUrl: checkin.linkUrl
+        id: proof.id,
+        createdAt: proof.createdAt,
+        text: proof.text,
+        imageUrl: proof.url,
+        linkUrl: proof.url
       },
       stats: {
         currentStreak,
