@@ -124,9 +124,9 @@ export default function AdminChallengeDetailPage({
           cadence: data.cadence || "DAILY",
           policy: data.rules,
           status: getChallengeStatus(data.startAt, data.endAt),
-          participants: data._count?.enrollments || 0,
-          checkins: data.streakCount || 0,
-          totalStreaks: data.streakCount || 0,
+          participants: data.participants || 0,
+          checkins: data.checkins || 0,
+          totalStreaks: data.checkins || 0,
           imageUrl: data.imageUrl,
           rewards: data.rewards || [],
           leaderboard: [

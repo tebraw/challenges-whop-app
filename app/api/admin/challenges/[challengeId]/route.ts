@@ -39,12 +39,40 @@ export async function GET(
       return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
     }
 
-    // Count check-ins from enrollments (we need to count from a separate table if it exists)
-    const checkinCount = await prisma.enrollment.count({
+    // Count actual check-ins (proof submissions)
+    const checkinCount = await prisma.proof.count({
+      where: {
+        enrollment: {
+          challengeId: challengeId,
+        },
+      },
+    });
+
+    // Get leaderboard data with check-ins per user
+    const leaderboard = await prisma.enrollment.findMany({
       where: {
         challengeId: challengeId,
       },
+      include: {
+        user: true,
+        proofs: true,
+      },
+      orderBy: {
+        proofs: {
+          _count: 'desc',
+        },
+      },
+      take: 10, // Top 10 participants
     });
+
+    // Transform leaderboard data
+    const transformedLeaderboard = leaderboard.map(enrollment => ({
+      id: enrollment.user.id,
+      username: enrollment.user.name || 'Unknown User',
+      email: enrollment.user.email,
+      checkIns: enrollment.proofs.length,
+      joinedAt: enrollment.joinedAt.toISOString(),
+    }));
 
     // Transform the data for the frontend
     const transformedChallenge = {
