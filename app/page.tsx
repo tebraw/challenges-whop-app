@@ -61,8 +61,8 @@ export default async function Home() {
             console.log('🏢 Company Access:', companyAccess);
             
             if (companyAccess.accessLevel === 'admin') {
-              console.log('🎯 Company Owner - redirecting directly to Admin');
-              redirect('/admin');
+              console.log('🎯 Company Owner - redirecting to Dashboard');
+              redirect(`/dashboard/${companyId}`);
             } else {
               console.log('⚠️ User has company access but not admin level:', companyAccess.accessLevel);
             }
