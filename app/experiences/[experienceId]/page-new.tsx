@@ -4,8 +4,6 @@ import { prisma } from "@/lib/prisma";
 import AdminDashboard from './components/AdminDashboard';
 import CustomerChallenges from './components/CustomerChallenges';
 import WhopLoginButton from '@/components/WhopLoginButton';
-import RefreshButton from './components/RefreshButton';
-import Link from 'next/link';
 
 export default async function ExperiencePage({
   params,
@@ -16,47 +14,15 @@ export default async function ExperiencePage({
   const { experienceId } = await params;
 
   try {
-    // Development mode detection
-    const isDev = process.env.NODE_ENV === 'development';
-    
-    let userId: string;
-    let result: any;
-    let user: any;
-    let experience: any;
+    const { userId } = await whopSdk.verifyUserToken(headersList);
 
-    if (isDev) {
-      // Development fallback
-      console.log('🔧 Development mode: Using fallback data');
-      userId = 'dev_user_123';
-      result = {
-        hasAccess: true,
-        accessLevel: 'customer' // Change to 'admin' to test admin view
-      };
-      user = {
-        id: userId,
-        username: 'dev_user',
-        name: 'Development User'
-      };
-      experience = {
-        id: experienceId,
-        name: 'Development Experience',
-        company: {
-          id: 'dev_company_123'
-        }
-      };
-    } else {
-      // Production Whop integration
-      const { userId: whopUserId } = await whopSdk.verifyUserToken(headersList);
-      userId = whopUserId;
-      
-      result = await whopSdk.access.checkIfUserHasAccessToExperience({
-        userId,
-        experienceId,
-      });
+    const result = await whopSdk.access.checkIfUserHasAccessToExperience({
+      userId,
+      experienceId,
+    });
 
-      user = await whopSdk.users.getUser({ userId });
-      experience = await whopSdk.experiences.getExperience({ experienceId });
-    }
+    const user = await whopSdk.users.getUser({ userId });
+    const experience = await whopSdk.experiences.getExperience({ experienceId });
 
     const { accessLevel } = result;
 
@@ -188,9 +154,12 @@ export default async function ExperiencePage({
             </p>
           </div>
 
-          <RefreshButton className="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors">
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+          >
             Erneut versuchen
-          </RefreshButton>
+          </button>
 
           <details className="mt-4 text-left">
             <summary className="text-xs text-gray-500 cursor-pointer">Debug Info</summary>

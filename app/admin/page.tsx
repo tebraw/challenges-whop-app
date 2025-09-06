@@ -78,85 +78,103 @@ export default function AdminList() {
   }
 
   return (
-    <main className="gradient-hero">
-      <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-12 pt-8 md:pt-12 space-y-6">
+    <div className="min-h-screen bg-gray-900 text-white">
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 pb-12 pt-24 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold">Challenge Dashboard</h1>
-            <p className="text-muted text-sm sm:text-base">Manage your challenges and track performance</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Challenge Dashboard</h1>
+            <p className="text-gray-400 text-sm sm:text-base">Manage your challenges and track performance</p>
           </div>
           <Link href="/admin/new">
-            <Button className="bg-brand text-black hover:bg-brand/90 w-full sm:w-auto">New Challenge</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
+              + New Challenge
+            </Button>
           </Link>
         </div>
 
         {/* Quick Stats */}
         {!loading && items.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            <Card className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-1.5 sm:p-2 bg-brand/10 rounded-lg">
-                  <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-brand" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-gray-800 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-600 rounded-lg">
+                  <BarChart3 className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <div className="text-lg sm:text-2xl font-bold">{items.length}</div>
-                  <div className="text-xs sm:text-sm text-muted">Total Challenges</div>
+                  <div className="text-2xl font-bold text-white">{items.length}</div>
+                  <div className="text-sm text-gray-400">Total Challenges</div>
                 </div>
               </div>
-            </Card>
+            </div>
             
-            <Card className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg">
-                  <Users className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+            <div className="bg-gray-800 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-600 rounded-lg">
+                  <Users className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <div className="text-lg sm:text-2xl font-bold">
+                  <div className="text-2xl font-bold text-white">
                     {items.reduce((sum, c) => sum + (c._count?.enrollments ?? 0), 0)}
                   </div>
-                  <div className="text-xs sm:text-sm text-muted">Total Participants</div>
+                  <div className="text-sm text-gray-400">Total Participants</div>
                 </div>
               </div>
-            </Card>
+            </div>
             
-            <Card className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg">
-                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+            <div className="bg-gray-800 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-600 rounded-lg">
+                  <TrendingUp className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <div className="text-lg sm:text-2xl font-bold">
+                  <div className="text-2xl font-bold text-white">
                     {items.reduce((sum, c) => sum + (c.streakCount ?? 0), 0)}
                   </div>
-                  <div className="text-xs sm:text-sm text-muted">Total Check-ins</div>
+                  <div className="text-sm text-gray-400">Total Check-ins</div>
                 </div>
               </div>
-            </Card>
+            </div>
             
-            <Card className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg">
-                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+            <div className="bg-gray-800 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-600 rounded-lg">
+                  <DollarSign className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <div className="text-lg sm:text-2xl font-bold">
+                  <div className="text-2xl font-bold text-white">
                     {Math.round(items.reduce((sum, c) => sum + (c._count?.enrollments ?? 0), 0) * 0.12)}
                   </div>
-                  <div className="text-xs sm:text-sm text-muted">Conversion Potential</div>
+                  <div className="text-sm text-gray-400">Conversion Potential</div>
                 </div>
               </div>
-            </Card>
+            </div>
           </div>
         )}
 
         {loading ? (
-          <div>loading…</div>
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-400">Loading challenges...</p>
+          </div>
         ) : error ? (
-          <Card className="text-red-300">Error: {error}</Card>
+          <div className="bg-red-900/50 border border-red-500 rounded-xl p-6 text-red-200">
+            Error: {error}
+          </div>
         ) : items.length === 0 ? (
-          <Card>No challenges created.</Card>
+          <div className="bg-gray-800 rounded-xl p-12 text-center">
+            <div className="text-6xl mb-4">🎯</div>
+            <h3 className="text-xl font-semibold text-white mb-2">No challenges created yet</h3>
+            <p className="text-gray-400 mb-6">
+              Create your first challenge to start engaging your community and building your brand.
+            </p>
+            <Link href="/admin/new">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors">
+                Create Your First Challenge
+              </Button>
+            </Link>
+          </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {items.map((c) => {
               const rules = (c.rules ?? {}) as any;
               const img: string | undefined = rules.imageUrl || c.imageUrl;
@@ -181,120 +199,95 @@ export default function AdminList() {
               const monetizationEnabled = marketingRules.monetization?.enabled || false;
 
               return (
-                <Card key={c.id} className="p-3 sm:p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                    <Link href={`/admin/c/${c.id}`} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-1 group" style={{ textDecoration: 'none' }}>
+                <div key={c.id} className="bg-gray-800 rounded-xl p-6 hover:bg-gray-750 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <Link href={`/admin/c/${c.id}`} className="flex items-center gap-4 flex-1 group" style={{ textDecoration: 'none' }}>
                       {/* Thumbnail */}
-                      <div className="shrink-0 self-center sm:self-auto">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <div className="shrink-0">
                         <img
                           src={img || "/logo-mark.png"}
                           alt=""
-                          className="h-12 w-12 sm:h-16 sm:w-16 rounded-xl object-cover border border-white/10 group-hover:scale-105 transition"
+                          className="h-16 w-16 rounded-xl object-cover border border-gray-600 group-hover:scale-105 transition"
                         />
                       </div>
 
                       {/* Main Content */}
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                          <div className="truncate text-base sm:text-lg font-semibold group-hover:text-brand transition">{c.title}</div>
-                          <div className="flex flex-wrap gap-1">
-                            <Badge className={status === "Live" ? "bg-green-500" : status === "Scheduled" ? "bg-blue-500" : "bg-gray-500"}>
-                              {status}
-                            </Badge>
-                            {monetizationEnabled && (
-                              <Badge className="bg-purple-500">💰 Monetized</Badge>
-                            )}
-                            {difficulty && (
-                              <Badge className="bg-orange-500">{difficulty}</Badge>
-                            )}
-                          </div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-white group-hover:text-blue-400 transition">{c.title}</h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            status === "Live" ? "bg-green-600 text-green-100" : 
+                            status === "Scheduled" ? "bg-blue-600 text-blue-100" : 
+                            "bg-gray-600 text-gray-100"
+                          }`}>
+                            {status}
+                          </span>
+                          {monetizationEnabled && (
+                            <span className="bg-purple-600 text-purple-100 px-2 py-1 rounded-full text-xs font-medium">
+                              💰 Monetized
+                            </span>
+                          )}
                         </div>
                         
-                        {/* Tags row */}
-                        {tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-2">
-                            {tags.slice(0, 3).map((tag: string, i: number) => (
-                              <span key={i} className="text-xs bg-brand/20 text-brand px-2 py-1 rounded">
-                                {tag}
-                              </span>
-                            ))}
-                            {tags.length > 3 && (
-                              <span className="text-xs text-muted">+{tags.length - 3} more</span>
-                            )}
+                        <div className="flex items-center gap-6 text-sm text-gray-400">
+                          <div className="flex items-center">
+                            📅 {fmt(c.startAt)} - {fmt(c.endAt)}
                           </div>
-                        )}
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-sm">
-                          <div>
-                            <div className="text-muted text-xs sm:text-sm">Timeline</div>
-                            <div className="font-medium text-sm">
-                              {fmt(c.startAt)} – {fmt(c.endAt)}
-                            </div>
-                            <div className="text-xs"><ChallengeCountdown endDate={c.endAt} /></div>
-                            {category && (
-                              <div className="text-xs text-muted mt-1">📂 {category}</div>
-                            )}
+                          <div className="flex items-center">
+                            👥 {count}{max ? `/${max}` : ""} participants
                           </div>
-                          
-                          <div>
-                            <div className="text-muted text-xs sm:text-sm">Participants</div>
-                            <div className="font-medium text-sm">👥 {count}{max ? `/${max}` : ""}</div>
-                            <div className="text-xs">🔥 {streakCount} check-ins</div>
+                          <div className="flex items-center">
+                            🔥 {streakCount} check-ins
                           </div>
-                          
-                          <div>
-                            <div className="text-muted text-xs sm:text-sm">Engagement</div>
-                            <div className="font-medium text-sm">{avgEngagement}%</div>
-                            <div className="text-xs">📝 {c.proofType}</div>
-                          </div>
-                          
-                          <div>
-                            <div className="text-muted text-xs sm:text-sm">Business Potential</div>
-                            <div className="font-medium flex items-center gap-1 text-sm">
-                              <DollarSign className="h-3 w-3" />
-                              {conversionScore}%
-                            </div>
-                            <div className="text-xs">Conversion Score</div>
+                          <div className="flex items-center">
+                            📈 {avgEngagement}% engagement
                           </div>
                         </div>
                       </div>
                     </Link>
 
-                    {/* Actions - Mobile: Horizontal scroll, Desktop: Vertical */}
-                    <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-x-visible pb-2 sm:pb-0">
+                    {/* Actions */}
+                    <div className="flex gap-2">
                       {/* Winners button - nur für beendete Challenges */}
                       {new Date() > new Date(c.endAt) && (
-                        <Link href={`/admin/winners/${c.id}`} className="shrink-0">
-                          <Button variant="outline" radius="lg" title="Select Winners" className="bg-yellow-50 hover:bg-yellow-100 border-yellow-200 min-w-[44px] h-[44px] p-2">
-                            <Trophy className="h-4 w-4 text-yellow-600" />
-                          </Button>
+                        <Link href={`/admin/winners/${c.id}`}>
+                          <button className="bg-yellow-600 hover:bg-yellow-700 text-white p-2 rounded-lg transition-colors" title="Select Winners">
+                            <Trophy className="h-4 w-4" />
+                          </button>
                         </Link>
                       )}
-                      <Link href={`/admin/c/${c.id}`} className="shrink-0">
-                        <Button variant="outline" radius="lg" title="Analytics" className="min-w-[44px] h-[44px] p-2">
+                      <Link href={`/admin/c/${c.id}`}>
+                        <button className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors" title="Analytics">
                           <BarChart3 className="h-4 w-4" />
-                        </Button>
+                        </button>
                       </Link>
-                      <Link href={`/admin/edit/${c.id}`} className="shrink-0">
-                        <Button variant="outline" radius="lg" title="Edit" className="min-w-[44px] h-[44px] p-2">
+                      <Link href={`/admin/edit/${c.id}`}>
+                        <button className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors" title="Edit">
                           <Pencil className="h-4 w-4" />
-                        </Button>
+                        </button>
                       </Link>
-                      <Button variant="outline" radius="lg" title="Copy" onClick={() => onDuplicate(c.id)} className="shrink-0 min-w-[44px] h-[44px] p-2">
+                      <button 
+                        onClick={() => onDuplicate(c.id)} 
+                        className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors" 
+                        title="Copy"
+                      >
                         <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" radius="lg" title="Delete" onClick={() => onDelete(c.id)} className="shrink-0 min-w-[44px] h-[44px] p-2">
+                      </button>
+                      <button 
+                        onClick={() => onDelete(c.id)} 
+                        className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-colors" 
+                        title="Delete"
+                      >
                         <Trash2 className="h-4 w-4" />
-                      </Button>
+                      </button>
                     </div>
                   </div>
-                </Card>
+                </div>
               );
             })}
           </div>
         )}
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }

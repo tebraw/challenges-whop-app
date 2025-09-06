@@ -2,15 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ experienceId: string }> }
+) {
   try {
+    const { experienceId } = await context.params;
     const user = await getCurrentUser();
     
     if (!user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    // Development mode - return mock data
+    // Development mode - return mock customer challenges
     if (process.env.NODE_ENV === 'development') {
       const mockChallenges = [
         {
@@ -26,7 +30,20 @@ export async function GET(request: NextRequest) {
           rules: {
             minParticipants: 10,
             maxParticipants: 100,
-            dailyCheckIn: true
+            dailyCheckIn: true,
+            rewards: {
+              first: '500€ Cash',
+              second: '300€ Gift Card',
+              third: '100€ Store Credit'
+            }
+          },
+          enrollment: {
+            id: 'enrollment-1',
+            joinedAt: new Date('2025-09-01'),
+            status: 'ACTIVE',
+            currentStreak: 5,
+            totalCheckIns: 5,
+            lastCheckIn: new Date()
           },
           _count: { 
             enrollments: 42 
@@ -45,29 +62,23 @@ export async function GET(request: NextRequest) {
           rules: {
             minParticipants: 5,
             maxParticipants: 50,
-            dailyCheckIn: true
+            dailyCheckIn: true,
+            rewards: {
+              first: 'Premium Meditation App',
+              second: 'Meditation Cushion',
+              third: 'Wellness Book'
+            }
+          },
+          enrollment: {
+            id: 'enrollment-2',
+            joinedAt: new Date('2025-09-10'),
+            status: 'ACTIVE',
+            currentStreak: 3,
+            totalCheckIns: 3,
+            lastCheckIn: new Date()
           },
           _count: { 
             enrollments: 28 
-          }
-        },
-        {
-          id: 'cmf7lrtlq000514ehs17u67k0',
-          title: 'Reading Challenge',
-          description: 'Read one book per week',
-          imageUrl: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=500&h=300&fit=crop',
-          category: 'Education',
-          startAt: new Date('2025-09-15'),
-          endAt: new Date('2025-10-15'),
-          isActive: true,
-          proofType: 'PHOTO',
-          rules: {
-            minParticipants: 1,
-            maxParticipants: 25,
-            weeklyCheckIn: true
-          },
-          _count: { 
-            enrollments: 15 
           }
         }
       ];
@@ -75,9 +86,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ challenges: mockChallenges });
     }
 
-    // Production mode - fetch from database
+    // Production mode - fetch user's enrolled challenges
     const challenges = await prisma.challenge.findMany({
+      where: {
+        enrollments: {
+          some: {
+            userId: user.id
+          }
+        }
+      },
       include: {
+        enrollments: {
+          where: {
+            userId: user.id
+          },
+          select: {
+            id: true,
+            joinedAt: true,
+            status: true,
+            currentStreak: true,
+            totalCheckIns: true,
+            lastCheckIn: true
+          }
+        },
         _count: {
           select: {
             enrollments: true
@@ -85,14 +116,21 @@ export async function GET(request: NextRequest) {
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        startAt: 'desc'
       }
     });
 
-    return NextResponse.json({ challenges });
+    // Transform the data to include enrollment info directly
+    const transformedChallenges = challenges.map(challenge => ({
+      ...challenge,
+      enrollment: challenge.enrollments[0] || null,
+      enrollments: undefined
+    }));
+
+    return NextResponse.json({ challenges: transformedChallenges });
 
   } catch (error) {
-    console.error('Error fetching challenges:', error);
+    console.error('Error fetching customer challenges:', error);
     return NextResponse.json(
       { error: 'Failed to fetch challenges' },
       { status: 500 }

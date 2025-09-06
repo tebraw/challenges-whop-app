@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getUserAccessLevel, type AccessControlResult } from "@/lib/access-control-client";
+import { getUserAccessLevel, type AccessControlResult } from "@/lib/access-control";
 import { Card } from "@/components/ui/Card";
 import Link from "next/link";
 import { Calendar, Users, Award } from "lucide-react";
@@ -125,7 +125,7 @@ export default function FeedPage() {
           <div className="grid gap-6">
             {challenges.map((challenge) => (
               <Card key={challenge.id} className="hover:shadow-lg transition-shadow">
-                <Link href={`/challenges/${challenge.id}`} className="block">
+                <Link href={`/c/${challenge.id}`} className="block">
                   <div className="flex gap-4">
                     {challenge.imageUrl && (
                       <div className="flex-shrink-0">
