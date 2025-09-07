@@ -49,7 +49,9 @@ export default function SelectWinnersPage({
   ]);
   const [showProofModal, setShowProofModal] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
-  const [participantProofs, setParticipantProofs] = useState<Checkin[]>([]);
+  const [participantProofs, setParticipantProofs] = useState<any[]>([]);
+  const [participantCheckins, setParticipantCheckins] = useState<any[]>([]);
+  const [loadingProofs, setLoadingProofs] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -112,7 +114,10 @@ export default function SelectWinnersPage({
   const loadParticipantProofs = async (participant: Participant) => {
     try {
       setSelectedParticipant(participant);
+      setLoadingProofs(true);
       setShowProofModal(true);
+      
+      console.log(`Loading proofs for participant: ${participant.id}`);
       
       const response = await fetch(`/api/admin/users/${participant.id}/challenges/${challengeId}`, {
         cache: 'no-store'
@@ -120,13 +125,34 @@ export default function SelectWinnersPage({
       
       if (response.ok) {
         const data = await response.json();
-        setParticipantProofs(data.checkIns || []);
+        console.log('Participant data loaded:', data);
+        console.log('Raw proofs data:', data.enrollment?.proofs);
+        console.log('Raw checkins data:', data.enrollment?.checkins);
+        
+        // Set both proofs and checkins
+        const proofs = data.enrollment?.proofs || [];
+        const checkins = data.enrollment?.checkins || [];
+        
+        setParticipantProofs(proofs);
+        setParticipantCheckins(checkins);
+        
+        console.log('Set proofs state:', proofs);
+        console.log('Set checkins state:', checkins);
+        
+        if (proofs.length === 0 && checkins.length === 0) {
+          console.log('No proofs or checkins found for participant');
+        }
       } else {
+        console.error('Failed to load participant data:', response.statusText);
         setParticipantProofs([]);
+        setParticipantCheckins([]);
       }
     } catch (error) {
       console.error('Error loading participant proofs:', error);
       setParticipantProofs([]);
+      setParticipantCheckins([]);
+    } finally {
+      setLoadingProofs(false);
     }
   };
 
@@ -577,49 +603,128 @@ export default function SelectWinnersPage({
               </div>
               
               <div className="p-6 overflow-y-auto max-h-[60vh]">
-                {participantProofs.length > 0 ? (
-                  <div className="space-y-4">
-                    {participantProofs.map((proof) => (
-                      <div key={proof.id} className="bg-gray-700 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-blue-400" />
-                            <span className="font-medium">Day {proof.day}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-400" />
-                            <span className="text-sm text-gray-400">
-                              {new Date(proof.submittedAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {proof.proofText && (
-                          <div className="mb-3">
-                            <p className="text-sm text-gray-300">{proof.proofText}</p>
-                          </div>
-                        )}
-                        
-                        {proof.proofImage && (
-                          <div className="mb-3">
-                            <img 
-                              src={proof.proofImage} 
-                              alt="Proof"
-                              className="max-w-full h-auto rounded-lg border border-gray-600"
-                            />
-                          </div>
-                        )}
-                        
-                        <div className="text-xs text-gray-500">
-                          Status: {proof.status}
-                        </div>
-                      </div>
-                    ))}
+                {loadingProofs ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400">Loading proofs...</p>
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <p className="text-gray-400">No proofs submitted yet</p>
-                  </div>
+                  <>
+                    {/* Proofs Section */}
+                    {participantProofs.length > 0 && (
+                      <div className="mb-6">
+                        <h4 className="text-lg font-semibold mb-4 text-white">Submitted Proofs</h4>
+                        <div className="space-y-4">
+                          {participantProofs.map((proof) => (
+                            <div key={proof.id} className="bg-gray-700 rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <Award className="h-4 w-4 text-purple-400" />
+                                  <span className="font-medium">Proof #{proof.id.slice(-6)}</span>
+                                </div>
+                                <span className="text-sm text-gray-400">
+                                  {new Date(proof.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              
+                              {proof.text && (
+                                <div className="mb-3">
+                                  <p className="text-sm text-gray-300">{proof.text}</p>
+                                </div>
+                              )}
+                              
+                              {proof.image && (
+                                <div className="mb-3">
+                                  <img 
+                                    src={proof.image} 
+                                    alt="Proof"
+                                    className="max-w-full h-auto rounded-lg border border-gray-600 max-h-64 object-cover"
+                                  />
+                                </div>
+                              )}
+                              
+                              {proof.url && (
+                                <div className="mb-3">
+                                  <a 
+                                    href={proof.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-blue-400 hover:text-blue-300 text-sm underline"
+                                  >
+                                    View Proof URL
+                                  </a>
+                                </div>
+                              )}
+                              
+                              <div className="text-xs text-gray-500">
+                                Type: {proof.type} | Version: {proof.version}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Checkins Section */}
+                    {participantCheckins.length > 0 && (
+                      <div className="mb-6">
+                        <h4 className="text-lg font-semibold mb-4 text-white">Daily Check-ins</h4>
+                        <div className="space-y-4">
+                          {participantCheckins.map((checkin) => (
+                            <div key={checkin.id} className="bg-gray-700 rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <CheckCircle className="h-4 w-4 text-green-400" />
+                                  <span className="font-medium">Check-in</span>
+                                </div>
+                                <span className="text-sm text-gray-400">
+                                  {new Date(checkin.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              
+                              {checkin.text && (
+                                <div className="mb-3">
+                                  <p className="text-sm text-gray-300">{checkin.text}</p>
+                                </div>
+                              )}
+                              
+                              {checkin.imageUrl && (
+                                <div className="mb-3">
+                                  <img 
+                                    src={checkin.imageUrl} 
+                                    alt="Check-in"
+                                    className="max-w-full h-auto rounded-lg border border-gray-600 max-h-64 object-cover"
+                                  />
+                                </div>
+                              )}
+
+                              {checkin.linkUrl && (
+                                <div className="mb-3">
+                                  <a 
+                                    href={checkin.linkUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-blue-400 hover:text-blue-300 text-sm underline"
+                                  >
+                                    View Link
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* No Data Message */}
+                    {participantProofs.length === 0 && participantCheckins.length === 0 && (
+                      <div className="text-center py-8">
+                        <div className="text-gray-400 mb-2">No proofs or check-ins submitted yet</div>
+                        <div className="text-sm text-gray-500">
+                          Participant: {selectedParticipant.email}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

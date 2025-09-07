@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendWhopNotification, getWhopUserIdByEmail } from '@/lib/whopApi';
+import { sendEmailNotification, convertWhopNotificationToEmail } from '@/lib/emailNotifications';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,30 +16,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('🔔 Processing notification request:');
+    console.log('Email:', email);
+    console.log('Title:', title);
+    console.log('Message:', message);
+
     // Get Whop user ID from email
     const whopUserId = await getWhopUserIdByEmail(email);
     
     if (!whopUserId) {
-      console.error('Could not find Whop user ID for email:', email);
-      // For development, we'll still proceed with a mock ID
+      console.log('Could not find Whop user ID for email:', email);
     }
 
-    // Send notification via Whop
-    const success = await sendWhopNotification({
-      userId: whopUserId || `mock_${email}`,
+    // Prepare notification data
+    const notificationData = {
+      userId: whopUserId || `user_${email.replace('@', '_').replace('.', '_')}`,
       message,
       title: title || 'Winner Announcement'
-    });
+    };
+
+    // Send via Whop API (will log for manual processing)
+    const whopSuccess = await sendWhopNotification(notificationData);
+
+    // Also send as email notification
+    const emailNotification = convertWhopNotificationToEmail(email, notificationData);
+    const emailSuccess = await sendEmailNotification(emailNotification);
+
+    // Determine overall success
+    const success = whopSuccess && emailSuccess;
 
     if (success) {
       return NextResponse.json({ 
-        message: 'Notification sent successfully',
-        whopUserId: whopUserId || `mock_${email}`,
+        message: 'Notification processed successfully',
+        whopUserId: notificationData.userId,
+        emailSent: emailSuccess,
+        whopLogged: whopSuccess,
         type: type || 'general'
       });
     } else {
       return NextResponse.json(
-        { error: 'Failed to send notification' },
+        { error: 'Failed to process notification' },
         { status: 500 }
       );
     }
