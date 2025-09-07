@@ -3,9 +3,10 @@
 
 import { useEffect, useState } from "react";
 import { getUserAccessLevel, type AccessControlResult } from "@/lib/access-control-client";
+import { getAllCategories, getCategoryById, type CategoryMapping } from "@/lib/challenge-categories";
 import { Card } from "@/components/ui/Card";
 import Link from "next/link";
-import { Calendar, Users, Award, Search, Filter, Dumbbell, Brain, Lightbulb, Building, Heart, Palette } from "lucide-react";
+import { Calendar, Users, Award, Search, Filter, Clock, Star } from "lucide-react";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 
@@ -16,76 +17,13 @@ type Challenge = {
   startAt: string;
   endAt: string;
   imageUrl?: string;
+  category?: string;
+  difficulty?: string;
+  featured?: boolean;
   _count?: { enrollments: number };
   creator?: { name: string; whopCompanyId?: string; };
-  rules?: any;
+  tenant?: { name: string; whopCompanyId?: string; };
 };
-
-const CATEGORIES = [
-  { 
-    value: "", 
-    label: "All Categories", 
-    icon: "🔍", 
-    color: "bg-gray-700 hover:bg-gray-600",
-    description: "Browse all challenges"
-  },
-  { 
-    value: "fitness", 
-    label: "Fitness", 
-    icon: "💪", 
-    color: "bg-orange-600 hover:bg-orange-500",
-    description: "Get fit and healthy"
-  },
-  { 
-    value: "productivity", 
-    label: "Productivity", 
-    icon: "📝", 
-    color: "bg-blue-600 hover:bg-blue-500",
-    description: "Boost your efficiency"
-  },
-  { 
-    value: "learning", 
-    label: "Learning", 
-    icon: "🧠", 
-    color: "bg-pink-600 hover:bg-pink-500",
-    description: "Expand your knowledge"
-  },
-  { 
-    value: "mindfulness", 
-    label: "Mindfulness", 
-    icon: "🔔", 
-    color: "bg-yellow-600 hover:bg-yellow-500",
-    description: "Find inner peace"
-  },
-  { 
-    value: "creativity", 
-    label: "Creativity", 
-    icon: "🎨", 
-    color: "bg-green-600 hover:bg-green-500",
-    description: "Express your creative side"
-  },
-  { 
-    value: "social", 
-    label: "Social", 
-    icon: "👥", 
-    color: "bg-purple-600 hover:bg-purple-500",
-    description: "Connect with others"
-  },
-  { 
-    value: "finance", 
-    label: "Finance", 
-    icon: "💰", 
-    color: "bg-indigo-600 hover:bg-indigo-500",
-    description: "Manage your money"
-  },
-  { 
-    value: "lifestyle", 
-    label: "Lifestyle", 
-    icon: "☀️", 
-    color: "bg-red-600 hover:bg-red-500",
-    description: "Improve your daily life"
-  },
-];
 
 const DIFFICULTY_LEVELS = [
   { value: "", label: "All Levels" },
@@ -102,6 +40,7 @@ export default function DiscoverPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState("");
+  const [categories, setCategorles] = useState<CategoryMapping[]>([]);
 
   useEffect(() => {
     async function loadData() {
@@ -110,36 +49,25 @@ export default function DiscoverPage() {
         const access = await getUserAccessLevel();
         setUserAccess(access);
 
-        // For development, use mock data
-        const mockChallenges: Challenge[] = [
-          {
-            id: 'challenge-1',
-            title: '15K Steps Challenge',
-            description: 'Walk 15,000 steps every day for 30 days',
-            startAt: '2025-04-09',
-            endAt: '2025-11-09',
-            imageUrl: undefined,
-            _count: { enrollments: 0 },
-            creator: { name: 'FitTracker', whopCompanyId: 'company1' },
-            rules: { difficulty: 'BEGINNER' }
-          },
-          {
-            id: 'challenge-2',
-            title: '30-Day Fitness Challenge',
-            description: 'Complete daily workout routines for 30 days',
-            startAt: '2025-04-09',
-            endAt: '2025-11-09',
-            imageUrl: undefined,
-            _count: { enrollments: 0 },
-            creator: { name: 'FitnessGuru', whopCompanyId: 'company2' },
-            rules: { difficulty: 'INTERMEDIATE' }
-          }
-        ];
+        // Load categories
+        const allCategories = getAllCategories();
+        setCategorles(allCategories);
 
-        setChallenges(mockChallenges);
-        setFilteredChallenges(mockChallenges);
+        // Load real challenges from API
+        const response = await fetch('/api/discover/challenges');
+        if (response.ok) {
+          const data = await response.json();
+          setChallenges(data.challenges || []);
+          setFilteredChallenges(data.challenges || []);
+        } else {
+          console.error('Failed to load challenges');
+          setChallenges([]);
+          setFilteredChallenges([]);
+        }
       } catch (error) {
         console.error('Error loading discover page:', error);
+        setChallenges([]);
+        setFilteredChallenges([]);
       } finally {
         setLoading(false);
       }
@@ -160,18 +88,17 @@ export default function DiscoverPage() {
       );
     }
 
-    // Category filter (based on title/description keywords for now)
+    // Category filter
     if (selectedCategory) {
-      filtered = filtered.filter(challenge => {
-        const text = `${challenge.title} ${challenge.description}`.toLowerCase();
-        return text.includes(selectedCategory.toLowerCase());
-      });
+      filtered = filtered.filter(challenge => 
+        challenge.category === selectedCategory
+      );
     }
 
     // Difficulty filter
     if (selectedDifficulty) {
       filtered = filtered.filter(challenge =>
-        challenge.rules?.difficulty === selectedDifficulty
+        challenge.difficulty === selectedDifficulty
       );
     }
 
@@ -237,13 +164,13 @@ export default function DiscoverPage() {
             Categories
           </h2>
           <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-9 gap-4 mb-8">
-            {CATEGORIES.map((category) => {
-              const isSelected = selectedCategory === category.value;
+            {categories.map((category: CategoryMapping) => {
+              const isSelected = selectedCategory === category.id;
               
               return (
                 <button
-                  key={category.value}
-                  onClick={() => setSelectedCategory(category.value)}
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
                   className={`group relative rounded-lg p-4 transition-all duration-200 hover:scale-105 ${
                     isSelected 
                       ? category.color + ' ring-2 ring-white/20' 
@@ -352,12 +279,12 @@ export default function DiscoverPage() {
                           <h3 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors">
                             {challenge.title}
                           </h3>
-                          {challenge.rules?.difficulty === 'BEGINNER' && (
+                          {challenge.difficulty === 'BEGINNER' && (
                             <span className="px-2 py-1 bg-green-600 text-green-100 text-xs font-medium rounded">
                               Geplant
                             </span>
                           )}
-                          {challenge.rules?.difficulty === 'INTERMEDIATE' && (
+                          {challenge.difficulty === 'INTERMEDIATE' && (
                             <span className="px-2 py-1 bg-blue-600 text-blue-100 text-xs font-medium rounded">
                               Live
                             </span>

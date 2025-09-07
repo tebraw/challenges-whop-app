@@ -59,6 +59,10 @@ model Challenge {
   monetizationRules Json?
   targetAudience    Json?
   marketingTags     Json?
+  category          String?           @default("general")
+  difficulty        String?           @default("BEGINNER")
+  isPublic          Boolean           @default(true)
+  featured          Boolean           @default(false)
   creator           User?             @relation("Creator", fields: [creatorId], references: [id])
   tenant            Tenant            @relation(fields: [tenantId], references: [id])
   challengeOffers   ChallengeOffer[]
