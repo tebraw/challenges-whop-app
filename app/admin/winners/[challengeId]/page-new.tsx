@@ -269,7 +269,6 @@ export default function SelectWinnersPage({
                             }
                           }}
                         >
-                          <div className="text-2xl">{participant.avatar}</div>
                           <div>
                             <h3 className="font-semibold">{participant.name}</h3>
                             <p className="text-sm text-gray-400">{participant.email}</p>
@@ -332,7 +331,6 @@ export default function SelectWinnersPage({
                     {winner.participant ? (
                       <div className="space-y-3">
                         <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-                          <div className="text-xl">{winner.participant.avatar}</div>
                           <div className="flex-1">
                             <div className="font-medium">{winner.participant.name}</div>
                             <div className="text-sm text-gray-400">

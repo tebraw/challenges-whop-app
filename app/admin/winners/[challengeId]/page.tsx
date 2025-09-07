@@ -1,23 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Trophy, Mail, Send, Eye, X } from "lucide-react";
+import { ArrowLeft, Trophy, Save, Eye, X, Mail, Send } from "lucide-react";
 import Link from "next/link";
 
 interface Participant {
   id: string;
   name: string;
   email: string;
-  avatar?: string;
   completionRate: number;
+  checkIns: number;
   isEligible: boolean;
 }
 
 interface Winner {
   rank: number;
   participant: Participant | null;
-  prize: string;
-  customMessage: string;
+  notificationMessage: string;
 }
 
 interface Checkin {
@@ -36,7 +35,12 @@ export default function SelectWinnersPage({
   const [challengeId, setChallengeId] = useState<string>("");
   const [challenge, setChallenge] = useState<any>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [winners, setWinners] = useState<Winner[]>([]);
+  const [selectedRank, setSelectedRank] = useState<number>(1);
+  const [winners, setWinners] = useState<Winner[]>([
+    { rank: 1, participant: null, notificationMessage: "🎉 Congratulations! You won 1st Place!" },
+    { rank: 2, participant: null, notificationMessage: "🎉 Congratulations! You won 2nd Place!" },
+    { rank: 3, participant: null, notificationMessage: "🎉 Congratulations! You won 3rd Place!" }
+  ]);
   const [showCheckinsModal, setShowCheckinsModal] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
   const [participantCheckins, setParticipantCheckins] = useState<Checkin[]>([]);
@@ -128,7 +132,7 @@ export default function SelectWinnersPage({
           participantId: w.participant!.id,
           email: w.participant!.email,
           rank: w.rank,
-          message: w.customMessage
+          message: w.notificationMessage
         }));
 
       // Send notifications via Whop API
@@ -262,7 +266,6 @@ export default function SelectWinnersPage({
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="text-2xl">{participant.avatar}</div>
                           <div>
                             <h3 className="font-semibold">{participant.name}</h3>
                             <p className="text-sm text-gray-400">{participant.email}</p>
@@ -310,12 +313,10 @@ export default function SelectWinnersPage({
                   <div key={winner.rank} className="border border-gray-600 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-semibold text-yellow-400">#{winner.rank} Place</h3>
-                      <span className="text-sm text-gray-400">{winner.prize}</span>
                     </div>
                     
                     {winner.participant ? (
                       <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-                        <div className="text-xl">{winner.participant.avatar}</div>
                         <div className="flex-1">
                           <div className="font-medium">{winner.participant.name}</div>
                           <div className="text-sm text-gray-400">
