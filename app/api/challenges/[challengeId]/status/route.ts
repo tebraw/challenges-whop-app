@@ -21,7 +21,7 @@ export async function GET(
         enrollments: {
           where: { userId: user.id },
           include: {
-            checkins: {
+            proofs: {
               orderBy: { createdAt: 'desc' }
             }
           }
@@ -41,29 +41,29 @@ export async function GET(
 
     let userStats = null;
     if (isParticipating && userEnrollment) {
-      const allCheckins = userEnrollment.checkins;
-      const currentStreak = calculateStreak(allCheckins);
-      const totalCheckIns = allCheckins.length;
+      const allProofs = userEnrollment.proofs;
+      const currentStreak = calculateStreak(allProofs);
+      const totalCheckIns = allProofs.length;
       
       // Check if can check in today
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const todayCheckin = allCheckins.find(checkin => {
-        const checkinDate = new Date(checkin.createdAt);
-        checkinDate.setHours(0, 0, 0, 0);
-        return checkinDate.getTime() === today.getTime();
+      const todayProof = allProofs.find(proof => {
+        const proofDate = new Date(proof.createdAt);
+        proofDate.setHours(0, 0, 0, 0);
+        return proofDate.getTime() === today.getTime();
       });
 
-      const canCheckInToday = !todayCheckin && new Date() <= new Date(challenge.endAt);
+      const canCheckInToday = !todayProof && new Date() <= new Date(challenge.endAt);
 
       userStats = {
         currentStreak,
         totalCheckIns,
         canCheckInToday,
-        hasCheckedInToday: !!todayCheckin,
+        hasCheckedInToday: !!todayProof,
         joinedAt: userEnrollment.joinedAt,
-        lastCheckin: allCheckins[0]?.createdAt || null
+        lastCheckin: allProofs[0]?.createdAt || null
       };
     }
 
@@ -117,23 +117,23 @@ export async function GET(
 }
 
 // Helper function to calculate current streak
-function calculateStreak(checkins: any[]): number {
-  if (checkins.length === 0) return 0;
+function calculateStreak(proofs: any[]): number {
+  if (proofs.length === 0) return 0;
 
   let streak = 0;
   const today = new Date();
   today.setHours(23, 59, 59, 999);
 
-  for (let i = 0; i < checkins.length; i++) {
-    const checkinDate = new Date(checkins[i].createdAt);
+  for (let i = 0; i < proofs.length; i++) {
+    const proofDate = new Date(proofs[i].createdAt);
     const expectedDate = new Date(today);
     expectedDate.setDate(today.getDate() - i);
     expectedDate.setHours(0, 0, 0, 0);
     
-    const checkinDay = new Date(checkinDate);
-    checkinDay.setHours(0, 0, 0, 0);
+    const proofDay = new Date(proofDate);
+    proofDay.setHours(0, 0, 0, 0);
     
-    if (checkinDay.getTime() === expectedDate.getTime()) {
+    if (proofDay.getTime() === expectedDate.getTime()) {
       streak++;
     } else {
       break;
