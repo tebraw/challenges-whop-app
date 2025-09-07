@@ -42,7 +42,7 @@ export default function AdminList() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/challenges", { cache: "no-store" });
+      const res = await fetch("/api/admin/challenges", { cache: "no-store" });
       if (!res.ok) throw new Error(await res.text());
       const j = await res.json();
       const arr = Array.isArray(j?.challenges) ? (j.challenges as Challenge[]) : [];
