@@ -3,109 +3,154 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { categorizeChallenge } from '@/lib/challenge-categories';
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const search = searchParams.get('search');
     const difficulty = searchParams.get('difficulty');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const id = searchParams.get('id'); // Single challenge by ID
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Build where clause
+    // If requesting a specific challenge by ID
+    if (id) {
+      const challenge = await prisma.challenge.findUnique({
+        where: { 
+          id: id,
+          isPublic: true 
+        },
+        include: {
+          tenant: true,
+          _count: {
+            select: {
+              enrollments: true
+            }
+          }
+        }
+      });
+
+      if (!challenge) {
+        return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
+      }
+
+      // Auto-categorize if needed
+      const categoryValue = challenge.category || categorizeChallenge(
+        challenge.title,
+        challenge.description,
+        challenge.tenant?.name || null,
+        null
+      );
+      
+      if (!challenge.category && categoryValue) {
+        await prisma.challenge.update({
+          where: { id: challenge.id },
+          data: { category: categoryValue }
+        });
+        challenge.category = categoryValue;
+      }
+
+      return NextResponse.json({
+        challenges: [challenge],
+        total: 1,
+        hasMore: false
+      });
+    }
+
+    // Build where conditions for filtering
     const where: any = {
-      isPublic: true,
-      // Only show challenges that are either active or starting soon
-      OR: [
-        { startAt: { lte: new Date() }, endAt: { gte: new Date() } }, // Active
-        { startAt: { gte: new Date() } } // Future
-      ]
+      isPublic: true
     };
 
-    // Category filter
-    if (category && category !== '') {
+    if (category && category !== 'all') {
       where.category = category;
     }
 
-    // Search filter
+    if (difficulty && difficulty !== 'all') {
+      where.difficulty = difficulty.toUpperCase();
+    }
+
     if (search) {
       where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } }
+        {
+          title: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        },
+        {
+          description: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        }
       ];
     }
 
-    // Difficulty filter
-    if (difficulty) {
-      where.difficulty = difficulty;
-    }
+    // Get challenges with pagination
+    const [challenges, total] = await Promise.all([
+      prisma.challenge.findMany({
+        where,
+        include: {
+          tenant: true,
+          _count: {
+            select: {
+              enrollments: true
+            }
+          }
+        },
+        orderBy: [
+          { featured: 'desc' },
+          { createdAt: 'desc' }
+        ],
+        take: limit,
+        skip: offset
+      }),
+      prisma.challenge.count({ where })
+    ]);
 
-    // Get challenges with creator info
-    const challenges = await prisma.challenge.findMany({
-      where,
-      include: {
-        creator: {
-          select: {
-            name: true,
-            whopCompanyId: true
-          }
-        },
-        tenant: {
-          select: {
-            name: true,
-            whopCompanyId: true
-          }
-        },
-        _count: {
-          select: {
-            enrollments: true
-          }
+    // Auto-categorize challenges that don't have a category
+    const updatedChallenges = await Promise.all(
+      challenges.map(async (challenge: any) => {
+        if (!challenge.category) {
+          const categoryValue = categorizeChallenge(
+            challenge.title,
+            challenge.description,
+            challenge.tenant?.name || null,
+            null
+          );
+          
+          // Update the challenge in the database
+          await prisma.challenge.update({
+            where: { id: challenge.id },
+            data: { category: categoryValue }
+          });
+          
+          return { ...challenge, category: categoryValue };
         }
-      },
-      orderBy: [
-        { featured: 'desc' }, // Featured challenges first
-        { createdAt: 'desc' }
-      ],
-      take: limit,
-      skip: offset
-    });
+        return challenge;
+      })
+    );
 
-    // Auto-categorize challenges that don't have a category yet
-    const challengesWithCategories = challenges.map((challenge: any) => {
-      if (!challenge.category || challenge.category === 'general') {
-        const autoCategory = categorizeChallenge(
-          challenge.title,
-          challenge.description,
-          challenge.tenant.name,
-          challenge.creator?.name || null
-        );
-        
-        // Update challenge category in background (don't await)
-        prisma.challenge.update({
-          where: { id: challenge.id },
-          data: { category: autoCategory }
-        }).catch(console.error);
-        
-        return { ...challenge, category: autoCategory };
-      }
-      return challenge;
-    });
-
-    // Get total count for pagination
-    const total = await prisma.challenge.count({ where });
+    const hasMore = offset + limit < total;
 
     return NextResponse.json({
-      challenges: challengesWithCategories,
+      challenges: updatedChallenges,
+      total,
+      hasMore,
       pagination: {
-        total,
         limit,
         offset,
-        hasMore: offset + limit < total
+        totalPages: Math.ceil(total / limit),
+        currentPage: Math.floor(offset / limit) + 1
       }
     });
 
   } catch (error) {
     console.error('Discover challenges API error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch challenges' },
+      { status: 500 }
+    );
   }
 }
