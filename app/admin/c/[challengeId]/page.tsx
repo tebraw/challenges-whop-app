@@ -426,8 +426,8 @@ export default function AdminChallengeDetailPage({
                     <BarChart3 className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <div className="text-xl font-bold text-white">{challenge.averageCompletionRate}%</div>
-                    <div className="text-sm text-gray-400">Avg. Completion Rate</div>
+                    <div className="text-xl font-bold text-white">{challenge.checkins}</div>
+                    <div className="text-sm text-gray-400">Total Check-ins</div>
                   </div>
                 </div>
                 
