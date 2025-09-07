@@ -51,68 +51,47 @@ export default function SelectWinnersPage({
   const loadChallengeData = async (id: string) => {
     setLoading(true);
     try {
-      // Development mode - use mock data
-      if (process.env.NODE_ENV === 'development') {
-        const mockChallenge = {
-          id,
-          title: "30-Day Fitness Challenge",
-          description: "Transform your fitness in 30 days",
-          startAt: new Date('2025-09-01'),
-          endAt: new Date('2025-09-30'),
-          status: "completed"
-        };
-
-        const mockParticipants: Participant[] = [
-          {
-            id: '1',
-            name: 'Alex Johnson',
-            email: 'alex@example.com',
-            avatar: '💪',
-            completionRate: 95,
-            isEligible: true
-          },
-          {
-            id: '2',
-            name: 'Sarah Wilson',
-            email: 'sarah@example.com',
-            avatar: '🏃‍♀️',
-            completionRate: 89,
-            isEligible: true
-          },
-          {
-            id: '3',
-            name: 'Mike Chen',
-            email: 'mike@example.com',
-            avatar: '🧘‍♂️',
-            completionRate: 87,
-            isEligible: true
-          },
-          {
-            id: '4',
-            name: 'Emma Davis',
-            email: 'emma@example.com',
-            avatar: '⭐',
-            completionRate: 83,
-            isEligible: true
-          },
-          {
-            id: '5',
-            name: 'David Brown',
-            email: 'david@example.com',
-            avatar: '🎯',
-            completionRate: 78,
-            isEligible: true
-          }
-        ];
-
-        setChallenge(mockChallenge);
-        setParticipants(mockParticipants);
-      } else {
-        // Production mode would fetch real data here
-        console.log('Loading challenge data for:', id);
+      // Load real challenge data from API
+      const response = await fetch(`/api/admin/challenges/${id}`, {
+        cache: 'no-store'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load challenge data');
       }
+      
+      const data = await response.json();
+      setChallenge(data);
+      
+      // Process participants from leaderboard data
+      if (data.leaderboard && data.leaderboard.length > 0) {
+        const processedParticipants: Participant[] = data.leaderboard.map((participant: any) => ({
+          id: participant.id,
+          name: participant.username || participant.email.split('@')[0],
+          email: participant.email,
+          avatar: '�',
+          completionRate: Math.round(participant.completionRate || 0),
+          isEligible: (participant.checkIns || 0) > 0 // Only eligible if has check-ins
+        }));
+        
+        // Sort by completion rate (highest first), then by join date (earliest first)
+        processedParticipants.sort((a, b) => {
+          if (b.completionRate !== a.completionRate) {
+            return b.completionRate - a.completionRate;
+          }
+          // If completion rates are equal, maintain original order (join date)
+          return 0;
+        });
+        
+        setParticipants(processedParticipants);
+      } else {
+        setParticipants([]);
+      }
+      
     } catch (error) {
       console.error('Error loading challenge data:', error);
+      setChallenge(null);
+      setParticipants([]);
     } finally {
       setLoading(false);
     }
@@ -126,6 +105,16 @@ export default function SelectWinnersPage({
           ? { ...winner, participant: null }
           : winner
     ));
+  };
+
+  const autoSelectTop3 = () => {
+    const eligibleParticipants = participants.filter(p => p.isEligible);
+    const top3 = eligibleParticipants.slice(0, 3);
+    
+    setWinners(prev => prev.map((winner, index) => ({
+      ...winner,
+      participant: top3[index] || null
+    })));
   };
 
   const sendNotifications = async () => {
@@ -177,10 +166,26 @@ export default function SelectWinnersPage({
                   return (
                     <div 
                       key={participant.id}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        isSelected 
-                          ? 'border-yellow-500 bg-yellow-900/20' 
-                          : 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                      onClick={() => {
+                        if (!participant.isEligible) return;
+                        
+                        if (isSelected) {
+                          // Remove from winners if already selected
+                          selectWinner(selectedRank!, participant);
+                        } else {
+                          // Find next available winner slot
+                          const availableSlot = winners.find(w => !w.participant);
+                          if (availableSlot) {
+                            selectWinner(availableSlot.rank, participant);
+                          }
+                        }
+                      }}
+                      className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                        !participant.isEligible 
+                          ? 'border-gray-700 bg-gray-800 opacity-50 cursor-not-allowed'
+                          : isSelected 
+                            ? 'border-yellow-500 bg-yellow-900/20' 
+                            : 'border-gray-600 bg-gray-700 hover:border-gray-500 hover:bg-gray-600'
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -189,6 +194,9 @@ export default function SelectWinnersPage({
                           <div>
                             <h3 className="font-semibold">{participant.name}</h3>
                             <p className="text-sm text-gray-400">{participant.email}</p>
+                            {!participant.isEligible && (
+                              <p className="text-xs text-red-400">Not eligible (no check-ins)</p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -201,6 +209,11 @@ export default function SelectWinnersPage({
                           {isSelected && (
                             <div className="bg-yellow-600 text-black px-3 py-1 rounded-full text-sm font-bold">
                               #{selectedRank} Winner
+                            </div>
+                          )}
+                          {!isSelected && participant.isEligible && (
+                            <div className="text-blue-400 text-sm">
+                              Click to select
                             </div>
                           )}
                         </div>
@@ -256,17 +269,7 @@ export default function SelectWinnersPage({
               {/* Quick Assign */}
               <div className="mt-6 pt-6 border-t border-gray-600">
                 <button
-                  onClick={() => {
-                    const topParticipants = participants
-                      .filter(p => p.isEligible)
-                      .sort((a, b) => b.completionRate - a.completionRate)
-                      .slice(0, 3);
-                    
-                    setWinners(prev => prev.map((winner, index) => ({
-                      ...winner,
-                      participant: topParticipants[index] || null
-                    })));
-                  }}
+                  onClick={autoSelectTop3}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors"
                 >
                   Auto-Select Top 3
