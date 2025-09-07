@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Trophy, Save, Eye, X, Mail, Send } from "lucide-react";
+import { ArrowLeft, Trophy, Save, Eye, X, Mail, Send, Crown, Medal, Award } from "lucide-react";
 import Link from "next/link";
 
 interface Participant {
@@ -16,7 +16,7 @@ interface Participant {
 interface Winner {
   rank: number;
   participant: Participant | null;
-  notificationMessage: string;
+  customMessage: string;
 }
 
 interface Checkin {
@@ -37,9 +37,9 @@ export default function SelectWinnersPage({
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [selectedRank, setSelectedRank] = useState<number>(1);
   const [winners, setWinners] = useState<Winner[]>([
-    { rank: 1, participant: null, notificationMessage: "🎉 Congratulations! You won 1st Place!" },
-    { rank: 2, participant: null, notificationMessage: "🎉 Congratulations! You won 2nd Place!" },
-    { rank: 3, participant: null, notificationMessage: "🎉 Congratulations! You won 3rd Place!" }
+    { rank: 1, participant: null, customMessage: "🎉 Congratulations! You won 1st Place in this challenge!" },
+    { rank: 2, participant: null, customMessage: "🎉 Congratulations! You won 2nd Place in this challenge!" },
+    { rank: 3, participant: null, customMessage: "🎉 Congratulations! You won 3rd Place in this challenge!" }
   ]);
   const [showCheckinsModal, setShowCheckinsModal] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
@@ -132,7 +132,7 @@ export default function SelectWinnersPage({
           participantId: w.participant!.id,
           email: w.participant!.email,
           rank: w.rank,
-          message: w.notificationMessage
+          message: w.customMessage
         }));
 
       // Send notifications via Whop API
@@ -154,6 +154,62 @@ export default function SelectWinnersPage({
     } catch (error) {
       console.error('Error sending notifications:', error);
       alert('Error sending notifications');
+    }
+  };
+
+  const saveWinners = async () => {
+    try {
+      const winnersData = winners
+        .filter(w => w.participant)
+        .map(w => ({
+          challengeId,
+          participantId: w.participant!.id,
+          rank: w.rank
+        }));
+
+      const response = await fetch(`/api/admin/challenges/${challengeId}/winners`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ winners: winnersData }),
+      });
+
+      if (response.ok) {
+        alert('Winners saved successfully!');
+      } else {
+        throw new Error('Failed to save winners');
+      }
+    } catch (error) {
+      console.error('Error saving winners:', error);
+      alert('Error saving winners');
+    }
+  };
+
+  const sendIndividualNotification = async (winner: Winner) => {
+    if (!winner.participant) return;
+
+    try {
+      const response = await fetch('/api/whop/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipient: winner.participant.email,
+          message: winner.customMessage,
+          type: 'winner_announcement'
+        }),
+      });
+
+      if (response.ok) {
+        alert(`Notification sent to ${winner.participant.name} via Whop!`);
+      } else {
+        throw new Error('Failed to send notification');
+      }
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      alert('Error sending notification');
     }
   };
 
@@ -300,53 +356,132 @@ export default function SelectWinnersPage({
             </div>
           </div>
 
-          {/* Winners Selection */}
+          {/* Selected Winners */}
           <div className="space-y-6">
-            {/* Winner Slots */}
             <div className="bg-gray-800 rounded-xl p-6">
-              <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                <Trophy className="h-6 w-6 text-yellow-500" />
-                Winners
-              </h2>
-              <div className="space-y-4">
-                {winners.map((winner) => (
-                  <div key={winner.rank} className="border border-gray-600 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-yellow-400">#{winner.rank} Place</h3>
-                    </div>
-                    
-                    {winner.participant ? (
-                      <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-                        <div className="flex-1">
-                          <div className="font-medium">{winner.participant.name}</div>
-                          <div className="text-sm text-gray-400">
-                            {winner.participant.completionRate}% completion
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => selectWinner(winner.rank, winner.participant!)}
-                          className="text-red-400 hover:text-red-300 text-sm"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 border-2 border-dashed border-gray-600 rounded-lg">
-                        <p className="text-gray-400 text-sm">Click a participant to assign</p>
-                      </div>
-                    )}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Trophy className="h-6 w-6 text-yellow-500" />
+                  Selected Winners
+                </h2>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-400">Select Rank:</label>
+                    <select
+                      value={selectedRank}
+                      onChange={(e) => setSelectedRank(Number(e.target.value))}
+                      className="bg-gray-700 border border-gray-600 text-white px-3 py-1 rounded"
+                    >
+                      <option value={1}>1st Place</option>
+                      <option value={2}>2nd Place</option>
+                      <option value={3}>3rd Place</option>
+                    </select>
                   </div>
-                ))}
+                  <button
+                    onClick={saveWinners}
+                    className="bg-yellow-600 hover:bg-yellow-700 text-black px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    Save Winners
+                  </button>
+                </div>
               </div>
 
-              {/* Quick Assign */}
-              <div className="mt-6 pt-6 border-t border-gray-600">
-                <button
-                  onClick={autoSelectTop3}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors"
-                >
-                  Auto-Select Top 3
-                </button>
+              {/* Winner Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {winners.map((winner) => {
+                  const getPlaceIcon = (rank: number) => {
+                    switch(rank) {
+                      case 1: return <Crown className="h-8 w-8 text-yellow-400" />;
+                      case 2: return <Medal className="h-8 w-8 text-gray-300" />;
+                      case 3: return <Award className="h-8 w-8 text-orange-400" />;
+                      default: return <Trophy className="h-8 w-8 text-gray-400" />;
+                    }
+                  };
+
+                  const getPlaceColor = (rank: number) => {
+                    switch(rank) {
+                      case 1: return 'border-yellow-500 bg-yellow-900/10';
+                      case 2: return 'border-gray-400 bg-gray-900/10';
+                      case 3: return 'border-orange-500 bg-orange-900/10';
+                      default: return 'border-gray-600 bg-gray-800';
+                    }
+                  };
+
+                  const getPlaceText = (rank: number) => {
+                    switch(rank) {
+                      case 1: return { text: '1st Place', color: 'text-yellow-400' };
+                      case 2: return { text: '2nd Place', color: 'text-gray-300' };
+                      case 3: return { text: '3rd Place', color: 'text-orange-400' };
+                      default: return { text: `${rank}th Place`, color: 'text-gray-400' };
+                    }
+                  };
+
+                  const placeInfo = getPlaceText(winner.rank);
+
+                  return (
+                    <div key={winner.rank} className={`border-2 rounded-lg p-6 ${getPlaceColor(winner.rank)}`}>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          {getPlaceIcon(winner.rank)}
+                          <h3 className={`font-semibold text-lg ${placeInfo.color}`}>
+                            {placeInfo.text}
+                          </h3>
+                        </div>
+                      </div>
+                      
+                      {winner.participant ? (
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
+                            <div className="flex-1">
+                              <div className="font-medium text-white">{winner.participant.name}</div>
+                              <div className="text-sm text-gray-400">
+                                {winner.participant.completionRate}% completion
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => removeWinner(winner.rank)}
+                              className="text-red-400 hover:text-red-300 text-sm"
+                            >
+                              Remove Winner
+                            </button>
+                          </div>
+
+                          {/* Custom Message Input */}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4 text-blue-400" />
+                              <label className="text-sm font-medium text-gray-300">Send Notification</label>
+                            </div>
+                            <textarea
+                              value={winner.customMessage}
+                              onChange={(e) => updateWinnerMessage(winner.rank, e.target.value)}
+                              placeholder={`Congratulations! You won ${placeInfo.text} in "this challenge"!`}
+                              className="w-full bg-gray-700 border border-gray-600 text-white p-3 rounded-lg text-sm resize-none focus:border-blue-500 focus:outline-none"
+                              rows={3}
+                            />
+                            <button
+                              onClick={() => sendIndividualNotification(winner)}
+                              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                            >
+                              <Send className="h-4 w-4" />
+                              Send via Whop
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 border-2 border-dashed border-gray-600 rounded-lg">
+                          <p className="text-gray-400 text-sm">Click on a participant below to select</p>
+                          <p className="text-gray-500 text-xs mt-1">Empty</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-gray-600 text-center">
+                <p className="text-gray-400 text-sm mb-4">Save winners first, then send individual notifications above.</p>
               </div>
             </div>
 
