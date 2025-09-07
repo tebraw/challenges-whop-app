@@ -42,26 +42,21 @@ export async function GET(
     let userStats = null;
     if (isParticipating && userEnrollment) {
       const allProofs = userEnrollment.proofs;
-      const currentStreak = calculateStreak(allProofs);
-      const totalCheckIns = allProofs.length;
       
-      // Check if can check in today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Calculate max possible check-ins based on cadence
+      const maxCheckIns = calculateMaxCheckIns(challenge);
+      const completedCheckIns = allProofs.length;
+      const completionRate = maxCheckIns > 0 ? (completedCheckIns / maxCheckIns) * 100 : 0;
       
-      const todayProof = allProofs.find(proof => {
-        const proofDate = new Date(proof.createdAt);
-        proofDate.setHours(0, 0, 0, 0);
-        return proofDate.getTime() === today.getTime();
-      });
-
-      const canCheckInToday = !todayProof && new Date() <= new Date(challenge.endAt);
+      // Check if can check in based on cadence
+      const canCheckIn = calculateCanCheckIn(challenge, allProofs);
 
       userStats = {
-        currentStreak,
-        totalCheckIns,
-        canCheckInToday,
-        hasCheckedInToday: !!todayProof,
+        completedCheckIns,
+        maxCheckIns,
+        completionRate: Math.round(completionRate), // Round to whole number
+        canCheckInToday: canCheckIn,
+        hasCheckedInToday: checkIfCheckedInToday(challenge, allProofs),
         joinedAt: userEnrollment.joinedAt,
         lastCheckin: allProofs[0]?.createdAt || null
       };
@@ -116,29 +111,48 @@ export async function GET(
   }
 }
 
-// Helper function to calculate current streak
-function calculateStreak(proofs: any[]): number {
-  if (proofs.length === 0) return 0;
-
-  let streak = 0;
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-
-  for (let i = 0; i < proofs.length; i++) {
-    const proofDate = new Date(proofs[i].createdAt);
-    const expectedDate = new Date(today);
-    expectedDate.setDate(today.getDate() - i);
-    expectedDate.setHours(0, 0, 0, 0);
-    
-    const proofDay = new Date(proofDate);
-    proofDay.setHours(0, 0, 0, 0);
-    
-    if (proofDay.getTime() === expectedDate.getTime()) {
-      streak++;
-    } else {
-      break;
-    }
+// Helper functions for new check-in logic
+function calculateMaxCheckIns(challenge: any): number {
+  if (challenge.cadence === 'END_OF_CHALLENGE') {
+    return 1;
   }
+  
+  // For DAILY cadence, calculate days between start and end
+  const startDate = new Date(challenge.startAt);
+  const endDate = new Date(challenge.endAt);
+  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
 
-  return streak;
+function calculateCanCheckIn(challenge: any, proofs: any[]): boolean {
+  const now = new Date();
+  const challengeEnded = now > new Date(challenge.endAt);
+  
+  if (challengeEnded) return false;
+  
+  if (challenge.cadence === 'END_OF_CHALLENGE') {
+    // Can check in any time during challenge if not done yet
+    return proofs.length === 0;
+  }
+  
+  // For DAILY cadence, check if already checked in today
+  return !checkIfCheckedInToday(challenge, proofs);
+}
+
+function checkIfCheckedInToday(challenge: any, proofs: any[]): boolean {
+  if (challenge.cadence === 'END_OF_CHALLENGE') {
+    // For end of challenge, "today" means any proof exists
+    return proofs.length > 0;
+  }
+  
+  // For DAILY cadence, check if proof exists today
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  return proofs.some(proof => {
+    const proofDate = new Date(proof.createdAt);
+    proofDate.setHours(0, 0, 0, 0);
+    return proofDate.getTime() === today.getTime();
+  });
 }

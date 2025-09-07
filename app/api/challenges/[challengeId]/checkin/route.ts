@@ -59,19 +59,42 @@ export async function POST(
       return NextResponse.json({ error: 'Challenge has ended' }, { status: 400 });
     }
 
-    // Check for existing proof today
-    let existingTodayProof = null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Check for existing proof based on cadence
+    let existingProof = null;
     
-    existingTodayProof = await prisma.proof.findFirst({
-      where: {
-        enrollmentId: enrollment.id,
-        createdAt: {
-          gte: today
+    if (enrollment.challenge.cadence === 'END_OF_CHALLENGE') {
+      // For END_OF_CHALLENGE, only one proof is allowed throughout the entire challenge
+      existingProof = await prisma.proof.findFirst({
+        where: {
+          enrollmentId: enrollment.id
         }
+      });
+      
+      if (existingProof) {
+        return NextResponse.json({ 
+          error: 'You have already submitted your proof for this challenge. Only one submission is allowed.' 
+        }, { status: 400 });
       }
-    });
+    } else if (enrollment.challenge.cadence === 'DAILY') {
+      // For DAILY cadence, check if already checked in today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      existingProof = await prisma.proof.findFirst({
+        where: {
+          enrollmentId: enrollment.id,
+          createdAt: {
+            gte: today
+          }
+        }
+      });
+      
+      if (existingProof) {
+        return NextResponse.json({ 
+          error: 'You have already checked in today. Come back tomorrow!' 
+        }, { status: 400 });
+      }
+    }
 
     // Validate proof type
     const { proofType } = enrollment.challenge;
@@ -85,46 +108,30 @@ export async function POST(
       return NextResponse.json({ error: 'Link proof is required' }, { status: 400 });
     }
 
-    // Create or update proof (check-in)
-    let proof;
-    if (existingTodayProof) {
-      // Update existing proof for today
-      proof = await prisma.proof.update({
-        where: {
-          id: existingTodayProof.id
-        },
-        data: {
-          type: proofType,
-          text: text || null,
-          url: imageUrl || linkUrl || null,
-          createdAt: new Date()
-        }
-      });
-    } else {
-      // Create new proof
-      proof = await prisma.proof.create({
-        data: {
-          enrollmentId: enrollment.id,
-          type: proofType,
-          text: text || null,
-          url: imageUrl || linkUrl || null,
-          createdAt: new Date()
-        }
-      });
-    }
+    // Create new proof
+    const proof = await prisma.proof.create({
+      data: {
+        enrollmentId: enrollment.id,
+        type: proofType,
+        text: text || null,
+        url: imageUrl || linkUrl || null,
+        createdAt: new Date()
+      }
+    });
 
-    // Calculate streak and total check-ins
+    // Calculate new stats for check-ins
     const allProofs = await prisma.proof.findMany({
       where: { enrollmentId: enrollment.id },
       orderBy: { createdAt: 'desc' }
     });
 
-    const currentStreak = calculateStreak(allProofs);
-    const totalCheckIns = allProofs.length;
+    const completedCheckIns = allProofs.length;
+    const maxCheckIns = calculateMaxCheckIns(enrollment.challenge);
+    const completionRate = maxCheckIns > 0 ? Math.round((completedCheckIns / maxCheckIns) * 100) : 0;
 
     return NextResponse.json({
       success: true,
-      message: existingTodayProof ? 'Check-in updated successfully!' : 'Check-in successful!',
+      message: 'Check-in successful!',
       checkin: {
         id: proof.id,
         createdAt: proof.createdAt,
@@ -133,9 +140,10 @@ export async function POST(
         linkUrl: proof.url
       },
       stats: {
-        currentStreak,
-        totalCheckIns,
-        challengeDays: Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+        completedCheckIns,
+        maxCheckIns,
+        completionRate,
+        challengeDays: maxCheckIns // For backward compatibility
       }
     });
 
@@ -148,30 +156,16 @@ export async function POST(
   }
 }
 
-// Helper function to calculate current streak
-function calculateStreak(checkins: any[]): number {
-  if (checkins.length === 0) return 0;
-
-  let streak = 0;
-  const today = new Date();
-  today.setHours(23, 59, 59, 999); // End of today
-
-  for (let i = 0; i < checkins.length; i++) {
-    const checkinDate = new Date(checkins[i].createdAt);
-    const expectedDate = new Date(today);
-    expectedDate.setDate(today.getDate() - i);
-    expectedDate.setHours(0, 0, 0, 0);
-    
-    // Check if checkin is on the expected day
-    const checkinDay = new Date(checkinDate);
-    checkinDay.setHours(0, 0, 0, 0);
-    
-    if (checkinDay.getTime() === expectedDate.getTime()) {
-      streak++;
-    } else {
-      break;
-    }
+// Helper function to calculate max possible check-ins based on cadence
+function calculateMaxCheckIns(challenge: any): number {
+  if (challenge.cadence === 'END_OF_CHALLENGE') {
+    return 1;
   }
-
-  return streak;
+  
+  // For DAILY cadence, calculate days between start and end
+  const startDate = new Date(challenge.startAt);
+  const endDate = new Date(challenge.endAt);
+  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
 }

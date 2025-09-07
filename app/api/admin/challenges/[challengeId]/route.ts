@@ -53,16 +53,31 @@ export async function GET(
       },
     });
 
+    // Helper function to calculate max check-ins
+    function calculateMaxCheckIns(challenge: any): number {
+      if (challenge.cadence === 'DAILY') {
+        const startDate = new Date(challenge.startDate);
+        const endDate = new Date(challenge.endDate);
+        const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        return Math.max(1, daysDiff + 1);
+      } else {
+        return 1; // END_OF_CHALLENGE
+      }
+    }
+
+    const maxCheckIns = calculateMaxCheckIns(challenge);
+
     // Generate leaderboard from the challenge enrollments (already includes proofs)
     const leaderboardData = challenge.enrollments.map(enrollment => {
-      const streak = calculateStreak(enrollment.proofs);
+      const completedCheckIns = enrollment.proofs.length;
+      const completionRate = maxCheckIns > 0 ? completedCheckIns / maxCheckIns : 0;
       return {
         id: enrollment.user.id,
         username: enrollment.user.name || 'Unknown User',
         email: enrollment.user.email,
-        checkIns: enrollment.proofs.length,
-        currentStreak: streak,
-        points: streak * 10 + enrollment.proofs.length * 5,
+        checkIns: completedCheckIns,
+        completionRate: completionRate,
+        points: Math.round(completionRate * 100) + completedCheckIns * 5,
         joinedAt: enrollment.joinedAt.toISOString(),
       };
     });
@@ -71,16 +86,17 @@ export async function GET(
     const transformedLeaderboard = leaderboardData
       .sort((a, b) => {
         if (b.points !== a.points) return b.points - a.points;
-        if (b.currentStreak !== a.currentStreak) return b.currentStreak - a.currentStreak;
+        if (b.completionRate !== a.completionRate) return b.completionRate - a.completionRate;
         return b.checkIns - a.checkIns;
       })
       .slice(0, 10); // Top 10 participants
 
-    // Calculate total streaks (sum of all user streaks)
-    let totalStreaks = 0;
+    // Calculate average completion rate
+    let avgCompletionRate = 0;
     challenge.enrollments.forEach(enrollment => {
-      const streak = calculateStreak(enrollment.proofs);
-      totalStreaks += streak;
+      const completedCheckIns = enrollment.proofs.length;
+      const completionRate = maxCheckIns > 0 ? completedCheckIns / maxCheckIns : 0;
+      avgCompletionRate += completionRate;
     });
 
     // Helper function to calculate current streak
@@ -128,7 +144,7 @@ export async function GET(
               new Date() > challenge.endAt ? 'ENDED' : 'ACTIVE',
       participants: challenge._count.enrollments,
       checkIns: checkinCount,
-      totalStreaks: totalStreaks,
+      avgCompletionRate: challenge.enrollments.length > 0 ? avgCompletionRate / challenge.enrollments.length : 0,
       leaderboard: transformedLeaderboard,
       // Handle different data structures in rules field
       rewards: (() => {

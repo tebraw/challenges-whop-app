@@ -19,7 +19,7 @@ type ChallengeDetailData = {
   status: string;
   participants: number;
   checkins: number;
-  totalStreaks: number;
+  averageCompletionRate: number; // Changed from totalStreaks
   imageUrl?: string;
   rewards?: Array<{
     place: number;
@@ -31,7 +31,7 @@ type ChallengeDetailData = {
     username: string;
     email: string;
     checkIns: number;
-    currentStreak?: number;
+    completionRate?: number; // Changed from currentStreak to completionRate
     points?: number;
     joinedAt: string;
   }>;
@@ -130,7 +130,7 @@ export default function AdminChallengeDetailPage({
           status: getChallengeStatus(data.startAt, data.endAt),
           participants: data.participants || 0,
           checkins: data.checkIns || 0,
-          totalStreaks: data.totalStreaks || 0,
+          averageCompletionRate: data.averageCompletionRate || 0,
           imageUrl: data.imageUrl,
           rewards: data.rewards || [],
           leaderboard: data.leaderboard || [
@@ -423,11 +423,11 @@ export default function AdminChallengeDetailPage({
               <div className="grid grid-cols-4 gap-6">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-orange-600 rounded-lg">
-                    <Flame className="h-5 w-5 text-white" />
+                    <BarChart3 className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <div className="text-xl font-bold text-white">{challenge.totalStreaks}</div>
-                    <div className="text-sm text-gray-400">Total Streaks</div>
+                    <div className="text-xl font-bold text-white">{challenge.averageCompletionRate}%</div>
+                    <div className="text-sm text-gray-400">Avg. Completion Rate</div>
                   </div>
                 </div>
                 
@@ -505,7 +505,7 @@ export default function AdminChallengeDetailPage({
                         <p className="font-semibold text-lg text-white">{participant.username}</p>
                         <p className="text-sm text-gray-400">{participant.email}</p>
                         <p className="text-sm text-gray-400">
-                          {participant.currentStreak || 0} Day Streak • {participant.checkIns} Check-ins
+                          {participant.completionRate || 0}% completion • {participant.checkIns} Check-ins
                         </p>
                       </div>
                     </div>

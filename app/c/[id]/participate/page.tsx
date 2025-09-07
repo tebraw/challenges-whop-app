@@ -19,7 +19,7 @@ export default function ChallengeParticipantPage({
     async function loadChallenge() {
       const resolvedParams = await params;
       
-      // Mock data
+      // Mock data - using new check-in system
       setChallenge({
         id: resolvedParams.id,
         title: "15K Steps Challenge",
@@ -28,11 +28,11 @@ export default function ChallengeParticipantPage({
         endAt: "2025-11-09",
         participants: 1,
         isParticipating: true,
-        streak: { current: 0, total: 7 },
+        checkins: { completed: 3, total: 18 }, // Changed from streak to checkins
         stats: {
-          totalDays: 7,
-          completed: 0,
-          remaining: 7,
+          totalDays: 18,
+          completed: 3,
+          remaining: 15,
           participants: 1
         }
       });
@@ -117,27 +117,39 @@ export default function ChallengeParticipantPage({
                 </div>
                 <div>
                   <h3 className="font-semibold">Your Progress</h3>
-                  <p className="text-gray-400 text-sm">Keep your streak alive!</p>
+                  <p className="text-gray-400 text-sm">Keep checking in every day!</p>
                 </div>
               </div>
               
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-400">Streak: {challenge.streak.current} / {challenge.streak.total}</span>
+                  <span className="text-sm text-gray-400">Check-ins: {challenge.checkins.completed} / {challenge.checkins.total}</span>
+                  <span className="text-sm text-green-400">{Math.round((challenge.checkins.completed / challenge.checkins.total) * 100)}% Complete</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
+                  <div 
+                    className="bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full transition-all duration-300"
+                    style={{ width: `${(challenge.checkins.completed / challenge.checkins.total) * 100}%` }}
+                  ></div>
                 </div>
                 <div className="flex space-x-1">
-                  {Array.from({ length: challenge.streak.total }, (_, i) => (
+                  {Array.from({ length: Math.min(challenge.checkins.total, 14) }, (_, i) => (
                     <div
                       key={i}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs ${
-                        i < challenge.streak.current 
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                        i < challenge.checkins.completed 
                           ? 'bg-green-600 text-white' 
                           : 'bg-gray-700 text-gray-500'
                       }`}
                     >
-                      {i < challenge.streak.current ? '✓' : '•'}
+                      {i < challenge.checkins.completed ? '✓' : '•'}
                     </div>
                   ))}
+                  {challenge.checkins.total > 14 && (
+                    <div className="flex items-center text-gray-400 text-xs ml-2">
+                      +{challenge.checkins.total - 14} more days
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { User } from '@prisma/client';
-import { Flame, CheckCircle, Clock, Star } from 'lucide-react';
+import { Flame, CheckCircle, Clock, Star, BarChart3 } from 'lucide-react';
 
 interface CustomerChallengesProps {
   experienceId: string;
@@ -22,8 +22,9 @@ interface Challenge {
   proofType: string;
   // Enhanced customer fields
   userStats?: {
-    currentStreak: number;
-    totalCheckIns: number;
+    completedCheckIns: number;
+    maxCheckIns: number;
+    completionRate: number;
     canCheckInToday: boolean;
     hasCheckedInToday: boolean;
     joinedAt: string;
@@ -274,8 +275,8 @@ export default function CustomerChallenges({ experienceId, user, whopUser }: Cus
                           {challenge.userStats && (
                             <>
                               <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full flex items-center gap-1">
-                                <Flame className="w-3 h-3" />
-                                {challenge.userStats.currentStreak} streak
+                                <BarChart3 className="w-3 h-3" />
+                                {challenge.userStats.completedCheckIns}/{challenge.userStats.maxCheckIns} check-ins
                               </span>
                               
                               {challenge.userStats.canCheckInToday && !challenge.userStats.hasCheckedInToday && (
@@ -343,7 +344,7 @@ export default function CustomerChallenges({ experienceId, user, whopUser }: Cus
                       </div>
                       {challenge.userStats && (
                         <div className="flex items-center gap-1">
-                          ✅ <span className="text-xs sm:text-sm">{challenge.userStats.totalCheckIns} check-ins</span>
+                          ✅ <span className="text-xs sm:text-sm">{challenge.userStats.completedCheckIns} check-ins</span>
                         </div>
                       )}
                     </div>

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { getUserAccessLevel, type AccessControlResult } from "@/lib/access-control-client";
 import { Card } from "@/components/ui/Card";
 import Link from "next/link";
-import { Calendar, Users, Award, Flame, CheckCircle, Clock, Star, Play } from "lucide-react";
+import { Calendar, Users, Award, Flame, CheckCircle, Clock, Star, Play, BarChart3 } from "lucide-react";
 import Button from "@/components/ui/Button";
 
 type Challenge = {
@@ -22,8 +22,9 @@ type Challenge = {
   userParticipation?: {
     isParticipating: boolean;
     stats?: {
-      currentStreak: number;
-      totalCheckIns: number;
+      completedCheckIns: number;
+      maxCheckIns: number;
+      completionRate: number;
       canCheckInToday: boolean;
       hasCheckedInToday: boolean;
       joinedAt: string;
@@ -201,8 +202,8 @@ export default function FeedPage() {
                               {challenge.userParticipation.stats && (
                                 <>
                                   <div className="flex items-center gap-1 bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">
-                                    <Flame className="w-3 h-3" />
-                                    <span>{challenge.userParticipation.stats.currentStreak} streak</span>
+                                    <BarChart3 className="w-3 h-3" />
+                                    <span>{challenge.userParticipation.stats.completedCheckIns}/{challenge.userParticipation.stats.maxCheckIns} check-ins</span>
                                   </div>
                                   {challenge.userParticipation.stats.canCheckInToday && !challenge.userParticipation.stats.hasCheckedInToday && (
                                     <div className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">

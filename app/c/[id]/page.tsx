@@ -28,8 +28,9 @@ interface ChallengeData {
 interface UserParticipation {
   isParticipating: boolean;
   stats?: {
-    currentStreak: number;
-    totalCheckIns: number;
+    completedCheckIns: number;
+    maxCheckIns: number;
+    completionRate: number;
     canCheckInToday: boolean;
     hasCheckedInToday: boolean;
     joinedAt: string;
@@ -41,8 +42,8 @@ interface LeaderboardEntry {
   rank: number;
   userId: string;
   username: string;
-  currentStreak: number;
-  totalCheckIns: number;
+  completedCheckIns: number;
+  maxCheckIns: number;
   points: number;
 }
 
@@ -340,18 +341,18 @@ export default function ChallengePage({
                       </h2>
                       <div className="text-center sm:text-right">
                         <div className="text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">
-                          {userParticipation.stats?.currentStreak || 0}
+                          {userParticipation.stats?.completedCheckIns || 0}/{userParticipation.stats?.maxCheckIns || 0}
                         </div>
-                        <p className="text-sm text-gray-400">Day Streak</p>
+                        <p className="text-sm text-gray-400">Check-ins</p>
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
                       <div className="text-center p-3 sm:p-4 bg-gray-800/50 rounded-xl border border-gray-700">
                         <div className="text-lg sm:text-2xl font-bold text-blue-400 mb-1">
-                          {userParticipation.stats?.totalCheckIns || 0}
+                          {userParticipation.stats?.completedCheckIns || 0}
                         </div>
-                        <p className="text-xs text-gray-400">Check-ins</p>
+                        <p className="text-xs text-gray-400">Completed</p>
                       </div>
                       <div className="text-center p-3 sm:p-4 bg-gray-800/50 rounded-xl border border-gray-700">
                         <div className="text-lg sm:text-2xl font-bold text-green-400 mb-1">
@@ -361,9 +362,9 @@ export default function ChallengePage({
                       </div>
                       <div className="text-center p-3 sm:p-4 bg-gray-800/50 rounded-xl border border-gray-700">
                         <div className="text-lg sm:text-2xl font-bold text-purple-400 mb-1">
-                          {Math.round(((userParticipation.stats?.totalCheckIns || 0) / (challenge.progress.daysElapsed || 1)) * 100) || 0}%
+                          {Math.round((userParticipation.stats?.completionRate || 0) * 100)}%
                         </div>
-                        <p className="text-xs text-gray-400">Success Rate</p>
+                        <p className="text-xs text-gray-400">Completion Rate</p>
                       </div>
                     </div>
 
@@ -471,7 +472,7 @@ export default function ChallengePage({
                           <div>
                             <p className="font-semibold text-lg">{participant.username}</p>
                             <p className="text-sm text-gray-400">
-                              {participant.currentStreak} Day Streak • {participant.totalCheckIns} Check-ins
+                              {participant.completedCheckIns}/{participant.maxCheckIns} check-ins
                             </p>
                           </div>
                         </div>

@@ -1,12 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Helper functions from status API
+function calculateMaxCheckIns(challenge: any): number {
+  if (challenge.cadence === 'DAILY') {
+    const startDate = new Date(challenge.startDate);
+    const endDate = new Date(challenge.endDate);
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.max(1, daysDiff + 1);
+  } else {
+    return 1; // END_OF_CHALLENGE
+  }
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
   try {
     const { challengeId } = await params;
+
+    // Get challenge data
+    const challenge = await prisma.challenge.findUnique({
+      where: { id: challengeId },
+    });
+
+    if (!challenge) {
+      return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
+    }
+
+    const maxCheckIns = calculateMaxCheckIns(challenge);
 
     // Get all enrollments with user data and check-ins
     const enrollments = await prisma.enrollment.findMany({
@@ -28,8 +51,8 @@ export async function GET(
     // Calculate stats for each participant
     const leaderboard = enrollments.map(enrollment => {
       const checkins = enrollment.checkins;
-      const currentStreak = calculateStreak(checkins);
-      const totalCheckIns = checkins.length;
+      const completedCheckIns = checkins.length;
+      const completionRate = maxCheckIns > 0 ? completedCheckIns / maxCheckIns : 0;
       const lastCheckin = checkins[0]?.createdAt || null;
 
       return {
@@ -37,19 +60,20 @@ export async function GET(
         username: enrollment.user.name || 'Anonymous',
         email: enrollment.user.email,
         joinedAt: enrollment.joinedAt,
-        currentStreak,
-        totalCheckIns,
+        completedCheckIns,
+        maxCheckIns,
+        completionRate,
         lastCheckin,
-        // Calculate points (streak * 10 + total check-ins * 5)
-        points: currentStreak * 10 + totalCheckIns * 5
+        // Calculate points based on completion rate and total check-ins
+        points: Math.round(completionRate * 100) + completedCheckIns * 5
       };
     });
 
-    // Sort by points (highest first), then by current streak, then by total check-ins
+    // Sort by points (highest first), then by completion rate, then by total check-ins
     leaderboard.sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
-      if (b.currentStreak !== a.currentStreak) return b.currentStreak - a.currentStreak;
-      return b.totalCheckIns - a.totalCheckIns;
+      if (b.completionRate !== a.completionRate) return b.completionRate - a.completionRate;
+      return b.completedCheckIns - a.completedCheckIns;
     });
 
     // Add ranking
@@ -62,11 +86,11 @@ export async function GET(
       leaderboard: rankedLeaderboard,
       totalParticipants: enrollments.length,
       stats: {
-        totalCheckIns: leaderboard.reduce((sum, p) => sum + p.totalCheckIns, 0),
-        averageStreak: leaderboard.length > 0 
-          ? leaderboard.reduce((sum, p) => sum + p.currentStreak, 0) / leaderboard.length 
+        totalCheckIns: leaderboard.reduce((sum, p) => sum + p.completedCheckIns, 0),
+        averageCompletionRate: leaderboard.length > 0 
+          ? leaderboard.reduce((sum, p) => sum + p.completionRate, 0) / leaderboard.length 
           : 0,
-        topStreak: Math.max(...leaderboard.map(p => p.currentStreak), 0)
+        topCompletionRate: Math.max(...leaderboard.map(p => p.completionRate), 0)
       }
     });
 
@@ -77,31 +101,4 @@ export async function GET(
       { status: 500 }
     );
   }
-}
-
-// Helper function to calculate current streak
-function calculateStreak(checkins: any[]): number {
-  if (checkins.length === 0) return 0;
-
-  let streak = 0;
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-
-  for (let i = 0; i < checkins.length; i++) {
-    const checkinDate = new Date(checkins[i].createdAt);
-    const expectedDate = new Date(today);
-    expectedDate.setDate(today.getDate() - i);
-    expectedDate.setHours(0, 0, 0, 0);
-    
-    const checkinDay = new Date(checkinDate);
-    checkinDay.setHours(0, 0, 0, 0);
-    
-    if (checkinDay.getTime() === expectedDate.getTime()) {
-      streak++;
-    } else {
-      break;
-    }
-  }
-
-  return streak;
 }
