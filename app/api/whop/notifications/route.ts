@@ -3,9 +3,12 @@ import { sendWhopNotification, getWhopUserIdByEmail } from '@/lib/whopApi';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userEmail, message, title } = await request.json();
+    const { recipient, userEmail, message, title, type } = await request.json();
 
-    if (!userEmail || !message) {
+    // Support both 'recipient' and 'userEmail' for backwards compatibility
+    const email = recipient || userEmail;
+
+    if (!email || !message) {
       return NextResponse.json(
         { error: 'User email and message are required' },
         { status: 400 }
@@ -13,24 +16,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Get Whop user ID from email
-    const whopUserId = await getWhopUserIdByEmail(userEmail);
+    const whopUserId = await getWhopUserIdByEmail(email);
     
     if (!whopUserId) {
-      console.error('Could not find Whop user ID for email:', userEmail);
+      console.error('Could not find Whop user ID for email:', email);
       // For development, we'll still proceed with a mock ID
     }
 
     // Send notification via Whop
     const success = await sendWhopNotification({
-      userId: whopUserId || `mock_${userEmail}`,
+      userId: whopUserId || `mock_${email}`,
       message,
-      title
+      title: title || 'Winner Announcement'
     });
 
     if (success) {
       return NextResponse.json({ 
         message: 'Notification sent successfully',
-        whopUserId: whopUserId || `mock_${userEmail}`
+        whopUserId: whopUserId || `mock_${email}`,
+        type: type || 'general'
       });
     } else {
       return NextResponse.json(
