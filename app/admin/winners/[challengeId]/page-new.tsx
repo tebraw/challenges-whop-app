@@ -66,13 +66,29 @@ export default function SelectWinnersPage({
       const data = await response.json();
       setChallenge(data);
       
+      // Initialize winners based on number of rewards in challenge
+      const numRewards = data.rewards?.length || 1;
+      const initialWinners: Winner[] = [];
+      
+      for (let i = 1; i <= Math.min(numRewards, 3); i++) {
+        const rewardTitle = data.rewards?.[i-1]?.title || `${i === 1 ? '1st' : i === 2 ? '2nd' : '3rd'} Place`;
+        initialWinners.push({
+          rank: i,
+          participant: null,
+          prize: rewardTitle,
+          customMessage: `🎉 Congratulations! You won ${i === 1 ? '1st' : i === 2 ? '2nd' : '3rd'} place in "${data.title}"!`
+        });
+      }
+      
+      setWinners(initialWinners);
+      
       // Process participants from leaderboard data
       if (data.leaderboard && data.leaderboard.length > 0) {
         const processedParticipants: Participant[] = data.leaderboard.map((participant: any) => ({
           id: participant.id,
           name: participant.username || participant.email.split('@')[0],
           email: participant.email,
-          avatar: '�',
+          avatar: '👤',
           completionRate: Math.round(participant.completionRate || 0),
           isEligible: (participant.checkIns || 0) > 0 // Only eligible if has check-ins
         }));
@@ -108,49 +124,6 @@ export default function SelectWinnersPage({
           ? { ...winner, participant: null }
           : winner
     ));
-  };
-
-  const autoSelectTop3 = () => {
-    const eligibleParticipants = participants.filter(p => p.isEligible);
-    const top3 = eligibleParticipants.slice(0, 3);
-    
-    setWinners(prev => prev.map((winner, index) => ({
-      ...winner,
-      participant: top3[index] || null
-    })));
-  };
-
-  const sendNotificationsViaWhop = async () => {
-    try {
-      const winnersWithMessages = winners
-        .filter(w => w.participant)
-        .map(w => ({
-          participantId: w.participant!.id,
-          email: w.participant!.email,
-          rank: w.rank,
-          message: w.customMessage
-        }));
-
-      // Send notifications via Whop API
-      for (const winner of winnersWithMessages) {
-        await fetch('/api/whop/notifications', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            recipient: winner.email,
-            message: winner.message,
-            type: 'winner_announcement'
-          }),
-        });
-      }
-      
-      alert('Notifications sent successfully via Whop!');
-    } catch (error) {
-      console.error('Error sending notifications:', error);
-      alert('Error sending notifications');
-    }
   };
 
   const removeWinner = (rank: number) => {
@@ -200,6 +173,39 @@ export default function SelectWinnersPage({
     }
   };
 
+  const sendNotificationsViaWhop = async () => {
+    try {
+      const winnersWithMessages = winners
+        .filter(w => w.participant)
+        .map(w => ({
+          participantId: w.participant!.id,
+          email: w.participant!.email,
+          rank: w.rank,
+          message: w.customMessage
+        }));
+
+      // Send notifications via Whop API
+      for (const winner of winnersWithMessages) {
+        await fetch('/api/whop/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            recipient: winner.email,
+            message: winner.message,
+            type: 'winner_announcement'
+          }),
+        });
+      }
+      
+      alert('Notifications sent successfully via Whop!');
+    } catch (error) {
+      console.error('Error sending notifications:', error);
+      alert('Error sending notifications');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
@@ -238,30 +244,31 @@ export default function SelectWinnersPage({
                   return (
                     <div 
                       key={participant.id}
-                      onClick={() => {
-                        if (!participant.isEligible) return;
-                        
-                        if (isSelected) {
-                          // Remove from winners if already selected
-                          selectWinner(selectedRank!, participant);
-                        } else {
-                          // Find next available winner slot
-                          const availableSlot = winners.find(w => !w.participant);
-                          if (availableSlot) {
-                            selectWinner(availableSlot.rank, participant);
-                          }
-                        }
-                      }}
-                      className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                      className={`p-4 rounded-lg border-2 transition-all ${
                         !participant.isEligible 
-                          ? 'border-gray-700 bg-gray-800 opacity-50 cursor-not-allowed'
+                          ? 'border-gray-700 bg-gray-800 opacity-50'
                           : isSelected 
                             ? 'border-yellow-500 bg-yellow-900/20' 
                             : 'border-gray-600 bg-gray-700 hover:border-gray-500 hover:bg-gray-600'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <div 
+                          className="flex items-center gap-3 flex-1 cursor-pointer"
+                          onClick={() => {
+                            if (!participant.isEligible) return;
+                            
+                            if (isSelected) {
+                              removeWinner(selectedRank!);
+                            } else {
+                              // Find next available winner slot
+                              const availableSlot = winners.find(w => !w.participant);
+                              if (availableSlot) {
+                                selectWinner(availableSlot.rank, participant);
+                              }
+                            }
+                          }}
+                        >
                           <div className="text-2xl">{participant.avatar}</div>
                           <div>
                             <h3 className="font-semibold">{participant.name}</h3>
@@ -278,6 +285,15 @@ export default function SelectWinnersPage({
                             </div>
                             <div className="text-xs text-gray-400">Completion</div>
                           </div>
+                          {participant.isEligible && (
+                            <button
+                              onClick={() => loadParticipantCheckins(participant)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+                            >
+                              <Eye className="h-3 w-3" />
+                              See Check-ins
+                            </button>
+                          )}
                           {isSelected && (
                             <div className="bg-yellow-600 text-black px-3 py-1 rounded-full text-sm font-bold">
                               #{selectedRank} Winner
@@ -303,7 +319,7 @@ export default function SelectWinnersPage({
             <div className="bg-gray-800 rounded-xl p-6">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <Trophy className="h-6 w-6 text-yellow-500" />
-                Winners
+                Selected Winners
               </h2>
               <div className="space-y-4">
                 {winners.map((winner) => (
@@ -314,20 +330,34 @@ export default function SelectWinnersPage({
                     </div>
                     
                     {winner.participant ? (
-                      <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-                        <div className="text-xl">{winner.participant.avatar}</div>
-                        <div className="flex-1">
-                          <div className="font-medium">{winner.participant.name}</div>
-                          <div className="text-sm text-gray-400">
-                            {winner.participant.completionRate}% completion
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
+                          <div className="text-xl">{winner.participant.avatar}</div>
+                          <div className="flex-1">
+                            <div className="font-medium">{winner.participant.name}</div>
+                            <div className="text-sm text-gray-400">
+                              {winner.participant.completionRate}% completion
+                            </div>
                           </div>
+                          <button
+                            onClick={() => removeWinner(winner.rank)}
+                            className="text-red-400 hover:text-red-300 text-sm"
+                          >
+                            Remove
+                          </button>
                         </div>
-                        <button
-                          onClick={() => selectWinner(winner.rank, winner.participant!)}
-                          className="text-red-400 hover:text-red-300 text-sm"
-                        >
-                          Remove
-                        </button>
+                        
+                        {/* Custom Message */}
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Notification Message:</label>
+                          <textarea
+                            value={winner.customMessage}
+                            onChange={(e) => updateWinnerMessage(winner.rank, e.target.value)}
+                            placeholder="Customize the winner notification..."
+                            className="w-full bg-gray-600 border border-gray-500 rounded-lg px-3 py-2 text-white placeholder-gray-400 text-sm"
+                            rows={3}
+                          />
+                        </div>
                       </div>
                     ) : (
                       <div className="text-center py-4 border-2 border-dashed border-gray-600 rounded-lg">
@@ -341,10 +371,10 @@ export default function SelectWinnersPage({
               {/* Quick Assign */}
               <div className="mt-6 pt-6 border-t border-gray-600">
                 <button
-                  onClick={autoSelectTop3}
+                  onClick={autoSelectTop}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors"
                 >
-                  Auto-Select Top 3
+                  Auto-Select Top {winners.length}
                 </button>
               </div>
             </div>
@@ -373,14 +403,70 @@ export default function SelectWinnersPage({
             </div>
           </div>
         </div>
+
+        {/* Check-ins Modal */}
+        {showCheckinsModal && selectedParticipant && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-gray-700">
+                <h2 className="text-xl font-bold">
+                  Check-ins for {selectedParticipant.name}
+                </h2>
+                <button
+                  onClick={() => setShowCheckinsModal(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[60vh]">
+                {participantCheckins.length > 0 ? (
+                  <div className="space-y-4">
+                    {participantCheckins.map((checkin) => (
+                      <div key={checkin.id} className="bg-gray-700 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-gray-400">
+                            {new Date(checkin.submittedAt).toLocaleDateString()} {new Date(checkin.submittedAt).toLocaleTimeString()}
+                          </span>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            checkin.status === 'APPROVED' ? 'bg-green-600' :
+                            checkin.status === 'REJECTED' ? 'bg-red-600' : 'bg-yellow-600'
+                          }`}>
+                            {checkin.status}
+                          </span>
+                        </div>
+                        
+                        {checkin.proofText && (
+                          <div className="mb-2">
+                            <p className="text-sm font-medium text-gray-300">Text Proof:</p>
+                            <p className="text-white">{checkin.proofText}</p>
+                          </div>
+                        )}
+                        
+                        {checkin.proofImage && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-300 mb-2">Image Proof:</p>
+                            <img 
+                              src={checkin.proofImage} 
+                              alt="Proof" 
+                              className="max-w-full h-auto rounded-lg"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    No check-ins found for this participant.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
-}
-
-// Add click handler for participant selection
-declare global {
-  interface Window {
-    selectParticipantAsWinner: (participantId: string, rank: number) => void;
-  }
 }
