@@ -59,24 +59,19 @@ export async function POST(
       return NextResponse.json({ error: 'Challenge has ended' }, { status: 400 });
     }
 
-    // Check if already checked in today (for DAILY cadence)
-    if (enrollment.challenge.cadence === 'DAILY') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const todayProof = await prisma.proof.findFirst({
-        where: {
-          enrollmentId: enrollment.id,
-          createdAt: {
-            gte: today
-          }
+    // Check for existing proof today
+    let existingTodayProof = null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    existingTodayProof = await prisma.proof.findFirst({
+      where: {
+        enrollmentId: enrollment.id,
+        createdAt: {
+          gte: today
         }
-      });
-
-      if (todayProof) {
-        return NextResponse.json({ error: 'Already checked in today' }, { status: 400 });
       }
-    }
+    });
 
     // Validate proof type
     const { proofType } = enrollment.challenge;
@@ -90,16 +85,33 @@ export async function POST(
       return NextResponse.json({ error: 'Link proof is required' }, { status: 400 });
     }
 
-    // Create proof (check-in)
-    const proof = await prisma.proof.create({
-      data: {
-        enrollmentId: enrollment.id,
-        type: proofType,
-        text: text || null,
-        url: imageUrl || linkUrl || null,
-        createdAt: new Date()
-      }
-    });
+    // Create or update proof (check-in)
+    let proof;
+    if (existingTodayProof) {
+      // Update existing proof for today
+      proof = await prisma.proof.update({
+        where: {
+          id: existingTodayProof.id
+        },
+        data: {
+          type: proofType,
+          text: text || null,
+          url: imageUrl || linkUrl || null,
+          createdAt: new Date()
+        }
+      });
+    } else {
+      // Create new proof
+      proof = await prisma.proof.create({
+        data: {
+          enrollmentId: enrollment.id,
+          type: proofType,
+          text: text || null,
+          url: imageUrl || linkUrl || null,
+          createdAt: new Date()
+        }
+      });
+    }
 
     // Calculate streak and total check-ins
     const allProofs = await prisma.proof.findMany({
@@ -112,7 +124,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: 'Check-in successful!',
+      message: existingTodayProof ? 'Check-in updated successfully!' : 'Check-in successful!',
       checkin: {
         id: proof.id,
         createdAt: proof.createdAt,
