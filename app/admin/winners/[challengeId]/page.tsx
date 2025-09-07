@@ -1,16 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Trophy, Save, Crown, Medal, Award, Mail, Send, Eye, X, Calendar, CheckCircle } from "lucide-react";
+import { ArrowLeft, Trophy, Save, Crown, Medal, Award, Mail, Send, Eye, X, Calendar, CheckCircle, Users } from "lucide-react";
 import Link from "next/link";
 
 interface Participant {
   id: string;
   name: string;
   email: string;
+  avatar: string;
   completionRate: number;
   checkIns: number;
+  completedCheckIns: number;
+  requiredCheckIns: number;
   isEligible: boolean;
+  points: number;
   totalScore?: number;
   rank?: number;
 }
@@ -62,39 +66,28 @@ export default function SelectWinnersPage({
     try {
       setLoading(true);
       
-      const challengeResponse = await fetch(`/api/admin/challenges/${id}`, {
+      // Load eligible participants specifically for winners selection
+      const response = await fetch(`/api/admin/challenges/${id}/eligible-participants`, {
         cache: 'no-store'
       });
       
-      if (challengeResponse.ok) {
-        const challengeData = await challengeResponse.json();
-        setChallenge(challengeData);
+      if (response.ok) {
+        const data = await response.json();
+        setChallenge(data.challenge);
         
-        // Process leaderboard data to get top participants
-        if (challengeData.leaderboard && challengeData.leaderboard.length > 0) {
-          const topThree = challengeData.leaderboard
-            .filter((p: any) => p.checkIns?.length > 0) // Only eligible participants
-            .slice(0, 10) // Get top 10 for selection
-            .map((p: any, index: number) => ({
-              id: p.id,
-              name: p.user?.name || p.user?.email || 'Unknown',
-              email: p.user?.email || '',
-              completionRate: p.completionRate || 0,
-              checkIns: p.checkIns?.length || 0,
-              isEligible: (p.checkIns?.length || 0) > 0,
-              totalScore: p.totalScore || 0,
-              rank: index + 1
-            }));
-          
-          setTopParticipants(topThree);
+        // Set top participants from eligible participants
+        if (data.eligibleParticipants && data.eligibleParticipants.length > 0) {
+          setTopParticipants(data.eligibleParticipants);
           
           // Auto-assign top 3 to winner slots
           const autoWinners = winners.map((winner, index) => ({
             ...winner,
-            participant: topThree[index] || null
+            participant: data.eligibleParticipants[index] || null
           }));
           setWinners(autoWinners);
         }
+      } else {
+        console.error('Failed to load eligible participants:', response.statusText);
       }
     } catch (error) {
       console.error('Error loading challenge data:', error);
@@ -456,6 +449,115 @@ export default function SelectWinnersPage({
               })}
             </div>
           </div>
+        </div>
+
+        {/* Eligible Participants Section */}
+        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+          <div className="flex items-center gap-3 mb-6">
+            <Users className="h-6 w-6 text-blue-400" />
+            <h2 className="text-xl font-bold text-white">
+              Eligible Participants 
+              <span className="text-sm text-gray-400 ml-2">
+                ({topParticipants.length} qualified)
+              </span>
+            </h2>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
+              <p className="text-gray-400 mt-2">Loading participants...</p>
+            </div>
+          ) : topParticipants.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-300 mb-2">No Eligible Participants</h3>
+              <p className="text-gray-400">
+                No participants have completed all required check-ins with the correct proof format.
+              </p>
+              {challenge && (
+                <div className="mt-4 p-4 bg-gray-700 rounded-lg text-sm">
+                  <p className="text-gray-300">
+                    <strong>Requirements:</strong> {challenge.requiredCheckIns} check-ins with {challenge.proofType.toLowerCase()} proof
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {topParticipants.map((participant, index) => {
+                const isAssigned = winners.some(w => w.participant?.id === participant.id);
+                const assignedRank = winners.find(w => w.participant?.id === participant.id)?.rank;
+                
+                return (
+                  <div key={participant.id} className="bg-gray-700 rounded-lg p-4 border border-gray-600 hover:border-gray-500 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold">
+                          {participant.avatar}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-white">{participant.name}</h3>
+                          <p className="text-sm text-gray-400">{participant.email}</p>
+                          <div className="flex items-center gap-4 mt-1 text-xs">
+                            <span className="text-green-400">
+                              ✓ {participant.completedCheckIns}/{participant.requiredCheckIns} check-ins
+                            </span>
+                            <span className="text-blue-400">
+                              {participant.completionRate}% completion
+                            </span>
+                            <span className="text-yellow-400">
+                              {participant.points} points
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => loadParticipantProofs(participant)}
+                          className="text-blue-400 hover:text-blue-300 transition-colors p-2 rounded hover:bg-gray-600"
+                          title="View Proofs"
+                        >
+                          <Eye className="h-5 w-5" />
+                        </button>
+                        
+                        {isAssigned ? (
+                          <div className="bg-yellow-600 text-black px-3 py-1 rounded-full text-sm font-bold">
+                            Winner #{assignedRank}
+                          </div>
+                        ) : (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => selectWinner(1, participant)}
+                              className="bg-yellow-600 hover:bg-yellow-700 text-black px-2 py-1 rounded text-xs font-bold transition-colors"
+                              title="Assign to 1st Place"
+                            >
+                              🥇 1st
+                            </button>
+                            <button
+                              onClick={() => selectWinner(2, participant)}
+                              className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded text-xs font-bold transition-colors"
+                              title="Assign to 2nd Place"
+                            >
+                              🥈 2nd
+                            </button>
+                            <button
+                              onClick={() => selectWinner(3, participant)}
+                              className="bg-orange-600 hover:bg-orange-700 text-white px-2 py-1 rounded text-xs font-bold transition-colors"
+                              title="Assign to 3rd Place"
+                            >
+                              🥉 3rd
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Proof Modal */}
