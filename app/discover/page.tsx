@@ -259,7 +259,7 @@ export default function DiscoverPage() {
           <div className="space-y-4">
             {filteredChallenges.map((challenge) => (
               <div key={challenge.id} className="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors group">
-                <Link href={`/c/${challenge.id}`} className="block">
+                <Link href={`/discover/c/${challenge.id}`} className="block">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       {challenge.imageUrl ? (

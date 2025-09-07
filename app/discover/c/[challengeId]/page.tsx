@@ -164,7 +164,7 @@ export default function PublicChallengePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
-        <div className="text-white text-lg">Lade Challenge...</div>
+        <div className="text-white text-lg">Loading challenge...</div>
       </div>
     );
   }
@@ -172,16 +172,16 @@ export default function PublicChallengePage() {
   if (!challenge) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
-        <div className="text-white text-lg">Challenge nicht gefunden</div>
+        <div className="text-white text-lg">Challenge not found</div>
       </div>
     );
   }
 
   const getJoinButtonText = () => {
-    if (joining) return 'Wird beigetreten...';
-    if (userAccess?.needsWhopAccess) return `${challenge.tenant.name} Community beitreten`;
-    if (userAccess?.canAccessChallenge) return 'Challenge beitreten';
-    return 'Zur Community';
+    if (joining) return 'Joining...';
+    if (userAccess?.needsWhopAccess) return `Join ${challenge.tenant.name} Community`;
+    if (userAccess?.canAccessChallenge) return 'Join Challenge';
+    return 'Join Community';
   };
 
   const getJoinButtonStyle = () => {
@@ -200,7 +200,7 @@ export default function PublicChallengePage() {
           className="mb-6 flex items-center text-gray-400 hover:text-white transition-colors"
         >
           <span className="mr-2">←</span>
-          Zurück zum Marketplace
+          Back to Marketplace
         </button>
 
         <div className="max-w-4xl mx-auto">
@@ -237,7 +237,7 @@ export default function PublicChallengePage() {
                 {challenge.title}
               </h1>
               <p className="text-lg text-gray-300 mb-6">
-                von <span className="font-semibold text-blue-400">{challenge.tenant.name}</span>
+                by <span className="font-semibold text-blue-400">{challenge.tenant.name}</span>
               </p>
 
               {/* Description */}
@@ -250,22 +250,22 @@ export default function PublicChallengePage() {
               {/* Challenge Details */}
               <div className="grid md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-gray-700 rounded-lg p-4">
-                  <h3 className="font-semibold text-white mb-2">🗓️ Zeitraum</h3>
+                  <h3 className="font-semibold text-white mb-2">🗓️ Duration</h3>
                   <p className="text-gray-300 text-sm">
-                    {new Date(challenge.startAt).toLocaleDateString('de-DE')} - {' '}
-                    {new Date(challenge.endAt).toLocaleDateString('de-DE')}
+                    {new Date(challenge.startAt).toLocaleDateString('en-US')} - {' '}
+                    {new Date(challenge.endAt).toLocaleDateString('en-US')}
                   </p>
                 </div>
                 <div className="bg-gray-700 rounded-lg p-4">
-                  <h3 className="font-semibold text-white mb-2">🔄 Häufigkeit</h3>
+                  <h3 className="font-semibold text-white mb-2">🔄 Frequency</h3>
                   <p className="text-gray-300 text-sm capitalize">
                     {challenge.cadence.toLowerCase()}
                   </p>
                 </div>
                 <div className="bg-gray-700 rounded-lg p-4">
-                  <h3 className="font-semibold text-white mb-2">📋 Nachweis</h3>
+                  <h3 className="font-semibold text-white mb-2">📋 Proof Type</h3>
                   <p className="text-gray-300 text-sm">
-                    {challenge.proofType === 'IMAGE' ? 'Bild' : 
+                    {challenge.proofType === 'IMAGE' ? 'Image' : 
                      challenge.proofType === 'TEXT' ? 'Text' : 'Video'}
                   </p>
                 </div>
@@ -284,9 +284,9 @@ export default function PublicChallengePage() {
                 {userAccess?.needsWhopAccess && (
                   <div className="flex-1 bg-gray-700 rounded-lg p-4">
                     <div className="text-center">
-                      <h4 className="text-white font-semibold mb-2">🔒 Community-Zugang erforderlich</h4>
+                      <h4 className="text-white font-semibold mb-2">🔒 Community Access Required</h4>
                       <p className="text-gray-300 text-sm">
-                        Tritt der <strong>{challenge.tenant.name}</strong> Community bei, um an dieser Challenge teilzunehmen.
+                        Join the <strong>{challenge.tenant.name}</strong> community to participate in this challenge.
                       </p>
                     </div>
                   </div>
