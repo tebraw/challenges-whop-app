@@ -192,13 +192,6 @@ export default function AdminList() {
               const isActive = new Date(c.startAt) <= new Date() && new Date() <= new Date(c.endAt);
               const status = new Date(c.startAt) > new Date() ? "Scheduled" : isActive ? "Live" : "Completed";
               
-              // Calculate simple engagement metrics
-              const challengeDays = Math.ceil(
-                (new Date(c.endAt).getTime() - new Date(c.startAt).getTime()) / (1000 * 60 * 60 * 24)
-              );
-              const avgEngagement = count > 0 ? Math.round((streakCount / (count * Math.max(1, challengeDays))) * 100) : 0;
-              const conversionScore = Math.min(100, Math.round(avgEngagement * 0.8 + (count > 10 ? 20 : 0)));
-              
               // Extract marketing data from rules
               const marketingRules = (c.rules ?? {}) as any;
               const category = marketingRules.category;
@@ -246,9 +239,6 @@ export default function AdminList() {
                           </div>
                           <div className="flex items-center">
                             🔥 {streakCount} check-ins
-                          </div>
-                          <div className="flex items-center">
-                            📈 {avgEngagement}% engagement
                           </div>
                         </div>
                       </div>

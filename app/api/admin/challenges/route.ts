@@ -2,37 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, requireAdmin } from '@/lib/auth';
 
-// Helper function to calculate current streak
-function calculateStreak(checkins: any[]): number {
-  if (checkins.length === 0) return 0;
-  
-  let streak = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  // Sort checkins by date (most recent first)
-  const sortedCheckins = checkins.sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-  
-  // Check consecutive days backwards from today
-  for (let i = 0; i < sortedCheckins.length; i++) {
-    const checkinDate = new Date(sortedCheckins[i].createdAt);
-    checkinDate.setHours(0, 0, 0, 0);
-    
-    const expectedDate = new Date(today);
-    expectedDate.setDate(today.getDate() - streak);
-    
-    if (checkinDate.getTime() === expectedDate.getTime()) {
-      streak++;
-    } else {
-      break;
-    }
-  }
-  
-  return streak;
-}
-
 // GET /api/admin/challenges - Admin view of challenges
 export async function GET(request: NextRequest) {
   try {
@@ -71,7 +40,7 @@ export async function GET(request: NextRequest) {
           }
         });
 
-        // Get all enrollments with their proofs to calculate streaks
+        // Get all enrollments with their proofs to calculate completion rates
         const enrollments = await prisma.enrollment.findMany({
           where: {
             challengeId: challenge.id
@@ -85,18 +54,11 @@ export async function GET(request: NextRequest) {
           }
         });
 
-        // Calculate total streaks (sum of all user streaks)
-        let totalStreaks = 0;
-        enrollments.forEach(enrollment => {
-          const streak = calculateStreak(enrollment.proofs);
-          totalStreaks += streak;
-        });
-
         return {
           ...challenge,
           participants: challenge._count.enrollments,
           checkIns: totalCheckIns,
-          streakCount: totalStreaks
+          streakCount: totalCheckIns // Use total check-ins instead of streak calculation
         };
       })
     );
