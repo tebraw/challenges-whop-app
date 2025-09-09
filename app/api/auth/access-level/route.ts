@@ -1,8 +1,9 @@
 // app/api/auth/access-level/route.ts
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     console.log('🔍 Access Level API: Getting current user...');
     const currentUser = await getCurrentUser();
@@ -12,6 +13,23 @@ export async function GET() {
       role: currentUser.role,
       whopCompanyId: currentUser.whopCompanyId,
     } : 'null');
+    
+    // Get challengeId from URL params if provided
+    const url = new URL(request.url);
+    const challengeId = url.searchParams.get('challengeId');
+    let isParticipant = false;
+    
+    // Check if user is already a participant in this specific challenge
+    if (currentUser && challengeId) {
+      const enrollment = await prisma.enrollment.findFirst({
+        where: {
+          userId: currentUser.id,
+          challengeId: challengeId
+        }
+      });
+      isParticipant = !!enrollment;
+      console.log('🎯 Participant check:', { challengeId, isParticipant });
+    }
     
     if (!currentUser) {
       // Gast-Benutzer - nur öffentliche Bereiche
@@ -23,6 +41,7 @@ export async function GET() {
           canViewAdmin: false,
           canViewMyFeed: false,
           canViewDiscover: true,
+          isParticipant: false,
         }
       });
     }
@@ -39,6 +58,7 @@ export async function GET() {
           canViewDiscover: true,
           userId: currentUser.id,
           companyId: currentUser.whopCompanyId,
+          isParticipant,
         }
       });
     }
@@ -54,6 +74,7 @@ export async function GET() {
         canViewDiscover: true,
         userId: currentUser.id,
         companyId: currentUser.whopCompanyId || undefined,
+        isParticipant,
       }
     });
 
@@ -67,6 +88,7 @@ export async function GET() {
         canViewAdmin: false,
         canViewMyFeed: false,
         canViewDiscover: true,
+        isParticipant: false,
       }
     });
   }

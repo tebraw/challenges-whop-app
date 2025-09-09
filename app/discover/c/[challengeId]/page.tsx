@@ -50,8 +50,18 @@ export default function PublicChallengePage() {
         const response = await fetch(`/api/discover/challenges?id=${challengeId}`);
         const data = await response.json();
         
+        console.log('📋 Challenge data response:', data);
+        
         if (data.challenges && data.challenges.length > 0) {
-          setChallenge(data.challenges[0]);
+          const challengeData = data.challenges[0];
+          console.log('📋 Setting challenge:', {
+            id: challengeData.id,
+            title: challengeData.title,
+            tenant: challengeData.tenant
+          });
+          setChallenge(challengeData);
+        } else {
+          console.log('❌ No challenge found for ID:', challengeId);
         }
       } catch (error) {
         console.error('Error fetching challenge:', error);
@@ -63,37 +73,55 @@ export default function PublicChallengePage() {
     }
   }, [challengeId]);
 
-  // Check user access level
+  // Check user access level and redirect based on role
   useEffect(() => {
-    const checkAccess = async () => {
+    const checkAccessAndRedirect = async () => {
+      if (!challenge) return;
+      
       try {
-        const response = await fetch('/api/auth/access-level');
+        const response = await fetch(`/api/auth/access-level?challengeId=${challengeId}`);
         const data = await response.json();
-        const accessData = data.accessLevel || data; // Handle both structures
+        const accessData = data.accessLevel || data;
         
-        console.log('🔍 Access check result:', { accessData, challenge: challenge?.tenant });
-        
-        // Only community members of the challenge creator can access
-        let canAccess = false;
-        
-        if (challenge && accessData.userType && accessData.companyId) {
-          // User must be part of the same company as the challenge creator
-          canAccess = accessData.companyId === challenge.tenant.whopCompanyId;
-        }
-        
-        console.log('🎯 Final access decision:', {
+        console.log('🔍 Discover Access check result:', { 
+          accessData, 
+          challenge: challenge?.tenant,
+          challengeId,
+          userType: accessData.userType,
+          isParticipant: accessData.isParticipant,
           userCompanyId: accessData.companyId,
-          challengeCompanyId: challenge?.tenant.whopCompanyId,
-          canAccess
+          challengeCompanyId: challenge?.tenant?.whopCompanyId
         });
         
-        // If user is a community member, redirect to full challenge page
-        if (canAccess) {
-          console.log('🔄 Community member detected - redirecting to full challenge experience');
-          router.push(`/c/${challengeId}`);
-          return;
+        // Check if user has community access (same company)
+        let hasCommunityAccess = false;
+        if (challenge && accessData.companyId && challenge.tenant?.whopCompanyId) {
+          hasCommunityAccess = accessData.companyId === challenge.tenant.whopCompanyId;
         }
         
+        // Smart Redirect Logic based on Role + Status
+        if (accessData.userType === 'company_owner' && hasCommunityAccess) {
+          // Admin → Admin Dashboard
+          console.log('👑 Admin detected - redirecting to admin dashboard');
+          router.push(`/admin/c/${challengeId}`);
+          return;
+        } else if (accessData.isParticipant && hasCommunityAccess) {
+          // Participant → Progress Page
+          console.log('🎯 Participant detected - redirecting to progress page');
+          router.push(`/c/${challengeId}/participate`);
+          return;
+        } else if (hasCommunityAccess && !accessData.isParticipant) {
+          // Community Member (not yet participant) → Join Page
+          console.log('� Community member detected - redirecting to join page');
+          router.push(`/c/${challengeId}`);
+          return;
+        } else {
+          // Guest or Non-Community Member → Stay on Discover Page
+          console.log('🚫 No community access - staying on discover page for monetization');
+        }
+        
+        // For state tracking in UI
+        const canAccess = hasCommunityAccess;
         setUserAccess({
           access: accessData.userType === 'guest' ? 'no_access' : 'customer',
           user: accessData.userId ? { id: accessData.userId } : null,
@@ -102,8 +130,11 @@ export default function PublicChallengePage() {
           whopJoinUrl: challenge?.tenant.whopCompanyId ? 
             `https://whop.com/company/${challenge.tenant.whopCompanyId}` : undefined
         });
+        
+        // Note: Removed old state setters as we only need userAccess for UI
+        
       } catch (error) {
-        console.error('Error checking access:', error);
+        console.error('❌ Error checking access:', error);
         // Default to no access
         setUserAccess({
           access: 'no_access',
@@ -118,7 +149,7 @@ export default function PublicChallengePage() {
     };
 
     if (challenge) {
-      checkAccess();
+      checkAccessAndRedirect();
     }
   }, [challenge, challengeId, router]);
 
