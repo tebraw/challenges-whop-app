@@ -87,6 +87,13 @@ export default function PublicChallengePage() {
           canAccess
         });
         
+        // If user is a community member, redirect to full challenge page
+        if (canAccess) {
+          console.log('🔄 Community member detected - redirecting to full challenge experience');
+          router.push(`/c/${challengeId}`);
+          return;
+        }
+        
         setUserAccess({
           access: accessData.userType === 'guest' ? 'no_access' : 'customer',
           user: accessData.userId ? { id: accessData.userId } : null,
@@ -113,7 +120,7 @@ export default function PublicChallengePage() {
     if (challenge) {
       checkAccess();
     }
-  }, [challenge, challengeId]);
+  }, [challenge, challengeId, router]);
 
   const handleJoinChallenge = async () => {
     if (!challenge) return;
