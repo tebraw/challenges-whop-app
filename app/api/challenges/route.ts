@@ -128,17 +128,22 @@ export async function POST(request: NextRequest) {
     const challengeData = validationResult.data;
     console.log('✅ Validation successful:', challengeData);
 
-    // Ensure default tenant exists
-    const defaultTenantId = 'default_tenant';
+    // Ensure tenant exists for this specific company
+    const tenantId = `tenant_${user.whopCompanyId}`;
     const tenant = await prisma.tenant.upsert({
-      where: { id: defaultTenantId },
+      where: { id: tenantId },
       create: {
-        id: defaultTenantId,
-        name: 'Default Tenant',
+        id: tenantId,
+        name: `Company ${user.whopCompanyId} Tenant`,
         whopCompanyId: user.whopCompanyId
       },
-      update: {}
+      update: {
+        // Always update the whopCompanyId to current user's company
+        whopCompanyId: user.whopCompanyId
+      }
     });
+
+    console.log('🏢 Tenant created/updated for company:', user.whopCompanyId);
 
     // Ensure user is associated with the tenant
     await prisma.user.update({

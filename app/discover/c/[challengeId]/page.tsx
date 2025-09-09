@@ -99,6 +99,16 @@ export default function PublicChallengePage() {
           hasCommunityAccess = accessData.companyId === challenge.tenant.whopCompanyId;
         }
         
+        console.log('🏢 DETAILED Community Access Check:', {
+          userCompanyId: accessData.companyId,
+          challengeCompanyId: challenge.tenant?.whopCompanyId,
+          userCompanyIdType: typeof accessData.companyId,
+          challengeCompanyIdType: typeof challenge.tenant?.whopCompanyId,
+          hasCommunityAccess,
+          exactMatch: accessData.companyId === challenge.tenant?.whopCompanyId,
+          stringComparison: String(accessData.companyId) === String(challenge.tenant?.whopCompanyId)
+        });
+        
         // Smart Redirect Logic based on Role + Status
         if (accessData.userType === 'company_owner' && hasCommunityAccess) {
           // Admin → Admin Dashboard

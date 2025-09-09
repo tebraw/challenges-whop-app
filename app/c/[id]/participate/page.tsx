@@ -22,7 +22,7 @@ export default function ChallengeParticipantPage({
       // Mock data - using new check-in system
       setChallenge({
         id: resolvedParams.id,
-        title: "15K Steps Challenge",
+        title: "10K Steps Challenge", // ← Fixed to match real challenge
         description: "ENTER the Challenge and send daily proof to WIN a 1 on 1 coaching session",
         startAt: "2025-04-09",
         endAt: "2025-11-09",
