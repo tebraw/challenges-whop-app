@@ -107,9 +107,15 @@ export default function PublicChallengePage() {
   const handleJoinChallenge = async () => {
     if (!challenge || !userAccess) return;
 
-    // If user needs Whop access, redirect to community
+    // If user needs Whop access, redirect to community product page
     if (userAccess.needsWhopAccess && userAccess.whopJoinUrl) {
       window.open(userAccess.whopJoinUrl, '_blank');
+      return;
+    }
+
+    // If guest user tries to join free challenge, redirect to auth
+    if (userAccess.access === 'no_access' && !challenge.tenant.whopCompanyId) {
+      router.push('/auth/whop?returnTo=' + encodeURIComponent(window.location.pathname));
       return;
     }
 
@@ -125,11 +131,11 @@ export default function PublicChallengePage() {
           // Redirect to challenge participation page
           router.push(`/c/${challengeId}/participate`);
         } else {
-          alert('Fehler beim Beitreten der Challenge');
+          alert('Error joining challenge');
         }
       } catch (error) {
         console.error('Error joining challenge:', error);
-        alert('Fehler beim Beitreten der Challenge');
+        alert('Error joining challenge');
       } finally {
         setJoining(false);
       }
@@ -180,7 +186,10 @@ export default function PublicChallengePage() {
   const getJoinButtonText = () => {
     if (joining) return 'Joining...';
     if (userAccess?.needsWhopAccess) return `Join ${challenge.tenant.name} Community`;
-    if (userAccess?.canAccessChallenge) return 'Join Challenge';
+    if (userAccess?.canAccessChallenge) return 'Join Free Challenge';
+    // For free challenges (like Default Tenant), show sign up for guests
+    if (!challenge.tenant.whopCompanyId && userAccess?.access === 'no_access') return 'Sign Up to Join';
+    if (!challenge.tenant.whopCompanyId) return 'Join Free Challenge';
     return 'Join Community';
   };
 
@@ -284,9 +293,12 @@ export default function PublicChallengePage() {
                 {userAccess?.needsWhopAccess && (
                   <div className="flex-1 bg-gray-700 rounded-lg p-4">
                     <div className="text-center">
-                      <h4 className="text-white font-semibold mb-2">🔒 Community Access Required</h4>
-                      <p className="text-gray-300 text-sm">
-                        Join the <strong>{challenge.tenant.name}</strong> community to participate in this challenge.
+                      <h4 className="text-white font-semibold mb-2">🔒 Community Membership Required</h4>
+                      <p className="text-gray-300 text-sm mb-2">
+                        This <strong>free challenge</strong> is exclusive to <strong>{challenge.tenant.name}</strong> community members.
+                      </p>
+                      <p className="text-gray-400 text-xs">
+                        💰 Join the community to access all their challenges
                       </p>
                     </div>
                   </div>
