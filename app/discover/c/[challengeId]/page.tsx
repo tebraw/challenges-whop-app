@@ -68,32 +68,43 @@ export default function PublicChallengePage() {
     const checkAccess = async () => {
       try {
         const response = await fetch('/api/auth/access-level');
-        const accessData = await response.json();
+        const data = await response.json();
+        const accessData = data.accessLevel || data; // Handle both structures
         
-        // If user has access, check if they can access this specific challenge
-        if (accessData.access !== 'no_access' && challenge) {
-          const challengeResponse = await fetch(`/api/challenges/${challengeId}`);
-          const canAccess = challengeResponse.ok;
-          
-          setUserAccess({
-            ...accessData,
-            canAccessChallenge: canAccess,
-            needsWhopAccess: !canAccess && challenge.tenant.whopCompanyId,
-            whopJoinUrl: challenge.tenant.whopCompanyId ? 
-              `https://whop.com/company/${challenge.tenant.whopCompanyId}` : undefined
-          });
-        } else {
-          // Guest user or no access
-          setUserAccess({
-            access: 'no_access',
-            canAccessChallenge: false,
-            needsWhopAccess: challenge?.tenant.whopCompanyId ? true : false,
-            whopJoinUrl: challenge?.tenant.whopCompanyId ? 
-              `https://whop.com/company/${challenge.tenant.whopCompanyId}` : undefined
-          });
+        console.log('🔍 Access check result:', { accessData, challenge: challenge?.tenant });
+        
+        // Only community members of the challenge creator can access
+        let canAccess = false;
+        
+        if (challenge && accessData.userType && accessData.companyId) {
+          // User must be part of the same company as the challenge creator
+          canAccess = accessData.companyId === challenge.tenant.whopCompanyId;
         }
+        
+        console.log('🎯 Final access decision:', {
+          userCompanyId: accessData.companyId,
+          challengeCompanyId: challenge?.tenant.whopCompanyId,
+          canAccess
+        });
+        
+        setUserAccess({
+          access: accessData.userType === 'guest' ? 'no_access' : 'customer',
+          user: accessData.userId ? { id: accessData.userId } : null,
+          canAccessChallenge: canAccess,
+          needsWhopAccess: !canAccess && !!challenge?.tenant.whopCompanyId,
+          whopJoinUrl: challenge?.tenant.whopCompanyId ? 
+            `https://whop.com/company/${challenge.tenant.whopCompanyId}` : undefined
+        });
       } catch (error) {
         console.error('Error checking access:', error);
+        // Default to no access
+        setUserAccess({
+          access: 'no_access',
+          canAccessChallenge: false,
+          needsWhopAccess: !!challenge?.tenant.whopCompanyId,
+          whopJoinUrl: challenge?.tenant.whopCompanyId ? 
+            `https://whop.com/company/${challenge.tenant.whopCompanyId}` : undefined
+        });
       } finally {
         setLoading(false);
       }
@@ -105,22 +116,23 @@ export default function PublicChallengePage() {
   }, [challenge, challengeId]);
 
   const handleJoinChallenge = async () => {
-    if (!challenge || !userAccess) return;
-
-    // If user needs Whop access, redirect to community product page
-    if (userAccess.needsWhopAccess && userAccess.whopJoinUrl) {
-      window.open(userAccess.whopJoinUrl, '_blank');
+    if (!challenge) return;
+    
+    // If userAccess is still loading, wait
+    if (!userAccess) {
+      console.log('User access still loading...');
       return;
     }
 
-    // If guest user tries to join free challenge, redirect to auth
-    if (userAccess.access === 'no_access' && !challenge.tenant.whopCompanyId) {
-      router.push('/auth/whop?returnTo=' + encodeURIComponent(window.location.pathname));
-      return;
-    }
+    console.log('Handle Join Challenge:', {
+      userAccess,
+      challengeTenant: challenge.tenant,
+      canAccessChallenge: userAccess.canAccessChallenge
+    });
 
-    // If user can access, join the challenge
+    // Only community members can join directly
     if (userAccess.canAccessChallenge) {
+      console.log('Community member - joining challenge directly...');
       setJoining(true);
       try {
         const response = await fetch(`/api/challenges/${challengeId}/join`, {
@@ -138,6 +150,18 @@ export default function PublicChallengePage() {
         alert('Error joining challenge');
       } finally {
         setJoining(false);
+      }
+    } else {
+      // Everyone else (including Default Tenant) -> redirect to product page
+      if (challenge.tenant.whopCompanyId) {
+        const productUrl = `https://whop.com/company/${challenge.tenant.whopCompanyId}`;
+        console.log('Redirecting to Whop product page:', productUrl);
+        window.open(productUrl, '_blank');
+      } else {
+        // Default Tenant - also redirect to Whop (use a default company or main page)
+        const defaultUrl = 'https://whop.com';
+        console.log('Default Tenant - redirecting to Whop main page:', defaultUrl);
+        window.open(defaultUrl, '_blank');
       }
     }
   };
@@ -184,20 +208,37 @@ export default function PublicChallengePage() {
   }
 
   const getJoinButtonText = () => {
+    console.log('🔍 Button Text Debug:', {
+      joining,
+      userAccess,
+      challengeTenant: challenge?.tenant,
+      canAccessChallenge: userAccess?.canAccessChallenge,
+      whopCompanyId: challenge?.tenant?.whopCompanyId
+    });
+    
     if (joining) return 'Joining...';
-    if (userAccess?.needsWhopAccess) return `Join ${challenge.tenant.name} Community`;
-    if (userAccess?.canAccessChallenge) return 'Join Free Challenge';
-    // For free challenges (like Default Tenant), show sign up for guests
-    if (!challenge.tenant.whopCompanyId && userAccess?.access === 'no_access') return 'Sign Up to Join';
-    if (!challenge.tenant.whopCompanyId) return 'Join Free Challenge';
-    return 'Join Community';
+    
+    // Only community members can join directly
+    if (userAccess?.canAccessChallenge) {
+      return 'Join Free Challenge';
+    }
+    
+    // Everyone else gets redirected to product page (including Default Tenant)
+    if (challenge?.tenant?.whopCompanyId) {
+      return `Get ${challenge.tenant.name} Access`;
+    } else {
+      // Default Tenant - also gets Whop redirect
+      return 'Get Community Access';
+    }
   };
 
   const getJoinButtonStyle = () => {
-    if (userAccess?.needsWhopAccess) {
-      return 'bg-purple-600 hover:bg-purple-500';
+    // Community members get blue button (can join directly)
+    if (userAccess?.canAccessChallenge) {
+      return 'bg-blue-600 hover:bg-blue-500';
     }
-    return 'bg-blue-600 hover:bg-blue-500';
+    // Everyone else gets purple button (redirects to product page)
+    return 'bg-purple-600 hover:bg-purple-500';
   };
 
   return (
@@ -290,15 +331,16 @@ export default function PublicChallengePage() {
                   {getJoinButtonText()}
                 </button>
                 
-                {userAccess?.needsWhopAccess && (
+                {/* Info box for non-community members (including Default Tenant) */}
+                {!userAccess?.canAccessChallenge && (
                   <div className="flex-1 bg-gray-700 rounded-lg p-4">
                     <div className="text-center">
-                      <h4 className="text-white font-semibold mb-2">🔒 Community Membership Required</h4>
+                      <h4 className="text-white font-semibold mb-2">🔒 Community Access Required</h4>
                       <p className="text-gray-300 text-sm mb-2">
-                        This <strong>free challenge</strong> is exclusive to <strong>{challenge.tenant.name}</strong> community members.
+                        This <strong>free challenge</strong> is exclusive to community members.
                       </p>
                       <p className="text-gray-400 text-xs">
-                        💰 Join the community to access all their challenges
+                        💰 Get community access to join challenges
                       </p>
                     </div>
                   </div>
