@@ -121,13 +121,13 @@ export default function PublicChallengePage() {
           }
           return;
         } else if (accessData.isParticipant && hasCommunityAccess) {
-          // Participant → Progress Page
-          console.log('🎯 Participant detected - redirecting to progress page');
+          // Participant → Challenge Page (same as Feed)
+          console.log('🎯 Participant detected - redirecting to challenge page');
           try {
-            router.push(`/c/${challengeId}/participate`);
+            router.push(`/c/${challengeId}`);
           } catch (error) {
             console.error('Router error, using window.location:', error);
-            window.location.href = `/c/${challengeId}/participate`;
+            window.location.href = `/c/${challengeId}`;
           }
           return;
         } else if (hasCommunityAccess && !accessData.isParticipant) {
@@ -203,12 +203,12 @@ export default function PublicChallengePage() {
         });
 
         if (response.ok) {
-          // Redirect to challenge participation page
+          // Redirect to challenge page (same as Feed)
           try {
-            router.push(`/c/${challengeId}/participate`);
+            router.push(`/c/${challengeId}`);
           } catch (error) {
             console.error('Router error, using window.location:', error);
-            window.location.href = `/c/${challengeId}/participate`;
+            window.location.href = `/c/${challengeId}`;
           }
         } else {
           alert('Error joining challenge');
