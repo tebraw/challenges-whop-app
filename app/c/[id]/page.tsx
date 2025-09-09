@@ -180,7 +180,7 @@ export default function ChallengePage({
       const data = await response.json();
       
       if (response.ok) {
-        alert('Check-in erfolgreich! 🎉');
+        alert('Check-in successful! 🎉');
         setShowProofModal(false);
         setProofText('');
         setProofLink('');

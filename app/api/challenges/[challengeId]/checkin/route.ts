@@ -59,11 +59,12 @@ export async function POST(
       return NextResponse.json({ error: 'Challenge has ended' }, { status: 400 });
     }
 
-    // Check for existing proof based on cadence
+    // Check for existing proof based on cadence - UPDATE instead of BLOCK
     let existingProof = null;
+    let isUpdate = false;
     
     if (enrollment.challenge.cadence === 'END_OF_CHALLENGE') {
-      // For END_OF_CHALLENGE, only one proof is allowed throughout the entire challenge
+      // For END_OF_CHALLENGE, allow replacing the proof anytime during challenge
       existingProof = await prisma.proof.findFirst({
         where: {
           enrollmentId: enrollment.id
@@ -71,12 +72,10 @@ export async function POST(
       });
       
       if (existingProof) {
-        return NextResponse.json({ 
-          error: 'You have already submitted your proof for this challenge. Only one submission is allowed.' 
-        }, { status: 400 });
+        isUpdate = true;
       }
     } else if (enrollment.challenge.cadence === 'DAILY') {
-      // For DAILY cadence, check if already checked in today
+      // For DAILY cadence, allow replacing proof on the same day
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -90,9 +89,7 @@ export async function POST(
       });
       
       if (existingProof) {
-        return NextResponse.json({ 
-          error: 'You have already checked in today. Come back tomorrow!' 
-        }, { status: 400 });
+        isUpdate = true;
       }
     }
 
@@ -108,16 +105,31 @@ export async function POST(
       return NextResponse.json({ error: 'Link proof is required' }, { status: 400 });
     }
 
-    // Create new proof
-    const proof = await prisma.proof.create({
-      data: {
-        enrollmentId: enrollment.id,
-        type: proofType,
-        text: text || null,
-        url: imageUrl || linkUrl || null,
-        createdAt: new Date()
-      }
-    });
+    // Create or update proof
+    let proof;
+    if (isUpdate && existingProof) {
+      // Update existing proof
+      proof = await prisma.proof.update({
+        where: { id: existingProof.id },
+        data: {
+          type: proofType,
+          text: text || null,
+          url: imageUrl || linkUrl || null,
+          updatedAt: new Date()
+        }
+      });
+    } else {
+      // Create new proof
+      proof = await prisma.proof.create({
+        data: {
+          enrollmentId: enrollment.id,
+          type: proofType,
+          text: text || null,
+          url: imageUrl || linkUrl || null,
+          createdAt: new Date()
+        }
+      });
+    }
 
     // Calculate new stats for check-ins
     const allProofs = await prisma.proof.findMany({
@@ -131,13 +143,15 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: 'Check-in successful!',
+      message: isUpdate ? 'Proof updated successfully!' : 'Check-in successful!',
       checkin: {
         id: proof.id,
         createdAt: proof.createdAt,
+        updatedAt: proof.updatedAt,
         text: proof.text,
         imageUrl: proof.url,
-        linkUrl: proof.url
+        linkUrl: proof.url,
+        isUpdate: isUpdate
       },
       stats: {
         completedCheckIns,

@@ -19,7 +19,7 @@ export interface ProofConstraints {
 }
 
 /**
- * Validiert, ob ein Check-in basierend auf der Challenge-Cadence erlaubt ist
+ * Validates if a check-in is allowed based on the challenge cadence
  */
 export function validateCheckinRules(
   challenge: Pick<Challenge, 'cadence' | 'startAt' | 'endAt'>,
@@ -74,7 +74,7 @@ function validateEndOfChallengeCheckin(
   const now = currentDate.getTime();
   const endTime = new Date(challenge.endAt).getTime();
   
-  // Für END_OF_CHALLENGE: Check-in nur nach Ende der Challenge erlaubt
+  // For END_OF_CHALLENGE: Check-in only allowed after challenge ends
   if (now < endTime) {
     return {
       canCheckin: false,
@@ -82,12 +82,12 @@ function validateEndOfChallengeCheckin(
     };
   }
   
-  // Es gibt bereits einen Check-in - kann ersetzt werden
+  // Existing check-in can be replaced
   if (existingCheckins.length > 0) {
     return {
       canCheckin: true,
       existingTodayCheckin: existingCheckins[0],
-      reason: "Bestehender Check-in wird ersetzt"
+      reason: "Existing check-in will be replaced"
     };
   }
   
@@ -105,7 +105,7 @@ function validateDailyCheckin(
   existingCheckins: Checkin[],
   currentDate: Date
 ): CheckinConstraints {
-  // Prüfe, ob heute bereits ein Check-in existiert
+  // Check if a check-in already exists today
   const todayStart = new Date(currentDate);
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date(currentDate);
@@ -120,7 +120,7 @@ function validateDailyCheckin(
     return {
       canCheckin: true,
       existingTodayCheckin: todayCheckin,
-      reason: "Heutiger Check-in kann bearbeitet werden"
+      reason: "Today's check-in can be updated"
     };
   }
   
@@ -172,11 +172,11 @@ export function validateProofRules(
   }
   
   if (challenge.cadence === "DAILY") {
-    // Für DAILY: Proof kann täglich eingereicht werden, solange Challenge läuft
+    // For DAILY: Proof can be submitted daily while challenge is running
     if (now > endTime) {
       return {
         canSubmitProof: false,
-        reason: "Challenge ist bereits beendet"
+        reason: "Challenge has already ended"
       };
     }
     
