@@ -58,7 +58,16 @@ export async function getCurrentUserId(): Promise<string | null> {
   }
 }
 
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<{
+  id: string;
+  email: string;
+  name: string | null;
+  role: 'ADMIN' | 'USER';
+  createdAt: Date;
+  tenantId: string;
+  whopUserId: string | null;
+  whopCompanyId: string | null;
+} | null> {
   // SECURITY: Only allow dev auth if explicitly enabled
   if (process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_AUTH === 'true') {
     return await getDevUser();
@@ -79,6 +88,7 @@ export async function getCurrentUser() {
           name: true,
           role: true,
           createdAt: true,
+          tenantId: true,
           whopCompanyId: true,
           whopUserId: true
         }
