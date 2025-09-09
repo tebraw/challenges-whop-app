@@ -28,12 +28,15 @@ export default async function Home() {
         
         if (userId) {
           console.log('👤 User ID:', userId);
+          console.log('🔍 DEBUG: Experience ID:', experienceId);
           
           // Method 1: Company Context (Company Owners/Admins) - Higher Priority
           // Extract company ID from app config
           const cookieStore = await cookies();
           const appConfigCookie = cookieStore.get('whop.app-config')?.value;
           let companyId = null;
+          
+          console.log('🔍 DEBUG: App Config Cookie:', appConfigCookie);
           
           if (appConfigCookie) {
             try {
@@ -64,8 +67,29 @@ export default async function Home() {
           
           // Method 2: Experience Context (Community Members) - Lower Priority
           if (experienceId) {
-            console.log('🎭 Experience Context - redirecting to Experience View');
-            redirect(`/experiences/${experienceId}`);
+            console.log('🎭 Experience Context detected');
+            
+            // BUT: If user has admin access to ANY company, redirect to admin instead
+            try {
+              // Try to find if user has admin access to any company
+              const userHasAdminAccess = await whopSdk.access.checkIfUserHasAccessToCompany({
+                userId,
+                companyId: companyId || 'fallback-check' // Use detected companyId or fallback
+              });
+              
+              console.log('🔍 DEBUG: User admin access check:', userHasAdminAccess);
+              
+              if (userHasAdminAccess?.accessLevel === 'admin') {
+                console.log('🎯 User has admin access - redirecting to Admin Panel instead of Experience');
+                redirect(`/admin`);
+              } else {
+                console.log('🎭 Experience Context - redirecting to Experience View');
+                redirect(`/experiences/${experienceId}`);
+              }
+            } catch (error) {
+              console.log('⚠️ Admin access check failed, falling back to experience:', error);
+              redirect(`/experiences/${experienceId}`);
+            }
           }
         }
       } catch (whopError) {
