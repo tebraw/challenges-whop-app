@@ -24,30 +24,15 @@ export default function ChallengeParticipantPage({
         const response = await fetch(`/api/discover/challenges?id=${resolvedParams.id}`);
         const data = await response.json();
         
-        if (data.success && data.challenge) {
+        if (data.challenges && data.challenges.length > 0) {
           setChallenge({
-            ...data.challenge,
+            ...data.challenges[0],
             isParticipating: true // Since we're on the participant page, we know they're participating
           });
         } else {
-          console.error('❌ Failed to load challenge:', data);
-          // Fallback to mock data if API fails
-          setChallenge({
-            id: resolvedParams.id,
-            title: "10K Steps Challenge",
-            description: "ENTER the Challenge and send daily proof to WIN a 1 on 1 coaching session",
-            startAt: "2025-04-09",
-            endAt: "2025-11-09",
-            participants: 1,
-            isParticipating: true,
-            checkins: { completed: 3, total: 18 },
-            stats: {
-              totalDays: 18,
-              completed: 3,
-              remaining: 15,
-              participants: 1
-            }
-          });
+          console.error('❌ Challenge not found:', resolvedParams.id);
+          // Don't use fallback data - show error state instead
+          setChallenge(null);
         }
       } catch (error) {
         console.error('❌ Error loading challenge:', error);

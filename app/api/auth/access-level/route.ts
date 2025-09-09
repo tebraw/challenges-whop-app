@@ -28,7 +28,7 @@ export async function GET(request: Request) {
         }
       });
       isParticipant = !!enrollment;
-      console.log('🎯 Participant check:', { challengeId, isParticipant });
+      console.log('🎯 Participant check:', { challengeId, isParticipant, enrollment: !!enrollment });
     }
     
     if (!currentUser) {
