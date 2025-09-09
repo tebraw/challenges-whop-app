@@ -113,17 +113,32 @@ export default function PublicChallengePage() {
         if (accessData.userType === 'company_owner' && hasCommunityAccess) {
           // Admin → Admin Dashboard
           console.log('👑 Admin detected - redirecting to admin dashboard');
-          router.push(`/admin/c/${challengeId}`);
+          try {
+            router.push(`/admin/c/${challengeId}`);
+          } catch (error) {
+            console.error('Router error, using window.location:', error);
+            window.location.href = `/admin/c/${challengeId}`;
+          }
           return;
         } else if (accessData.isParticipant && hasCommunityAccess) {
           // Participant → Progress Page
           console.log('🎯 Participant detected - redirecting to progress page');
-          router.push(`/c/${challengeId}/participate`);
+          try {
+            router.push(`/c/${challengeId}/participate`);
+          } catch (error) {
+            console.error('Router error, using window.location:', error);
+            window.location.href = `/c/${challengeId}/participate`;
+          }
           return;
         } else if (hasCommunityAccess && !accessData.isParticipant) {
           // Community Member (not yet participant) → Join Page
-          console.log('� Community member detected - redirecting to join page');
-          router.push(`/c/${challengeId}`);
+          console.log('💡 Community member detected - redirecting to join page');
+          try {
+            router.push(`/c/${challengeId}`);
+          } catch (error) {
+            console.error('Router error, using window.location:', error);
+            window.location.href = `/c/${challengeId}`;
+          }
           return;
         } else {
           // Guest or Non-Community Member → Stay on Discover Page
@@ -189,7 +204,12 @@ export default function PublicChallengePage() {
 
         if (response.ok) {
           // Redirect to challenge participation page
-          router.push(`/c/${challengeId}/participate`);
+          try {
+            router.push(`/c/${challengeId}/participate`);
+          } catch (error) {
+            console.error('Router error, using window.location:', error);
+            window.location.href = `/c/${challengeId}/participate`;
+          }
         } else {
           alert('Error joining challenge');
         }
