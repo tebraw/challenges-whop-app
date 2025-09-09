@@ -29,13 +29,7 @@ export default async function Home() {
         if (userId) {
           console.log('👤 User ID:', userId);
           
-          // Method 1: Experience Context (Community Members)
-          if (experienceId) {
-            console.log('🎭 Experience Context - redirecting to Experience View');
-            redirect(`/experiences/${experienceId}`);
-          }
-          
-          // Method 2: Company Context (Company Owners)
+          // Method 1: Company Context (Company Owners/Admins) - Higher Priority
           // Extract company ID from app config
           const cookieStore = await cookies();
           const appConfigCookie = cookieStore.get('whop.app-config')?.value;
@@ -66,6 +60,12 @@ export default async function Home() {
             } else {
               console.log('⚠️ User has company access but not admin level:', companyAccess.accessLevel);
             }
+          }
+          
+          // Method 2: Experience Context (Community Members) - Lower Priority
+          if (experienceId) {
+            console.log('🎭 Experience Context - redirecting to Experience View');
+            redirect(`/experiences/${experienceId}`);
           }
         }
       } catch (whopError) {
