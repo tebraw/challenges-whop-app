@@ -17,57 +17,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    // Development mode - return mock data
-    if (process.env.NODE_ENV === 'development') {
-      const mockChallenges = [
-        {
-          id: 'cmf7lrtlq000314ehs17u67jy',
-          title: '30-Day Fitness Challenge',
-          description: 'Transform your fitness in 30 days',
-          imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=500&h=300&fit=crop',
-          category: 'Fitness',
-          startAt: new Date('2025-09-01'),
-          endAt: new Date('2025-09-30'),
-          isActive: true,
-          proofType: 'PHOTO',
-          difficulty: 'BEGINNER',
-          cadence: 'DAILY',
-          maxParticipants: 100,
-          policy: 'Challenge terms and conditions...',
-          rewards: [
-            { place: 1, title: 'Winner Prize', desc: 'Amazing reward for first place' }
-          ],
-          _count: { 
-            enrollments: 42 
-          }
-        },
-        {
-          id: 'cmf7lrtlq000414ehs17u67jz',
-          title: 'Meditation Marathon',
-          description: '21 days of daily meditation practice',
-          imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=500&h=300&fit=crop',
-          category: 'Wellness',
-          startAt: new Date('2025-09-10'),
-          endAt: new Date('2025-09-30'),
-          isActive: true,
-          proofType: 'TEXT',
-          difficulty: 'INTERMEDIATE',
-          cadence: 'DAILY',
-          maxParticipants: 50,
-          policy: 'Meditation challenge guidelines...',
-          rewards: [
-            { place: 1, title: 'Mindfulness Kit', desc: 'Complete meditation starter kit' }
-          ],
-          _count: { 
-            enrollments: 28 
-          }
-        }
-      ];
+    // Always fetch from database for consistent behavior
+    // Get user's tenant to ensure proper isolation
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: user.tenantId }
+    });
 
-      return NextResponse.json({ challenges: mockChallenges });
+    if (!tenant) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
-    // Production mode - fetch from database
+    // Fetch real challenges from database
     const challenges = await prisma.challenge.findMany({
       include: {
         _count: {
