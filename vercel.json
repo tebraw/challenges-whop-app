@@ -6,5 +6,13 @@
       "use": "@vercel/next"
     }
   ],
-  "regions": ["fra1"]
+  "regions": ["fra1"],
+  "functions": {
+    "app/api/upload/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "VERCEL_MAX_BODY_SIZE": "52428800"
+  }
 }

@@ -14,33 +14,16 @@ interface EnrollmentWithUserAndProofs {
   joinedAt: Date;
   user: {
     id: string;
-    name?: string | null;
-    email?: string | null;
-  };
-  proofs: Array<{
-    id: string;
-    type: string;
-    text?: string | null;
-    url?: string | null;
-    createdAt: Date;
-  }>;
-}
-
-interface EnrollmentWithUserAndCheckins {
-  id: string;
-  joinedAt: Date;
-  user: {
-    id: string;
     name: string | null;
     email: string;
   };
-  checkins: Array<{
+  proofs: Array<{
     id: string;
     createdAt: Date;
-    imageUrl: string | null;
+    type: string;
     text: string | null;
-    linkUrl: string | null;
-    enrollmentId: string;
+    url: string | null;
+    isActive: boolean;
   }>;
 }
 
@@ -90,7 +73,7 @@ export async function GET(
 
     const maxCheckIns = calculateMaxCheckIns(challenge);
 
-    // Get all enrollments with user data and check-ins
+    // Get all enrollments with user data and proofs
     const enrollments = await prisma.enrollment.findMany({
       where: { challengeId },
       include: {
@@ -101,18 +84,19 @@ export async function GET(
             email: true
           }
         },
-        checkins: {
+        proofs: {
+          where: { isActive: true },
           orderBy: { createdAt: 'desc' }
         }
       }
     });
 
     // Calculate stats for each participant
-    const leaderboard: LeaderboardParticipant[] = enrollments.map((enrollment: EnrollmentWithUserAndCheckins) => {
-      const checkins = enrollment.checkins;
-      const completedCheckIns = checkins.length;
+    const leaderboard: LeaderboardParticipant[] = enrollments.map((enrollment: EnrollmentWithUserAndProofs) => {
+      const proofs = enrollment.proofs;
+      const completedCheckIns = proofs.length;
       const completionRate = maxCheckIns > 0 ? completedCheckIns / maxCheckIns : 0;
-      const lastCheckin = checkins[0]?.createdAt || null;
+      const lastCheckin = proofs[0]?.createdAt || null;
 
       return {
         userId: enrollment.user.id,
