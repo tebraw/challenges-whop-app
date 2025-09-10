@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, requireAdmin } from '@/lib/auth';
 import { challengeAdminSchema } from '@/lib/adminSchema';
+import { SubscriptionService } from '@/lib/subscription-service';
 
 // Generate simple ID - we'll use the built-in cuid() from Prisma
 function generateId() {
@@ -69,6 +70,19 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Admin access verified for user:', user.id);
+
+    // 🔒 SUBSCRIPTION CHECK: Verify user can create challenges
+    const canCreateChallenge = await SubscriptionService.checkCanCreateChallenge(user.tenantId);
+    
+    if (!canCreateChallenge.canCreate) {
+      return NextResponse.json(
+        { 
+          error: 'Subscription limit reached',
+          message: canCreateChallenge.reason || 'Cannot create more challenges with current subscription'
+        },
+        { status: 403 }
+      );
+    }
 
     // Parse request body
     const body = await request.json();
@@ -149,6 +163,9 @@ export async function POST(request: NextRequest) {
     });
 
     console.log('✅ Challenge created successfully:', newChallenge.id);
+
+    // 📊 INCREMENT USAGE: Update monthly challenge count
+    await SubscriptionService.incrementChallengeUsage(user.tenantId);
 
     return NextResponse.json({ 
       message: 'Challenge created successfully',

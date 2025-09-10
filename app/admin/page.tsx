@@ -8,6 +8,8 @@ import Badge from "@/components/ui/Badge";
 import { Copy, Trash2, Pencil, BarChart3, Users, TrendingUp, DollarSign, Trophy } from "lucide-react";
 import ChallengeCountdown from "@/components/ui/ChallengeCountdown";
 import EditChallengeModal from "@/components/admin/EditChallengeModal";
+import SubscriptionGuard from "@/components/SubscriptionGuard";
+import UsageWidget from "@/components/UsageWidget";
 
 type Challenge = {
   imageUrl: any;
@@ -93,16 +95,18 @@ export default function AdminList() {
             <h1 className="text-2xl sm:text-3xl font-bold text-white">Challenge Dashboard</h1>
             <p className="text-gray-400 text-sm sm:text-base">Manage your challenges and track performance</p>
           </div>
-          <Link href="/admin/new">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
-              + New Challenge
-            </Button>
-          </Link>
+          <SubscriptionGuard action="create_challenge">
+            <Link href="/admin/new">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
+                + New Challenge
+              </Button>
+            </Link>
+          </SubscriptionGuard>
         </div>
 
-        {/* Quick Stats */}
+        {/* Quick Stats & Usage */}
         {!loading && items.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
             <div className="bg-gray-800 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-600 rounded-lg">
@@ -155,6 +159,11 @@ export default function AdminList() {
                   <div className="text-sm text-gray-400">Conversion Potential</div>
                 </div>
               </div>
+            </div>
+
+            {/* Usage Widget */}
+            <div className="xl:col-span-1">
+              <UsageWidget />
             </div>
           </div>
         )}

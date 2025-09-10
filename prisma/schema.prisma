@@ -9,12 +9,14 @@ datasource db {
 }
 
 model Tenant {
-  id            String      @id @default(cuid())
-  name          String
-  createdAt     DateTime    @default(now())
-  whopCompanyId String?     @unique
-  challenges    Challenge[]
-  users         User[]
+  id                String             @id @default(cuid())
+  name              String
+  createdAt         DateTime           @default(now())
+  whopCompanyId     String?            @unique
+  challenges        Challenge[]
+  monthlyUsage      MonthlyUsage[]
+  users             User[]
+  whopSubscriptions WhopSubscription[]
 }
 
 model User {
@@ -183,6 +185,33 @@ model ChallengeWinner {
   @@unique([challengeId, place])
   @@unique([challengeId, userId])
   @@index([challengeId])
+}
+
+model WhopSubscription {
+  id            String   @id @default(cuid())
+  tenantId      String
+  whopProductId String
+  status        String   @default("active")
+  validUntil    DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model MonthlyUsage {
+  id                String   @id @default(cuid())
+  tenantId          String
+  month             String
+  challengesCreated Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, month], name: "tenantId_month")
+  @@index([tenantId])
 }
 
 enum Cadence {
