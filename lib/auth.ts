@@ -78,7 +78,11 @@ export async function getCurrentUser(): Promise<{
 } | null> {
   // SECURITY: Only allow dev auth if explicitly enabled
   if (process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_AUTH === 'true') {
-    return await getDevUser();
+    const devUser = await getDevUser();
+    if (devUser) {
+      console.log('🧪 Using development authentication');
+      return devUser;
+    }
   }
   
   // DEMO AUTH: Check for demo session cookie (fallback for testing)

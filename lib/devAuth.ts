@@ -19,7 +19,39 @@ export async function getDevUser(): Promise<{
     return null;
   }
   
-  // In development, automatically return the admin user
+  // PRIORITY 1: Check for demo session cookie first
+  try {
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    const demoUserId = cookieStore.get('demo-user-id')?.value;
+    
+    if (demoUserId) {
+      console.log('🧪 Using demo session for development authentication');
+      const demoUser = await prisma.user.findUnique({
+        where: { id: demoUserId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          createdAt: true,
+          tenantId: true,
+          whopCompanyId: true,
+          whopUserId: true
+        }
+      });
+      
+      if (demoUser) {
+        console.log(`✅ Demo user loaded: ${demoUser.email} (${demoUser.role})`);
+        return demoUser;
+      }
+    }
+  } catch (error) {
+    console.log('No demo session found, falling back to default admin...');
+  }
+  
+  // FALLBACK: In development, automatically return the admin user
+  console.log('🧪 Using default admin user for development');
   return await prisma.user.findFirst({
     where: { role: 'ADMIN' },
     select: {
