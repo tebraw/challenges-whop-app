@@ -95,13 +95,20 @@ export default function AdminList() {
             <h1 className="text-2xl sm:text-3xl font-bold text-white">Challenge Dashboard</h1>
             <p className="text-gray-400 text-sm sm:text-base">Manage your challenges and track performance</p>
           </div>
-          <SubscriptionGuard action="create_challenge">
-            <Link href="/admin/new">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
-                + New Challenge
+          <div className="flex gap-3">
+            <Link href="/subscription">
+              <Button className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
+                💎 Subscription
               </Button>
             </Link>
-          </SubscriptionGuard>
+            <SubscriptionGuard action="create_challenge">
+              <Link href="/admin/new">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
+                  + New Challenge
+                </Button>
+              </Link>
+            </SubscriptionGuard>
+          </div>
         </div>
 
         {/* Quick Stats & Usage */}
