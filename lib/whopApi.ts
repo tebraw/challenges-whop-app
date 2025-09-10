@@ -18,6 +18,7 @@ export interface WhopProduct {
   creator_id: string;
   created_at: string;
   updated_at: string;
+  plan_id?: string; // Add plan_id for promo code creation
 }
 
 export interface WhopSubscriptionTier {
@@ -256,32 +257,59 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
     
     // v5 API endpoints - trying both company-specific and general approaches
     const endpoints = [
-      // Try to get products for specific company ID (if creatorId is a company)
+      // Primary: Get company products with plan mapping
       {
-        url: `${WHOP_API_BASE}/v5/company/products?company_id=${creatorId}`,
-        name: 'Specific Company Products v5',
-        requiresCompanyContext: false
+        url: `${WHOP_API_BASE}/v5/company/products`,
+        name: 'Company Products v5',
+        requiresCompanyContext: true,
+        fetchPlans: true
       },
-      // Try v2 API with specific creator ID (might work with proper permissions)
+      // Also get memberships to find plan-to-product mappings
+      {
+        url: `${WHOP_API_BASE}/v5/company/memberships`,
+        name: 'Company Memberships v5',
+        requiresCompanyContext: true,
+        fetchPlans: false
+      },
+      // Fallback to v2 if v5 doesn't work
       {
         url: `${WHOP_API_BASE}/api/v2/companies/${creatorId}/plans?per=50&expand=product`,
         name: 'Creator Plans v2',
-        requiresCompanyContext: false
-      },
-      // If creatorId matches our company, use direct company endpoint
-      {
-        url: `${WHOP_API_BASE}/v5/company/products`,
-        name: 'Own Company Products v5',
-        requiresCompanyContext: true
-      },
-      // Fallback: try to get general products (might not work due to permissions)
-      {
-        url: `${WHOP_API_BASE}/v5/products?company_id=${creatorId}`,
-        name: 'General Products v5',
-        requiresCompanyContext: false
+        requiresCompanyContext: false,
+        fetchPlans: false
       }
     ];
 
+    let planToProductMap: Record<string, string> = {};
+    let products: any[] = [];
+
+    // First, get memberships to build plan-to-product mapping
+    try {
+      const membershipsResponse = await fetch(`${WHOP_API_BASE}/v5/company/memberships`, {
+        headers: {
+          'Authorization': `Bearer ${WHOP_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (membershipsResponse.ok) {
+        const membershipsData = await membershipsResponse.json();
+        if (membershipsData.data) {
+          membershipsData.data.forEach((membership: any) => {
+            planToProductMap[membership.product_id] = membership.plan_id;
+          });
+          if (!isProduction) {
+            console.log('🗺️ Built plan mapping:', planToProductMap);
+          }
+        }
+      }
+    } catch (error) {
+      if (!isProduction) {
+        console.log('⚠️ Could not get plan mappings:', error);
+      }
+    }
+
+    // Now get products
     for (const endpoint of endpoints) {
       try {
         if (!isProduction) {
@@ -305,42 +333,39 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
             console.log(`✅ ${endpoint.name} success:`, JSON.stringify(data, null, 2));
           }
           
-          let products = [];
+          let fetchedProducts = [];
           
           // Handle different v5 response structures
-          if (endpoint.name.includes('v5')) {
+          if (endpoint.name.includes('v5') && endpoint.name.includes('Products')) {
             // v5 API returns products in a paginated format
             if (data.data && Array.isArray(data.data)) {
-              products = data.data;
+              fetchedProducts = data.data;
             } else if (data.pagination && data.data) {
-              products = data.data;
+              fetchedProducts = data.data;
             } else if (Array.isArray(data)) {
-              products = data;
-            } else {
-              // For other endpoints, might need different handling
-              if (!isProduction) {
-                console.log(`🔍 ${endpoint.name} returned unexpected structure:`, data);
-              }
-              continue;
+              fetchedProducts = data;
             }
+          } else if (endpoint.name.includes('Memberships')) {
+            // Skip memberships endpoint for product fetching
+            continue;
           } else {
             // v2 API response structure
             if (data.plans) {
-              products = data.plans;
+              fetchedProducts = data.plans;
             } else if (data.data) {
-              products = Array.isArray(data.data) ? data.data : [data.data];
+              fetchedProducts = Array.isArray(data.data) ? data.data : [data.data];
             } else if (Array.isArray(data)) {
-              products = data;
+              fetchedProducts = data;
             }
           }
 
-          if (products.length > 0) {
-            // Transform to our format with v5 compatibility
-            const transformedProducts: WhopProduct[] = products.map((product: any) => ({
+          if (fetchedProducts.length > 0) {
+            // Transform to our format with v5 compatibility and plan mapping
+            const transformedProducts: WhopProduct[] = fetchedProducts.map((product: any) => ({
               id: product.id,
               title: product.title || product.name || `Product ${product.id}`,
               description: product.description || '',
-              price: product.price || 0, // v5 products might not have price directly, would need plan info
+              price: product.price || 0, // v5 products might not have price directly
               currency: product.currency || 'USD',
               product_type: 'digital',
               image_url: product.image_url,
@@ -348,11 +373,17 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
               is_active: product.visibility === 'visible',
               creator_id: product.company_id || creatorId,
               created_at: product.created_at ? new Date(product.created_at * 1000).toISOString() : new Date().toISOString(),
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
+              plan_id: planToProductMap[product.id] // Add the plan ID for promo code creation
             }));
 
             if (!isProduction) {
               console.log(`🎯 Successfully transformed ${transformedProducts.length} products from ${endpoint.name}`);
+              console.log('Products with plan IDs:', transformedProducts.map(p => ({ 
+                product: p.id, 
+                plan: p.plan_id,
+                title: p.title 
+              })));
             }
             return transformedProducts;
           } else {

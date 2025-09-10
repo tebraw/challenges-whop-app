@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       code, 
       amount_off, 
       promo_type = 'percentage', 
-      plan_ids = [],
+      product_ids = [], // Frontend sends product IDs
       unlimited_stock = true,
       new_users_only = false 
     } = body;
@@ -33,14 +33,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if we're using mock products
-    const isMockProduct = plan_ids.some((id: string) => id.startsWith('mock_'));
+    const isMockProduct = product_ids.some((id: string) => id.startsWith('mock_'));
     
     if (isMockProduct) {
       // For mock products, return a mock promo code response
       console.log('🎭 Creating mock promo code for development:', {
         code,
         amount_off,
-        plan_ids,
+        product_ids,
         message: 'Mock promo code created - connect real Whop products for production'
       });
       
@@ -66,63 +66,98 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Calculate expiration date: 7 days from now
-    const expirationDate = new Date();
-    expirationDate.setDate(expirationDate.getDate() + 7);
-    const calculatedExpiration = expirationDate.toISOString();
-
-    // Create promo code via Whop API v2
-    const promoData = {
-      code,
-      amount_off: parseInt(amount_off),
-      promo_type,
-      plan_ids,
-      unlimited_stock,
-      new_users_only,
-      expiration_datetime: calculatedExpiration
-    };
-
-    console.log('🔄 Creating Whop promo code:', {
-      code,
-      amount_off,
-      plan_ids,
-      expiration_datetime: calculatedExpiration
-    });
-
-    const response = await fetch('https://api.whop.com/api/v2/promo_codes', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(promoData)
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('❌ Whop API Error Details:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorData,
-        requestData: promoData
-      });
-      throw new Error(`Whop API error: ${response.status} ${response.statusText} - ${errorData}`);
-    }
-
-    const promoCode = await response.json();
+    // 🔧 CONVERT PRODUCT IDS TO PLAN IDS
+    // We need to get the plan IDs for the selected products
+    const { getCreatorProducts } = await import('@/lib/whopApi');
     
-    return NextResponse.json({
-      success: true,
-      promoCode: {
-        id: promoCode.id,
-        code: promoCode.code,
-        amount_off: promoCode.amount_off,
-        promo_type: promoCode.promo_type,
-        status: promoCode.status,
-        uses: promoCode.uses || 0,
-        created_at: promoCode.created_at
+    try {
+      // Get all products with their plan IDs
+      const allProducts = await getCreatorProducts(user.whopCompanyId || 'current');
+      const planIds: string[] = [];
+      
+      for (const productId of product_ids) {
+        const product = allProducts.find(p => p.id === productId);
+        if (product && product.plan_id) {
+          planIds.push(product.plan_id);
+          console.log(`✅ Mapped product ${productId} to plan ${product.plan_id}`);
+        } else {
+          console.log(`⚠️ No plan found for product ${productId}`);
+        }
       }
-    });
+      
+      if (planIds.length === 0) {
+        return NextResponse.json({
+          error: 'No valid plan IDs found for the selected products'
+        }, { status: 400 });
+      }
+
+      console.log(`🎯 Using plan IDs for promo code: ${planIds.join(', ')}`);
+
+      // Calculate expiration date: 7 days from now
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + 7);
+      const calculatedExpiration = expirationDate.toISOString();
+
+      // Create promo code via Whop API v2 with plan IDs
+      const promoData = {
+        code,
+        amount_off: parseInt(amount_off),
+        promo_type,
+        plan_ids: planIds, // Use plan IDs instead of product IDs
+        unlimited_stock,
+        new_users_only,
+        expiration_datetime: calculatedExpiration
+      };
+
+      console.log('🔄 Creating Whop promo code:', {
+        code,
+        amount_off,
+        plan_ids: planIds, // Use the correct variable name
+        expiration_datetime: calculatedExpiration
+      });
+
+      const response = await fetch('https://api.whop.com/api/v2/promo_codes', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(promoData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('❌ Whop API Error Details:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          requestData: promoData
+        });
+        throw new Error(`Whop API error: ${response.status} ${response.statusText} - ${errorData}`);
+      }
+
+      const promoCode = await response.json();
+      
+      return NextResponse.json({
+        success: true,
+        promoCode: {
+          id: promoCode.id,
+          code: promoCode.code,
+          amount_off: promoCode.amount_off,
+          promo_type: promoCode.promo_type,
+          status: promoCode.status,
+          uses: promoCode.uses || 0,
+          created_at: promoCode.created_at
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error during plan ID conversion or promo code creation:', error);
+      return NextResponse.json({
+        error: 'Failed to create promo code',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }, { status: 500 });
+    }
 
   } catch (error) {
     console.error('❌ Error creating Whop promo code:', error);
