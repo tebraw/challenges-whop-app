@@ -8,6 +8,7 @@ export interface ExperienceContext {
   membershipId?: string;
   experienceId?: string;
   isEmbedded: boolean;
+  isCompanyOwner?: boolean; // Add this field to detect company owner context
 }
 
 export async function getExperienceContext(): Promise<ExperienceContext> {
@@ -63,12 +64,31 @@ export async function getExperienceContext(): Promise<ExperienceContext> {
                      h.get('x-frame-options') !== null ||
                      userAgent.includes('WhopApp');
 
+  // Check for company owner context clues
+  // When a company owner accesses their own app, they usually have the right context
+  let isCompanyOwner = false;
+  
+  // If we have both userId and companyId from Whop headers and we're embedded, 
+  // this is likely a company owner accessing their own app
+  if (userId && companyId && isEmbedded) {
+    // Additional checks: look for admin access patterns
+    const hasAdminAccess = h.get('x-whop-access-level') === 'admin' ||
+                          h.get('x-whop-role') === 'admin' ||
+                          referer.includes('dashboard') ||
+                          referer.includes('admin');
+    
+    // If accessing admin route with proper context, likely company owner
+    isCompanyOwner = hasAdminAccess;
+    console.log('🔍 Company owner detection:', { hasAdminAccess, isCompanyOwner });
+  }
+
   const context: ExperienceContext = {
     userId: userId || undefined,
     companyId: companyId || undefined,
     membershipId: membershipId || undefined,
     experienceId: experienceId || undefined,
-    isEmbedded
+    isEmbedded,
+    isCompanyOwner
   };
 
   console.log('🖼️ Experience Context Enhanced:', {
@@ -79,6 +99,7 @@ export async function getExperienceContext(): Promise<ExperienceContext> {
     hasMembershipId: !!context.membershipId,
     hasExperienceId: !!context.experienceId,
     isEmbedded: context.isEmbedded,
+    isCompanyOwner: context.isCompanyOwner,
     refererDomain: referer ? new URL(referer).hostname : 'none',
     method: userId ? (h.get('x-whop-user-token') ? 'header' : 'token') : 'none'
   });

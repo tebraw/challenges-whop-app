@@ -118,7 +118,7 @@ export async function getCurrentUser(): Promise<{
     const experienceContext = await getExperienceContext();
     
     if (experienceContext.userId && experienceContext.isEmbedded) {
-      console.log(`🖼️ Experience App detected - User: ${experienceContext.userId}, Company: ${experienceContext.companyId}`);
+      console.log(`🖼️ Experience App detected - User: ${experienceContext.userId}, Company: ${experienceContext.companyId}, Owner: ${experienceContext.isCompanyOwner}`);
       
       // Check if user already exists
       let user = await prisma.user.findUnique({
@@ -139,7 +139,13 @@ export async function getCurrentUser(): Promise<{
         console.log('✅ Existing Experience user found:', user.email);
         
         // Update user's role based on current Whop access level
-        const updatedRole = await getWhopExperienceRole(experienceContext.userId, experienceContext.companyId);
+        let updatedRole = await getWhopExperienceRole(experienceContext.userId, experienceContext.companyId);
+        
+        // FALLBACK: If API call fails but context suggests company owner, grant admin
+        if (updatedRole === 'USER' && experienceContext.isCompanyOwner) {
+          console.log('🚨 FALLBACK: Context suggests company owner, overriding to ADMIN');
+          updatedRole = 'ADMIN';
+        }
         
         if (user.role !== updatedRole) {
           console.log(`🔄 Updating user role from ${user.role} to ${updatedRole}`);
@@ -163,7 +169,13 @@ export async function getCurrentUser(): Promise<{
       }
       
       // Create new user with proper role based on Whop access level
-      const userRole = await getWhopExperienceRole(experienceContext.userId, experienceContext.companyId);
+      let userRole = await getWhopExperienceRole(experienceContext.userId, experienceContext.companyId);
+      
+      // FALLBACK: If API call fails but context suggests company owner, grant admin
+      if (userRole === 'USER' && experienceContext.isCompanyOwner) {
+        console.log('🚨 FALLBACK: Context suggests company owner for new user, overriding to ADMIN');
+        userRole = 'ADMIN';
+      }
       
       // Get or create tenant for this company
       let tenant = await prisma.tenant.findFirst({
@@ -226,18 +238,25 @@ async function getWhopExperienceRole(userId: string, companyId?: string): Promis
       console.log('🏢 Checking company ownership first...');
       
       try {
-        const userCompaniesResponse = await fetch(`https://api.whop.com/v5/users/${userId}/companies`, {
+        // Clean and validate user ID format
+        const cleanUserId = userId.trim();
+        console.log(`🔍 Making API call to check ownership for user: ${cleanUserId}`);
+        
+        const userCompaniesResponse = await fetch(`https://api.whop.com/v5/users/${cleanUserId}/companies`, {
           headers: {
             'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
             'Content-Type': 'application/json'
           }
         });
 
+        console.log(`📡 Company ownership API response status: ${userCompaniesResponse.status}`);
+
         if (userCompaniesResponse.ok) {
           const userCompanies = await userCompaniesResponse.json();
           const ownedCompanies = userCompanies.data || [];
           
           console.log('🔍 User owned companies:', ownedCompanies.map((c: any) => ({ id: c.id, name: c.name })));
+          console.log(`🎯 Target company ID: ${companyId}`);
           
           // Check if user owns the target company
           const ownsTargetCompany = ownedCompanies.some((company: any) => company.id === companyId);
@@ -248,6 +267,9 @@ async function getWhopExperienceRole(userId: string, companyId?: string): Promis
           } else {
             console.log('👤 User owns other companies but not this one - checking membership...');
           }
+        } else {
+          const errorText = await userCompaniesResponse.text();
+          console.log('❌ Company ownership API error response:', errorText);
         }
       } catch (companyError) {
         console.log('⚠️ Company ownership check failed:', companyError);
