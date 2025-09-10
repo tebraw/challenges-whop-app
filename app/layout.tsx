@@ -5,6 +5,7 @@ import "./globals.css";
 import AppHeader from "../components/ui/AppHeader"; // <- RELATIV, sicher
 import { ThemeProvider } from "../lib/ThemeContext";
 import { WhopApp } from "@whop/react/components";
+import ClientWrapper from "../components/ClientWrapper";
 
 export const metadata: Metadata = {
   title: "Challenges",
@@ -13,6 +14,9 @@ export const metadata: Metadata = {
   icons: {
     icon: "/logo-mark.png",
     apple: "/logo-mark.png",
+  },
+  other: {
+    "resource-hints-policy": "conservative",
   },
 };
 
@@ -24,8 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{
             __html: `
               // Suppress external service console errors in production
-              if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+              if (typeof window !== 'undefined') {
                 const originalError = console.error;
+                const originalWarn = console.warn;
+                
                 console.error = function(...args) {
                   const message = args.join(' ');
                   // Filter out external service blocking errors
@@ -35,11 +41,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     message.includes('cloudflareinsights.com') ||
                     message.includes('FFF-AcidGrotesk-Bold.woff2') ||
                     message.includes('Unrecognized feature:') ||
-                    message.includes('permissions policy violation')
+                    message.includes('permissions policy violation') ||
+                    message.includes('Failed to execute \\'postMessage\\' on \\'DOMWindow\\'') ||
+                    message.includes('target origin provided') ||
+                    message.includes('does not match the recipient window\\'s origin')
                   ) {
                     return; // Silently ignore these errors
                   }
                   originalError.apply(console, args);
+                };
+
+                console.warn = function(...args) {
+                  const message = args.join(' ');
+                  // Filter out resource preload warnings
+                  if (
+                    message.includes('was preloaded using link preload but not used') ||
+                    message.includes('Please make sure it has an appropriate') ||
+                    message.includes('preloaded intentionally')
+                  ) {
+                    return; // Silently ignore these warnings
+                  }
+                  originalWarn.apply(console, args);
                 };
               }
             `,
@@ -48,10 +70,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="antialiased">
         <WhopApp>
-          <ThemeProvider>
-            <AppHeader />
-            <div className="pt-16">{children}</div>
-          </ThemeProvider>
+          <ClientWrapper>
+            <ThemeProvider>
+              <AppHeader />
+              <div className="pt-16">{children}</div>
+            </ThemeProvider>
+          </ClientWrapper>
         </WhopApp>
       </body>
     </html>

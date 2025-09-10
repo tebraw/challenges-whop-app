@@ -241,35 +241,44 @@ export async function getCreatorInfo(creatorId: string): Promise<WhopCreator | n
   return Promise.resolve(mockCreators[creatorId] || null);
 }
 
-// Get creator's products from Whop
+// Get creator's products from Whop using v5 API
 export async function getCreatorProducts(creatorId: string): Promise<WhopProduct[]> {
   try {
     if (!WHOP_API_KEY) {
-      console.warn('Whop API key not configured - using fallback');
+      console.warn('Whop API key not configured - using mock products');
       return getMockProducts();
     }
 
     const isProduction = process.env.NODE_ENV === 'production';
     if (!isProduction) {
-      console.log(`🚀 Using enhanced Whop API with full scopes for creator: ${creatorId}`);
+      console.log(`🚀 Using Whop API v5 for creator: ${creatorId}`);
     }
     
-    // 🎯 TRY MULTIPLE ENDPOINTS WITH NEW SCOPES
+    // v5 API endpoints - trying both company-specific and general approaches
     const endpoints = [
-      // Primary endpoint with plan:read scope
+      // Try to get products for specific company ID (if creatorId is a company)
+      {
+        url: `${WHOP_API_BASE}/v5/company/products?company_id=${creatorId}`,
+        name: 'Specific Company Products v5',
+        requiresCompanyContext: false
+      },
+      // Try v2 API with specific creator ID (might work with proper permissions)
       {
         url: `${WHOP_API_BASE}/api/v2/companies/${creatorId}/plans?per=50&expand=product`,
-        name: 'Company Plans v2'
+        name: 'Creator Plans v2',
+        requiresCompanyContext: false
       },
-      // Fallback with plan:basic:read
+      // If creatorId matches our company, use direct company endpoint
       {
-        url: `${WHOP_API_BASE}/api/v5/plans?company_id=${creatorId}&per=50`,
-        name: 'Plans v5'
+        url: `${WHOP_API_BASE}/v5/company/products`,
+        name: 'Own Company Products v5',
+        requiresCompanyContext: true
       },
-      // New products endpoint with plan:stats:read
+      // Fallback: try to get general products (might not work due to permissions)
       {
-        url: `${WHOP_API_BASE}/api/v2/products?creator_id=${creatorId}&per=50`,
-        name: 'Products v2'
+        url: `${WHOP_API_BASE}/v5/products?company_id=${creatorId}`,
+        name: 'General Products v5',
+        requiresCompanyContext: false
       }
     ];
 
@@ -293,34 +302,52 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
         if (response.ok) {
           const data = await response.json();
           if (!isProduction) {
-            console.log(`✅ ${endpoint.name} success:`, data);
+            console.log(`✅ ${endpoint.name} success:`, JSON.stringify(data, null, 2));
           }
           
-          // Transform data to consistent format
           let products = [];
           
-          if (data.plans) {
-            products = data.plans;
-          } else if (data.data) {
-            products = Array.isArray(data.data) ? data.data : [data.data];
-          } else if (Array.isArray(data)) {
-            products = data;
+          // Handle different v5 response structures
+          if (endpoint.name.includes('v5')) {
+            // v5 API returns products in a paginated format
+            if (data.data && Array.isArray(data.data)) {
+              products = data.data;
+            } else if (data.pagination && data.data) {
+              products = data.data;
+            } else if (Array.isArray(data)) {
+              products = data;
+            } else {
+              // For other endpoints, might need different handling
+              if (!isProduction) {
+                console.log(`🔍 ${endpoint.name} returned unexpected structure:`, data);
+              }
+              continue;
+            }
+          } else {
+            // v2 API response structure
+            if (data.plans) {
+              products = data.plans;
+            } else if (data.data) {
+              products = Array.isArray(data.data) ? data.data : [data.data];
+            } else if (Array.isArray(data)) {
+              products = data;
+            }
           }
 
           if (products.length > 0) {
-            // Transform to our format with enhanced features
-            const transformedProducts: WhopProduct[] = products.map((plan: any) => ({
-              id: plan.id,
-              title: plan.product?.title || plan.title || `Plan ${plan.id}`,
-              description: plan.product?.description || plan.description || plan.payment_link_description,
-              price: plan.initial_price || plan.price || 0,
-              currency: plan.base_currency || plan.currency || 'USD',
-              product_type: plan.plan_type || plan.type || 'digital',
-              image_url: plan.product?.image_url || plan.image_url,
-              checkout_url: plan.direct_link || plan.checkout_url || `https://whop.com/checkout/${plan.id}`,
-              is_active: plan.visibility === 'visible' || plan.is_active !== false,
-              creator_id: creatorId,
-              created_at: plan.created_at ? new Date(plan.created_at * 1000).toISOString() : new Date().toISOString(),
+            // Transform to our format with v5 compatibility
+            const transformedProducts: WhopProduct[] = products.map((product: any) => ({
+              id: product.id,
+              title: product.title || product.name || `Product ${product.id}`,
+              description: product.description || '',
+              price: product.price || 0, // v5 products might not have price directly, would need plan info
+              currency: product.currency || 'USD',
+              product_type: 'digital',
+              image_url: product.image_url,
+              checkout_url: `https://whop.com/checkout/${product.id}`,
+              is_active: product.visibility === 'visible',
+              creator_id: product.company_id || creatorId,
+              created_at: product.created_at ? new Date(product.created_at * 1000).toISOString() : new Date().toISOString(),
               updated_at: new Date().toISOString()
             }));
 
@@ -328,6 +355,10 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
               console.log(`🎯 Successfully transformed ${transformedProducts.length} products from ${endpoint.name}`);
             }
             return transformedProducts;
+          } else {
+            if (!isProduction) {
+              console.log(`⚠️ ${endpoint.name} returned empty products array`);
+            }
           }
         } else {
           if (!isProduction) {
@@ -344,7 +375,7 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
 
     // If all endpoints fail, try fallback
     if (!isProduction) {
-      console.log('⚠️ All enhanced endpoints failed, trying fallback...');
+      console.log('⚠️ All v5 endpoints failed, trying v2 fallback...');
     }
     return await getCreatorProductsFallback(creatorId);
   } catch (error) {

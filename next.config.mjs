@@ -23,6 +23,25 @@ const nextConfig = {
     optimizePackageImports: ['@whop/react'],
   },
   
+  // Headers to control resource loading
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+    ];
+  },
+  
   // For Next.js 15, body size limits are handled at the API route level
   // experimental: {
   //   bodySizeLimit: '50mb',  // Not supported in Next.js 15
