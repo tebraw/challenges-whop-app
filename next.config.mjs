@@ -4,6 +4,19 @@ const nextConfig = {
   images: {
     remotePatterns: [{ hostname: "**" }],
   },
+  
+  // Reduce console warnings in production
+  logging: {
+    fetches: {
+      fullUrl: process.env.NODE_ENV === 'development',
+    },
+  },
+  
+  // Optimize performance and reduce warnings
+  experimental: {
+    optimizePackageImports: ['@whop/react'],
+  },
+  
   // For Next.js 15, body size limits are handled at the API route level
   // experimental: {
   //   bodySizeLimit: '50mb',  // Not supported in Next.js 15

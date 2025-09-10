@@ -9,6 +9,7 @@ import { WhopApp } from "@whop/react/components";
 export const metadata: Metadata = {
   title: "Challenges",
   description: "Admin & Challenges",
+  manifest: "/site.webmanifest",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -249,7 +249,10 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
       return getMockProducts();
     }
 
-    console.log(`🚀 Using enhanced Whop API with full scopes for creator: ${creatorId}`);
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (!isProduction) {
+      console.log(`🚀 Using enhanced Whop API with full scopes for creator: ${creatorId}`);
+    }
     
     // 🎯 TRY MULTIPLE ENDPOINTS WITH NEW SCOPES
     const endpoints = [
@@ -272,7 +275,9 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
 
     for (const endpoint of endpoints) {
       try {
-        console.log(`🔍 Trying ${endpoint.name}: ${endpoint.url}`);
+        if (!isProduction) {
+          console.log(`🔍 Trying ${endpoint.name}: ${endpoint.url}`);
+        }
         
         const response = await fetch(endpoint.url, {
           headers: {
@@ -281,11 +286,15 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
           },
         });
 
-        console.log(`📊 ${endpoint.name} response: ${response.status}`);
+        if (!isProduction) {
+          console.log(`📊 ${endpoint.name} response: ${response.status}`);
+        }
         
         if (response.ok) {
           const data = await response.json();
-          console.log(`✅ ${endpoint.name} success:`, data);
+          if (!isProduction) {
+            console.log(`✅ ${endpoint.name} success:`, data);
+          }
           
           // Transform data to consistent format
           let products = [];
@@ -315,23 +324,33 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
               updated_at: new Date().toISOString()
             }));
 
-            console.log(`🎯 Successfully transformed ${transformedProducts.length} products from ${endpoint.name}`);
+            if (!isProduction) {
+              console.log(`🎯 Successfully transformed ${transformedProducts.length} products from ${endpoint.name}`);
+            }
             return transformedProducts;
           }
         } else {
-          const errorText = await response.text();
-          console.log(`❌ ${endpoint.name} failed (${response.status}):`, errorText);
+          if (!isProduction) {
+            const errorText = await response.text();
+            console.log(`❌ ${endpoint.name} failed (${response.status}):`, errorText);
+          }
         }
       } catch (endpointError) {
-        console.log(`❌ ${endpoint.name} error:`, endpointError);
+        if (!isProduction) {
+          console.log(`❌ ${endpoint.name} error:`, endpointError);
+        }
       }
     }
 
     // If all endpoints fail, try fallback
-    console.log('⚠️ All enhanced endpoints failed, trying fallback...');
+    if (!isProduction) {
+      console.log('⚠️ All enhanced endpoints failed, trying fallback...');
+    }
     return await getCreatorProductsFallback(creatorId);
   } catch (error) {
-    console.error('Error fetching creator products with enhanced scopes:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Error fetching creator products with enhanced scopes:', error);
+    }
     return getMockProducts();
   }
 }

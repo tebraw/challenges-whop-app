@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
 
     // 🎯 DEVELOPMENT MODE: Check if we should use mock data
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const enableMockProducts = process.env.ENABLE_MOCK_PRODUCTS === 'true' || isDevelopment;
+    const enableMockProducts = process.env.ENABLE_MOCK_PRODUCTS === 'true' || isDevelopment || true; // Force enable for testing
 
     try {
       // 🚀 NEW SCOPES ENABLED: Try to load real creator products from Whop API
