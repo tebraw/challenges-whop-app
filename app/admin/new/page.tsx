@@ -11,6 +11,7 @@ import ImagePicker from "@/components/ui/ImagePicker";
 import { ArrowLeft, ArrowRight, Check, X, Award } from "lucide-react";
 import { challengeAdminSchema, type ChallengeAdminInput } from "@/lib/adminSchema";
 import { DEFAULT_POLICY_TEXT, POLICY_PLACEHOLDER } from "@/lib/defaultTexts";
+import AdminProtection from "@/components/AdminProtection";
 
 interface ChallengeInput {
   title: string;
@@ -126,17 +127,18 @@ export default function NewChallengePage() {
     form.rewards?.every(r => r.title.trim()) && form.policy && form.policy.length >= 10;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="mb-8">
-          <button
-            onClick={() => router.push("/admin")}
-            className="flex items-center gap-2 text-sm text-muted hover:text-foreground mb-6 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Admin
-          </button>
-          <div className="text-center mb-8">
+    <AdminProtection>
+      <div className="min-h-screen bg-background">
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="mb-8">
+            <button
+              onClick={() => router.push("/admin")}
+              className="flex items-center gap-2 text-sm text-muted hover:text-foreground mb-6 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Admin
+            </button>
+            <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">Create New Challenge</h1>
             <p className="text-muted">Step {step} of 5</p>
           </div>
@@ -439,5 +441,6 @@ export default function NewChallengePage() {
       </Card>
       </div>
     </div>
+    </AdminProtection>
   );
 }

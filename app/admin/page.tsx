@@ -10,6 +10,7 @@ import ChallengeCountdown from "@/components/ui/ChallengeCountdown";
 import EditChallengeModal from "@/components/admin/EditChallengeModal";
 import SubscriptionGuard from "@/components/SubscriptionGuard";
 import UsageWidget from "@/components/UsageWidget";
+import AdminProtection from "@/components/AdminProtection";
 
 type Challenge = {
   imageUrl: any;
@@ -45,7 +46,13 @@ export default function AdminList() {
     setError(null);
     try {
       const res = await fetch("/api/admin/challenges", { cache: "no-store" });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        if (res.status === 403) {
+          setError("Access denied. Only company owners can view admin dashboard.");
+          return;
+        }
+        throw new Error(await res.text());
+      }
       const j = await res.json();
       const arr = Array.isArray(j?.challenges) ? (j.challenges as Challenge[]) : [];
       setItems(arr);
@@ -88,19 +95,20 @@ export default function AdminList() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <main className="mx-auto max-w-6xl px-4 sm:px-6 pb-12 pt-24 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Challenge Dashboard</h1>
-            <p className="text-gray-400 text-sm sm:text-base">Manage your challenges and track performance</p>
-          </div>
-          <div className="flex gap-3">
-            <Link href="/subscription">
-              <Button className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
-                💎 Subscription
-              </Button>
-            </Link>
+    <AdminProtection>
+      <div className="min-h-screen bg-gray-900 text-white">
+        <main className="mx-auto max-w-6xl px-4 sm:px-6 pb-12 pt-24 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">Challenge Dashboard</h1>
+              <p className="text-gray-400 text-sm sm:text-base">Manage your challenges and track performance</p>
+            </div>
+            <div className="flex gap-3">
+              <Link href="/subscription">
+                <Button className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
+                  💎 Subscription
+                </Button>
+              </Link>
             <SubscriptionGuard action="create_challenge">
               <Link href="/admin/new">
                 <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
@@ -319,6 +327,7 @@ export default function AdminList() {
           }}
         />
       )}
-    </div>
+      </div>
+    </AdminProtection>
   );
 }

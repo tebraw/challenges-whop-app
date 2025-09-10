@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, requireAdmin } from '@/lib/auth';
 import { SUBSCRIPTION_PLANS } from '@/lib/subscription-plans';
 
 export async function POST(request: NextRequest) {
   try {
+    // 🔒 SECURITY: Only admins can create checkout URLs
+    await requireAdmin();
+    
     const user = await getCurrentUser();
     
     if (!user || !user.tenantId) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
+      );
+    }
+
+    // 🔒 SECURITY: Additional check - only company owners can access checkout
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Access denied. Only company owners can purchase subscriptions.' },
+        { status: 403 }
       );
     }
 
@@ -23,8 +34,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create Whop checkout URL
-    const checkoutUrl = `https://whop.com/checkout/${plan.whopProductId}?company_id=${process.env.NEXT_PUBLIC_WHOP_COMPANY_ID}`;
+    // Use direct Whop app checkout URL instead of product checkout
+    const checkoutUrl = plan.checkoutUrl;
 
     return NextResponse.json({
       checkoutUrl,
@@ -32,6 +43,15 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error creating checkout URL:', error);
+    
+    // Handle specific admin access errors
+    if (error instanceof Error && error.message === 'Admin access required') {
+      return NextResponse.json(
+        { error: 'Access denied. Only company owners can purchase subscriptions.' },
+        { status: 403 }
+      );
+    }
+    
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
