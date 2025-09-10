@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Trophy, Save, Crown, Medal, Award, Mail, Send, Eye, X, Calendar, CheckCircle, Users } from "lucide-react";
+import { ArrowLeft, Trophy, Save, Crown, Medal, Award, Mail, Send, Eye, X, Calendar, CheckCircle, Users, Copy, Check, Download, ZoomIn, Package } from "lucide-react";
 import Link from "next/link";
 
 interface Participant {
@@ -54,6 +54,9 @@ export default function SelectWinnersPage({
   const [loadingProofs, setLoadingProofs] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [copiedItems, setCopiedItems] = useState<{[key: string]: boolean}>({});
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -196,6 +199,102 @@ export default function SelectWinnersPage({
     }
   };
 
+  const copyToClipboard = async (text: string, itemId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedItems(prev => ({ ...prev, [itemId]: true }));
+      
+      // Reset the copied state after 2 seconds
+      setTimeout(() => {
+        setCopiedItems(prev => ({ ...prev, [itemId]: false }));
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to copy text:', error);
+      alert('❌ Failed to copy text');
+    }
+  };
+
+  const copyUsername = (participant: Participant) => {
+    copyToClipboard(participant.name, `username-${participant.id}`);
+  };
+
+  const copyWinnerMessage = (winner: Winner) => {
+    if (!winner.participant) return;
+    
+    const message = winner.customMessage || 
+      `🏆 Congratulations ${winner.participant.name}! You won ${getPlaceText(winner.rank).text}!`;
+    
+    copyToClipboard(message, `message-${winner.rank}`);
+  };
+
+  const downloadImage = async (imageUrl: string, filename?: string) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename || `proof-${Date.now()}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download image:', error);
+      alert('❌ Failed to download image');
+    }
+  };
+
+  const downloadAllImages = async () => {
+    if (!selectedParticipant) return;
+    
+    try {
+      // Filter proofs that have images (URLs)
+      const imageProofs = participantProofs.filter(proof => proof.url || proof.image);
+      const checkinImages = participantCheckins.filter(checkin => checkin.imageUrl);
+      
+      if (imageProofs.length === 0 && checkinImages.length === 0) {
+        alert('No images found to download');
+        return;
+      }
+
+      // Download images sequentially with delay
+      let counter = 1;
+      
+      for (const proof of imageProofs) {
+        const imageUrl = proof.url || proof.image;
+        if (imageUrl) {
+          await downloadImage(imageUrl, `${selectedParticipant.name}-proof-${counter}.jpg`);
+          counter++;
+          await new Promise(resolve => setTimeout(resolve, 500)); // Delay between downloads
+        }
+      }
+      
+      for (const checkin of checkinImages) {
+        if (checkin.imageUrl) {
+          await downloadImage(checkin.imageUrl, `${selectedParticipant.name}-checkin-${counter}.jpg`);
+          counter++;
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      alert(`✅ Downloaded ${counter - 1} images for ${selectedParticipant.name}`);
+    } catch (error) {
+      console.error('Failed to download all images:', error);
+      alert('❌ Failed to download all images');
+    }
+  };
+
+  const openImageModal = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
+    setShowImageModal(true);
+  };
+
+  const closeImageModal = () => {
+    setSelectedImage(null);
+    setShowImageModal(false);
+  };
+
   const sendIndividualNotification = async (winner: Winner) => {
     if (!winner.participant) return;
 
@@ -319,7 +418,19 @@ export default function SelectWinnersPage({
                         <div className="bg-gray-700 rounded-lg p-4">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex-1">
-                              <div className="font-medium text-white">{winner.participant.name}</div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-white">{winner.participant.name}</span>
+                                <button
+                                  onClick={() => copyUsername(winner.participant!)}
+                                  className="text-gray-400 hover:text-white transition-colors p-1"
+                                  title="Copy username"
+                                >
+                                  {copiedItems[`username-${winner.participant.id}`] ? 
+                                    <Check className="h-4 w-4 text-green-400" /> : 
+                                    <Copy className="h-4 w-4" />
+                                  }
+                                </button>
+                              </div>
                               <div className="text-sm text-gray-400">{winner.participant.email}</div>
                             </div>
                             <button
@@ -358,11 +469,19 @@ export default function SelectWinnersPage({
                             rows={3}
                           />
                           <button
-                            onClick={() => sendIndividualNotification(winner)}
+                            onClick={() => copyWinnerMessage(winner)}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
                           >
-                            <Send className="h-4 w-4" />
-                            Send via Whop
+                            {copiedItems[`message-${winner.rank}`] ? 
+                              <>
+                                <Check className="h-4 w-4" />
+                                Copied!
+                              </> : 
+                              <>
+                                <Copy className="h-4 w-4" />
+                                Copy Message
+                              </>
+                            }
                           </button>
                         </div>
 
@@ -414,7 +533,19 @@ export default function SelectWinnersPage({
                           #{participant.rank}
                         </div>
                         <div>
-                          <h3 className="font-semibold">{participant.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">{participant.name}</h3>
+                            <button
+                              onClick={() => copyUsername(participant)}
+                              className="text-gray-400 hover:text-white transition-colors p-1"
+                              title="Copy username"
+                            >
+                              {copiedItems[`username-${participant.id}`] ? 
+                                <Check className="h-4 w-4 text-green-400" /> : 
+                                <Copy className="h-4 w-4" />
+                              }
+                            </button>
+                          </div>
                           <p className="text-sm text-gray-400">{participant.email}</p>
                         </div>
                       </div>
@@ -594,12 +725,23 @@ export default function SelectWinnersPage({
                 <h3 className="text-xl font-bold">
                   Proofs for {selectedParticipant.name}
                 </h3>
-                <button
-                  onClick={() => setShowProofModal(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <X className="h-6 w-6" />
-                </button>
+                <div className="flex items-center gap-3">
+                  {(participantProofs.some(p => p.url || p.image) || participantCheckins.some(c => c.imageUrl)) && (
+                    <button
+                      onClick={downloadAllImages}
+                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Package className="h-4 w-4" />
+                      Download All
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowProofModal(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
               </div>
               
               <div className="p-6 overflow-y-auto max-h-[60vh]">
@@ -632,26 +774,41 @@ export default function SelectWinnersPage({
                                 </div>
                               )}
                               
-                              {proof.image && (
+                              {(proof.image || proof.url) && (
                                 <div className="mb-3">
-                                  <img 
-                                    src={proof.image} 
-                                    alt="Proof"
-                                    className="max-w-full h-auto rounded-lg border border-gray-600 max-h-64 object-cover"
-                                  />
-                                </div>
-                              )}
-                              
-                              {proof.url && (
-                                <div className="mb-3">
-                                  <a 
-                                    href={proof.url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-blue-400 hover:text-blue-300 text-sm underline"
-                                  >
-                                    View Proof URL
-                                  </a>
+                                  <div className="relative group">
+                                    <img 
+                                      src={proof.image || proof.url} 
+                                      alt="Proof"
+                                      className="max-w-full h-auto rounded-lg border border-gray-600 max-h-64 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                      onClick={() => openImageModal(proof.image || proof.url)}
+                                    />
+                                    {/* Image overlay with actions */}
+                                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openImageModal(proof.image || proof.url);
+                                          }}
+                                          className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors"
+                                          title="View Full Size"
+                                        >
+                                          <ZoomIn className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            downloadImage(proof.image || proof.url, `proof-${proof.id.slice(-6)}.jpg`);
+                                          }}
+                                          className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full transition-colors"
+                                          title="Download Image"
+                                        >
+                                          <Download className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
                               )}
                               
@@ -689,11 +846,39 @@ export default function SelectWinnersPage({
                               
                               {checkin.imageUrl && (
                                 <div className="mb-3">
-                                  <img 
-                                    src={checkin.imageUrl} 
-                                    alt="Check-in"
-                                    className="max-w-full h-auto rounded-lg border border-gray-600 max-h-64 object-cover"
-                                  />
+                                  <div className="relative group">
+                                    <img 
+                                      src={checkin.imageUrl} 
+                                      alt="Check-in"
+                                      className="max-w-full h-auto rounded-lg border border-gray-600 max-h-64 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                      onClick={() => openImageModal(checkin.imageUrl)}
+                                    />
+                                    {/* Image overlay with actions */}
+                                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openImageModal(checkin.imageUrl);
+                                          }}
+                                          className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors"
+                                          title="View Full Size"
+                                        >
+                                          <ZoomIn className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            downloadImage(checkin.imageUrl, `checkin-${checkin.id.slice(-6)}.jpg`);
+                                          }}
+                                          className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full transition-colors"
+                                          title="Download Image"
+                                        >
+                                          <Download className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
                               )}
 
@@ -727,6 +912,33 @@ export default function SelectWinnersPage({
                   </>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Image Zoom Modal */}
+        {showImageModal && selectedImage && (
+          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+            <div className="relative max-w-screen max-h-screen">
+              <button
+                onClick={closeImageModal}
+                className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors bg-black bg-opacity-50 rounded-full p-2 z-10"
+              >
+                <X className="h-6 w-6" />
+              </button>
+              <button
+                onClick={() => downloadImage(selectedImage, `proof-fullsize-${Date.now()}.jpg`)}
+                className="absolute top-4 left-4 text-white hover:text-gray-300 transition-colors bg-black bg-opacity-50 rounded-full p-2 z-10"
+                title="Download Full Size"
+              >
+                <Download className="h-6 w-6" />
+              </button>
+              <img
+                src={selectedImage}
+                alt="Full Size Proof"
+                className="max-w-full max-h-full object-contain cursor-pointer"
+                onClick={closeImageModal}
+              />
             </div>
           </div>
         )}
