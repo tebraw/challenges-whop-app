@@ -49,12 +49,23 @@ export async function GET(
 ) {
   try {
     await requireAdmin();
+    const user = await getCurrentUser();
+
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     const { challengeId } = await params;
 
-    // Get challenge details
+    // 🔒 TENANT ISOLATION: Get challenge details only from same tenant
     const challenge = await prisma.challenge.findUnique({
-      where: { id: challengeId },
+      where: { 
+        id: challengeId,
+        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      },
       include: {
         enrollments: {
           include: {

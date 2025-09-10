@@ -1,9 +1,7 @@
 // app/api/admin/challenge-offers/[offerId]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { requireAdmin } from '@/lib/auth';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
+import { requireAdmin, getCurrentUser } from '@/lib/auth';
 
 interface RouteParams {
   params: Promise<{
@@ -16,6 +14,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     // SICHERHEIT: Nur Admins
     await requireAdmin();
+    const user = await getCurrentUser();
+
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     const { offerId } = await params;
     const { searchParams } = new URL(request.url);
@@ -29,8 +35,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // 🔒 TENANT ISOLATION: Get challenge only from same tenant
     const challenge = await prisma.challenge.findUnique({
-      where: { id: challengeId }
+      where: { 
+        id: challengeId,
+        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      }
     });
 
     if (!challenge) {

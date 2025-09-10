@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCreatorProducts } from '@/lib/whopApi';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, getCurrentUser } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
-    // SECURITY: Require admin authentication
+    // SECURITY: Require admin authentication and get user context
     await requireAdmin();
+    const user = await getCurrentUser();
+    
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     const { searchParams } = new URL(req.url);
     const challengeId = searchParams.get('challengeId');
@@ -18,18 +26,22 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get challenge to identify the creator
+    // 🔒 TENANT ISOLATION: Get challenge and verify it belongs to user's tenant
     const challenge = await prisma.challenge.findUnique({
-      where: { id: challengeId },
+      where: { 
+        id: challengeId,
+        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      },
       select: { 
         creatorId: true,
-        whopCreatorId: true
+        whopCreatorId: true,
+        tenantId: true
       }
     });
 
     if (!challenge) {
       return NextResponse.json(
-        { error: 'Challenge not found' },
+        { error: 'Challenge not found or access denied' },
         { status: 404 }
       );
     }

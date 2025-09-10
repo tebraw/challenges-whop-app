@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from '@/lib/auth';
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { requireAdmin, getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: Request,
@@ -11,12 +9,23 @@ export async function GET(
   try {
     // SICHERHEIT: Nur Admins
     await requireAdmin();
+    const user = await getCurrentUser();
+
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     const { challengeId } = await context.params;
     
-    // Get challenge data for analysis
+    // 🔒 TENANT ISOLATION: Get challenge data for analysis only from same tenant
     const challenge = await prisma.challenge.findUnique({
-      where: { id: challengeId },
+      where: { 
+        id: challengeId,
+        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      },
       include: {
         enrollments: {
           include: {
@@ -36,7 +45,7 @@ export async function GET(
     const opportunities = [];
 
     // High engagement product opportunity
-    const highEngagementUsers = challenge.enrollments.filter(e => e.checkins.length > 5);
+    const highEngagementUsers = challenge.enrollments.filter((e: any) => e.checkins.length > 5);
     const engagementRate = totalParticipants > 0 ? (highEngagementUsers.length / totalParticipants) * 100 : 0;
 
     if (engagementRate > 15) {
@@ -57,7 +66,7 @@ export async function GET(
     }
 
     // Achievement-based product
-    const completionTracking = challenge.enrollments.map(e => {
+    const completionTracking = challenge.enrollments.map((e: any) => {
       const challengeDays = Math.ceil(
         (new Date(challenge.endAt).getTime() - new Date(challenge.startAt).getTime()) / (1000 * 60 * 60 * 24)
       );
@@ -65,7 +74,7 @@ export async function GET(
       return { ...e, completionRate };
     });
 
-    const achievers = completionTracking.filter(e => e.completionRate > 70);
+    const achievers = completionTracking.filter((e: any) => e.completionRate > 70);
     const achievementRate = totalParticipants > 0 ? (achievers.length / totalParticipants) * 100 : 0;
 
     if (achievementRate > 20) {
@@ -86,8 +95,8 @@ export async function GET(
     }
 
     // Advanced content product
-    const activeUsers = challenge.enrollments.filter(e => 
-      e.checkins.some(c => new Date(c.createdAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const activeUsers = challenge.enrollments.filter((e: any) =>
+      e.checkins.some((c: any) => new Date(c.createdAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000)
     );
     const activeRate = totalParticipants > 0 ? (activeUsers.length / totalParticipants) * 100 : 0;
 
@@ -127,7 +136,7 @@ export async function GET(
     }
 
     // Consultation/Done-for-you service
-    const strugglingUsers = challenge.enrollments.filter(e => e.checkins.length < 3);
+    const strugglingUsers = challenge.enrollments.filter((e: any) => e.checkins.length < 3);
     const struggleRate = totalParticipants > 0 ? (strugglingUsers.length / totalParticipants) * 100 : 0;
 
     if (struggleRate > 20) {

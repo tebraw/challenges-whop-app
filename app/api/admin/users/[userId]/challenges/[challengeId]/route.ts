@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { requireAdmin } from "@/lib/auth";
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
+import { requireAdmin, getCurrentUser } from "@/lib/auth";
 
 export async function GET(
   _: Request,
@@ -10,14 +9,41 @@ export async function GET(
   try {
     // Require admin access
     await requireAdmin();
+    const currentUser = await getCurrentUser();
+
+    if (!currentUser || !currentUser.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     const { userId, challengeId } = await context.params;
 
     console.log("Admin API Debug - Looking for user:", userId, "in challenge:", challengeId);
 
-    // Get user info
+    // 🔒 TENANT ISOLATION: First verify challenge belongs to admin's tenant
+    const challengeCheck = await prisma.challenge.findUnique({
+      where: { 
+        id: challengeId,
+        tenantId: currentUser.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      },
+      select: { id: true }
+    });
+
+    if (!challengeCheck) {
+      return NextResponse.json({ 
+        ok: false, 
+        message: "Challenge not found or access denied" 
+      }, { status: 404 });
+    }
+
+    // Get user info (also should be from same tenant)
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { 
+        id: userId,
+        tenantId: currentUser.tenantId  // 🔒 SECURITY: Only allow access to same tenant users
+      },
       select: {
         id: true,
         email: true,
@@ -32,13 +58,14 @@ export async function GET(
       return NextResponse.json({ ok: false, message: "User not found" }, { status: 404 });
     }
 
-    // Get enrollment for this user and challenge
-    const enrollment = await prisma.enrollment.findUnique({
+    // 🔒 TENANT ISOLATION: Get enrollment for this user and challenge (also checking tenant isolation)
+    const enrollment = await prisma.enrollment.findFirst({
       where: {
-        challengeId_userId: {
-          challengeId,
-          userId,
-        },
+        challengeId: challengeId,
+        userId: userId,
+        challenge: {
+          tenantId: currentUser.tenantId  // 🔒 SECURITY: Double-check challenge tenant
+        }
       },
       include: {
         challenge: {

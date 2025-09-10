@@ -27,8 +27,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
-    // Fetch real challenges from database
+    // Fetch challenges only from user's tenant (TENANT ISOLATION)
     const challenges = await prisma.challenge.findMany({
+      where: {
+        tenantId: user.tenantId  // 🔒 ONLY SHOW CHALLENGES FROM USER'S TENANT
+      },
       include: {
         _count: {
           select: {

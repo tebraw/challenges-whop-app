@@ -10,12 +10,23 @@ export async function POST(
   try {
     // Authenticate and check admin permission
     await requireAdmin();
+    const user = await getCurrentUser();
+
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     const { challengeId } = await params;
 
-    // Find the original challenge
+    // 🔒 TENANT ISOLATION: Find the original challenge only from same tenant
     const originalChallenge = await prisma.challenge.findUnique({
-      where: { id: challengeId },
+      where: { 
+        id: challengeId,
+        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      },
       include: {
         creator: true,
       },
@@ -28,8 +39,7 @@ export async function POST(
       );
     }
 
-    // Get current user for creator ID
-    const user = await getCurrentUser();
+    // Current user is already loaded above - use it for creator ID
     if (!user?.id) {
       return NextResponse.json({ error: "User not found" }, { status: 401 });
     }

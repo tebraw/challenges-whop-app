@@ -1,7 +1,7 @@
 // app/api/admin/whop/create-product/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, getCurrentUser } from '@/lib/auth';
 
 const WHOP_API_BASE = process.env.WHOP_API_BASE_URL || 'https://api.whop.com';
 const WHOP_API_KEY = process.env.WHOP_API_KEY;
@@ -10,6 +10,14 @@ export async function POST(req: NextRequest) {
   try {
     // SECURITY: Require admin authentication
     await requireAdmin();
+    const user = await getCurrentUser();
+
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     const {
       name,

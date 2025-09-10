@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { requireAdmin } from '@/lib/auth';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
+import { requireAdmin, getCurrentUser } from '@/lib/auth';
 
 export async function GET(
   request: Request,
@@ -11,12 +9,23 @@ export async function GET(
   try {
     // SICHERHEIT: Nur Admins können Analytics einsehen
     await requireAdmin();
+    const user = await getCurrentUser();
+    
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     const { challengeId } = await params;
     
-    // Get challenge with detailed analytics data
+    // 🔒 TENANT ISOLATION: Get challenge with detailed analytics data only from same tenant
     const challenge = await prisma.challenge.findUnique({
-      where: { id: challengeId },
+      where: { 
+        id: challengeId,
+        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      },
       include: {
         enrollments: {
           include: {
@@ -37,8 +46,8 @@ export async function GET(
 
     // Calculate analytics
     const totalParticipants = challenge.enrollments.length;
-    const activeParticipants = challenge.enrollments.filter(e => 
-      e.checkins.some(c => 
+    const activeParticipants = challenge.enrollments.filter((e: any) => 
+      e.checkins.some((c: any) => 
         new Date(c.createdAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000
       )
     ).length;
@@ -49,7 +58,7 @@ export async function GET(
     );
 
     // Calculate completion rate and engagement per user
-    const userAnalytics = challenge.enrollments.map(enrollment => {
+    const userAnalytics = challenge.enrollments.map((enrollment: any) => {
       const checkinCount = enrollment.checkins.length;
       const userCompletionRate = challengeDurationDays > 0 ? Math.min((checkinCount / challengeDurationDays) * 100, 100) : 0;
       
@@ -73,13 +82,13 @@ export async function GET(
 
   // Calculate completion rate
     const expectedCheckins = challengeDurationDays * totalParticipants;
-    const actualCheckins = challenge.enrollments.reduce((sum, e) => sum + e.checkins.length, 0);
+    const actualCheckins = challenge.enrollments.reduce((sum: number, e: any) => sum + e.checkins.length, 0);
     const completionRate = expectedCheckins > 0 ? Math.round((actualCheckins / expectedCheckins) * 100) : 0;
 
     // Calculate engagement score (simplified)
     const avgCheckinsPerParticipant = totalParticipants > 0 ? actualCheckins / totalParticipants : 0;
     const avgEngagement = totalParticipants > 0 
-      ? Math.round((userAnalytics.reduce((sum, u) => sum + u.engagementScore, 0) / totalParticipants) * 10) / 10
+      ? Math.round((userAnalytics.reduce((sum: number, u: any) => sum + u.engagementScore, 0) / totalParticipants) * 10) / 10
       : 0;
 
     // Daily checkins for the last 7 days
@@ -93,8 +102,8 @@ export async function GET(
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
       
-      const checkinsCount = challenge.enrollments.reduce((sum, e) => {
-        return sum + e.checkins.filter(c => {
+      const checkinsCount = challenge.enrollments.reduce((sum: number, e: any) => {
+        return sum + e.checkins.filter((c: any) => {
           const checkinDate = new Date(c.createdAt);
           return checkinDate >= date && checkinDate < nextDate;
         }).length;
@@ -108,22 +117,22 @@ export async function GET(
 
     // Top performers
     const topPerformers = userAnalytics
-      .sort((a, b) => b.checkinCount - a.checkinCount)
+      .sort((a: any, b: any) => b.checkinCount - a.checkinCount)
       .slice(0, 10)
-      .map(u => ({
+      .map((u: any) => ({
         userId: u.user.id,
         userName: u.user.name || u.user.email || 'Anonymous',
         checkinCount: u.checkinCount
       }));
 
     // Premium targeting analytics
-    const highEngagementUsers = userAnalytics.filter(u => u.isHighEngagement).length;
-    const nearCompletionUsers = userAnalytics.filter(u => u.isNearCompletion).length;
+    const highEngagementUsers = userAnalytics.filter((u: any) => u.isHighEngagement).length;
+    const nearCompletionUsers = userAnalytics.filter((u: any) => u.isNearCompletion).length;
     const premiumTargets = userAnalytics
-      .filter(u => u.isPremiumTarget)
-      .sort((a, b) => b.engagementScore - a.engagementScore)
+      .filter((u: any) => u.isPremiumTarget)
+      .sort((a: any, b: any) => b.engagementScore - a.engagementScore)
       .slice(0, 20)
-      .map(u => ({
+      .map((u: any) => ({
         userId: u.user.id,
         userName: u.user.name || u.user.email || 'Anonymous',
         completionRate: u.userCompletionRate,
@@ -133,7 +142,7 @@ export async function GET(
       }));
 
     const avgRevenuePerUser = premiumTargets.length > 0 
-      ? Math.round(premiumTargets.reduce((sum, t) => sum + t.estimatedValue, 0) / premiumTargets.length)
+      ? Math.round(premiumTargets.reduce((sum: number, t: any) => sum + t.estimatedValue, 0) / premiumTargets.length)
       : 0;
 
     // Mock engagement data (in a real app, this would come from actual tracking)

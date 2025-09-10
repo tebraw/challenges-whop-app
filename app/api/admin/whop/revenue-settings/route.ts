@@ -2,12 +2,20 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, getCurrentUser } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
     // SECURITY: Require admin authentication
     await requireAdmin();
+    const user = await getCurrentUser();
+
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     const {
       platform_fee_percentage = 10,

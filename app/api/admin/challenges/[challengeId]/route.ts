@@ -42,8 +42,12 @@ export async function GET(
 
     const { challengeId } = await params;
 
+    // 🔒 TENANT ISOLATION: Only get challenge from same tenant
     const challenge = await prisma.challenge.findUnique({
-      where: { id: challengeId },
+      where: { 
+        id: challengeId,
+        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      },
       include: {
         tenant: true,
         creator: true,

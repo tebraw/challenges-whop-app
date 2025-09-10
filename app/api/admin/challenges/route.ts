@@ -33,15 +33,25 @@ interface ChallengeWithRelations {
   };
 }
 
-// GET /api/admin/challenges - Admin view of challenges
+// GET /api/admin/challenges - Admin view of challenges (TENANT-ISOLATED)
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Re-enable auth check when auth is working
-    // await requireAdmin();
+    // SECURITY: Require admin authentication
+    await requireAdmin();
     
-    console.log('🔍 Admin challenges API called');
+    // Get current user with tenant info
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     
+    console.log('🔍 Admin challenges API called for tenant:', user.tenantId);
+    
+    // SECURITY: Only show challenges from current user's tenant
     const challenges = await prisma.challenge.findMany({
+      where: {
+        tenantId: user.tenantId  // 🔒 TENANT ISOLATION
+      },
       include: {
         creator: {
           select: {

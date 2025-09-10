@@ -252,8 +252,8 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
 
     console.log(`Fetching plans from Whop API for creator: ${creatorId}`);
     
-    // Use the correct Whop API v2 endpoint for plans
-    const response = await fetch(`${WHOP_API_BASE}/api/v2/plans?per=50&expand=product`, {
+    // Use the correct Whop API v2 endpoint for a specific company's plans
+    const response = await fetch(`${WHOP_API_BASE}/api/v2/companies/${creatorId}/plans?per=50&expand=product`, {
       headers: {
         'Authorization': `Bearer ${WHOP_API_KEY}`,
         'Content-Type': 'application/json'
@@ -263,6 +263,13 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Whop API error: ${response.status} - ${errorText}`);
+      
+      // If this endpoint doesn't work, try the generic plans endpoint and filter
+      if (response.status === 404) {
+        console.log('Trying fallback: generic plans endpoint...');
+        return await getCreatorProductsFallback(creatorId);
+      }
+      
       throw new Error(`Whop API error: ${response.status}`);
     }
 
@@ -285,11 +292,66 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
       updated_at: new Date().toISOString()
     }));
 
-    console.log(`Found ${products.length} products/plans`);
+    console.log(`Found ${products.length} products/plans for company ${creatorId}`);
     return products;
   } catch (error) {
     console.error('Error fetching creator products:', error);
-    // Return empty array instead of mock data
+    // Try fallback method
+    console.log('Trying fallback method...');
+    return await getCreatorProductsFallback(creatorId);
+  }
+}
+
+// Fallback method to get products using generic plans endpoint
+async function getCreatorProductsFallback(creatorId: string): Promise<WhopProduct[]> {
+  try {
+    console.log(`Fallback: Fetching all plans and filtering for company: ${creatorId}`);
+    
+    const response = await fetch(`${WHOP_API_BASE}/api/v2/plans?per=100&expand=product`, {
+      headers: {
+        'Authorization': `Bearer ${WHOP_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Fallback Whop API error: ${response.status} - ${errorText}`);
+      return [];
+    }
+
+    const data = await response.json();
+    console.log('Fallback API response data length:', data.data?.length || 0);
+    
+    // Filter plans by company ID
+    const companyPlans = (data.data || []).filter((plan: any) => 
+      plan.product?.biz_id === creatorId || 
+      plan.biz_id === creatorId ||
+      plan.company_id === creatorId
+    );
+    
+    console.log(`Filtered ${companyPlans.length} plans for company ${creatorId}`);
+    
+    // Transform filtered plans to our product format
+    const products: WhopProduct[] = companyPlans.map((plan: any) => ({
+      id: plan.id,
+      title: plan.product?.title || `Plan ${plan.id}`,
+      description: plan.product?.description || plan.payment_link_description,
+      price: plan.initial_price || 0,
+      currency: plan.base_currency || 'USD',
+      product_type: plan.plan_type || 'digital',
+      image_url: plan.product?.image_url,
+      checkout_url: plan.direct_link || `https://whop.com/checkout/${plan.id}`,
+      is_active: plan.visibility === 'visible',
+      creator_id: creatorId,
+      created_at: new Date(plan.created_at * 1000).toISOString(),
+      updated_at: new Date().toISOString()
+    }));
+
+    console.log(`Fallback: Found ${products.length} products/plans for company ${creatorId}`);
+    return products;
+  } catch (error) {
+    console.error('Fallback method also failed:', error);
     return [];
   }
 }

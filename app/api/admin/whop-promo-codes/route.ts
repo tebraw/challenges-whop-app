@@ -1,11 +1,19 @@
 // app/api/admin/whop-promo-codes/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, getCurrentUser } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
     // SECURITY: Require admin authentication
     await requireAdmin();
+    const user = await getCurrentUser();
+
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     // Check if Whop API credentials are available
     if (!process.env.WHOP_API_KEY) {
