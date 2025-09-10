@@ -15,13 +15,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if Whop API credentials are available
-    if (!process.env.WHOP_API_KEY) {
-      return NextResponse.json({
-        error: 'Whop API credentials not configured'
-      }, { status: 500 });
-    }
-
     const body = await request.json();
     const { 
       code, 
@@ -29,7 +22,6 @@ export async function POST(request: NextRequest) {
       promo_type = 'percentage', 
       plan_ids = [],
       unlimited_stock = true,
-      expiration_datetime = null,
       new_users_only = false 
     } = body;
 
@@ -40,6 +32,11 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Calculate expiration date: 7 days from now
+    const expirationDate = new Date();
+    expirationDate.setDate(expirationDate.getDate() + 7);
+    const calculatedExpiration = expirationDate.toISOString();
+
     // Create promo code via Whop API v2
     const promoData = {
       code,
@@ -48,8 +45,15 @@ export async function POST(request: NextRequest) {
       plan_ids,
       unlimited_stock,
       new_users_only,
-      ...(expiration_datetime && { expiration_datetime })
+      expiration_datetime: calculatedExpiration
     };
+
+    console.log('🔄 Creating Whop promo code:', {
+      code,
+      amount_off,
+      plan_ids,
+      expiration_datetime: calculatedExpiration
+    });
 
     const response = await fetch('https://api.whop.com/api/v2/promo_codes', {
       method: 'POST',
@@ -62,6 +66,12 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorData = await response.text();
+      console.error('❌ Whop API Error Details:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorData,
+        requestData: promoData
+      });
       throw new Error(`Whop API error: ${response.status} ${response.statusText} - ${errorData}`);
     }
 
@@ -81,7 +91,12 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error creating Whop promo code:', error);
+    console.error('❌ Error creating Whop promo code:', error);
+    console.error('❌ Full error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      whopApiKey: process.env.WHOP_API_KEY ? 'Present' : 'Missing'
+    });
     return NextResponse.json({
       error: 'Failed to create promo code',
       details: error instanceof Error ? error.message : 'Unknown error'

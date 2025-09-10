@@ -354,19 +354,20 @@ export default function ChallengeParticipantPage({
               </div>
             </div>
 
-            {/* Leaderboard */}
+            {/* Challenge Progress */}
             <div className="bg-gray-800 rounded-xl p-6">
               <div className="flex items-center mb-4">
-                <div className="w-8 h-8 bg-yellow-600 rounded-lg flex items-center justify-center mr-3">
-                  🏆
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+                  📈
                 </div>
-                <h3 className="font-semibold">Leaderboard</h3>
+                <h3 className="font-semibold">Your Progress</h3>
               </div>
               
               <div className="text-center text-gray-400 py-8">
-                <Trophy className="w-12 h-12 mx-auto mb-2 text-gray-600" />
-                <p>Leaderboard</p>
-                <p className="text-sm">No entries yet.</p>
+                <p>Keep going! Focus on your own journey and check-ins.</p>
+                <p className="text-sm mt-2 text-gray-500">
+                  Rankings are only visible to challenge administrators.
+                </p>
               </div>
             </div>
 

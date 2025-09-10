@@ -215,6 +215,21 @@ export default function AdminChallengeDetailPage({
       const discountAmount = parseInt(discountMatch[1]);
       const promoCode = `${type.toUpperCase()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       
+      console.log('🔄 Creating promo code:', {
+        type,
+        productId,
+        discount,
+        discountAmount,
+        promoCode,
+        whopProducts,
+        apiUrl: '/api/admin/whop-promo-codes'
+      });
+
+      // Validate that we have a real product ID
+      if (!productId || productId === '') {
+        throw new Error('Please select a valid product first');
+      }
+      
       const response = await fetch('/api/admin/whop-promo-codes', {
         method: 'POST',
         headers: {
@@ -230,9 +245,32 @@ export default function AdminChallengeDetailPage({
         })
       });
 
+      console.log('📡 API Response status:', response.status, response.statusText);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create promo code');
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (parseError) {
+          console.error('❌ Failed to parse error response:', parseError);
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        
+        console.error('❌ Admin API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          url: '/api/admin/whop-promo-codes',
+          requestPayload: {
+            code: promoCode,
+            amount_off: discountAmount,
+            promo_type: 'percentage',
+            plan_ids: [productId],
+            unlimited_stock: true,
+            new_users_only: false
+          }
+        });
+        throw new Error(errorData.error || `API Error: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();

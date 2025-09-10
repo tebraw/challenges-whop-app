@@ -38,13 +38,27 @@ interface UserParticipation {
   };
 }
 
-interface LeaderboardEntry {
-  rank: number;
-  userId: string;
-  username: string;
-  completedCheckIns: number;
-  maxCheckIns: number;
-  points: number;
+// ❌ LEADERBOARD HIDDEN FROM PARTICIPANTS
+// interface LeaderboardEntry {
+//   rank: number;
+//   userId: string;
+//   username: string;
+//   completedCheckIns: number;
+//   maxCheckIns: number;
+//   points: number;
+// }
+
+interface MonetizationOffer {
+  id: string;
+  type: 'completion' | 'mid_challenge';
+  product: {
+    id: string;
+    name: string;
+    price: number;
+    currency: string;
+  };
+  discount: number;
+  status: 'active' | 'inactive';
 }
 
 export default function ChallengePage({
@@ -54,7 +68,9 @@ export default function ChallengePage({
 }) {
   const [challenge, setChallenge] = useState<ChallengeData | null>(null);
   const [userParticipation, setUserParticipation] = useState<UserParticipation>({ isParticipating: false });
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  // ❌ LEADERBOARD HIDDEN FROM PARTICIPANTS - State removed
+  // const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [monetizationOffers, setMonetizationOffers] = useState<MonetizationOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [submittingProof, setSubmittingProof] = useState(false);
@@ -79,11 +95,21 @@ export default function ChallengePage({
           setUserParticipation(statusData.userParticipation);
         }
 
-        // Load leaderboard
-        const leaderboardResponse = await fetch(`/api/challenges/${resolvedParams.id}/leaderboard`);
-        if (leaderboardResponse.ok) {
-          const leaderboardData = await leaderboardResponse.json();
-          setLeaderboard(leaderboardData.leaderboard.slice(0, 10)); // Top 10
+        // ❌ LEADERBOARD HIDDEN FROM PARTICIPANTS
+        // Per security policy: Participants should not see rankings
+        // const leaderboardResponse = await fetch(`/api/challenges/${resolvedParams.id}/leaderboard`);
+        // if (leaderboardResponse.ok) {
+        //   const leaderboardData = await leaderboardResponse.json();
+        //   setLeaderboard(leaderboardData.leaderboard.slice(0, 10)); // Top 10
+        // }
+
+        // Load monetization offers for participants
+        const offersResponse = await fetch(`/api/admin/challenge-offers?challengeId=${resolvedParams.id}`);
+        if (offersResponse.ok) {
+          const offersData = await offersResponse.json();
+          if (offersData.offers && Array.isArray(offersData.offers)) {
+            setMonetizationOffers(offersData.offers);
+          }
         }
         
       } catch (error) {
@@ -95,6 +121,57 @@ export default function ChallengePage({
 
     loadChallenge();
   }, [params]);
+
+  // 🔓 MONETIZATION UNLOCK LOGIC
+  const isOfferUnlocked = (offer: MonetizationOffer): boolean => {
+    if (!challenge || !userParticipation?.stats) return false;
+
+    const { completedCheckIns, maxCheckIns } = userParticipation.stats;
+    const isChallenge1Complete = challenge.status === 'ended';
+    const hasSubmittedProof = completedCheckIns > 0; // Simplified check
+
+    if (challenge.cadence === 'DAILY') {
+      if (offer.type === 'mid_challenge') {
+        // Unlock bei: 50% der Tage erreicht + min. 3 Check-ins
+        const halfwayPoint = Math.floor(maxCheckIns / 2);
+        return completedCheckIns >= halfwayPoint && completedCheckIns >= 3;
+      } else if (offer.type === 'completion') {
+        // Unlock bei: 80% Check-ins erreicht + Challenge beendet
+        const completionThreshold = Math.floor(maxCheckIns * 0.8);
+        return completedCheckIns >= completionThreshold && isChallenge1Complete;
+      }
+    } else { // END_OF_CHALLENGE
+      if (offer.type === 'mid_challenge') {
+        // Unlock bei: 1 Check-in gemacht (sofort verfügbar)
+        return completedCheckIns >= 1;
+      } else if (offer.type === 'completion') {
+        // Unlock bei: Challenge submitted/completed
+        return hasSubmittedProof;
+      }
+    }
+
+    return false;
+  };
+
+  const getOfferStatusText = (offer: MonetizationOffer): string => {
+    if (!challenge) return "";
+
+    if (offer.type === 'completion') {
+      if (challenge.cadence === 'DAILY') {
+        return "Complete 80% of the challenge to unlock this offer";
+      } else {
+        return "Complete the challenge to get access to this offer";
+      }
+    } else if (offer.type === 'mid_challenge') {
+      if (challenge.cadence === 'DAILY') {
+        return "Reach the halfway point to unlock this boost";
+      } else {
+        return "Complete now and get this exclusive offer!";
+      }
+    }
+
+    return "";
+  };
 
   const handleJoinChallenge = async () => {
     if (!challengeId) return;
@@ -445,57 +522,17 @@ export default function ChallengePage({
             <Card className="bg-gray-900 border-gray-800">
               <div className="p-6">
                 <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                  <Trophy className="w-6 h-6 text-yellow-500" />
-                  Leaderboard
+                  <Trophy className="w-6 h-6 text-blue-500" />
+                  Challenge Progress
                 </h2>
                 
-                {leaderboard.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="text-4xl mb-4">🏁</div>
-                    <p className="text-gray-400 text-lg">No participants yet. Be the first!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {leaderboard.map((participant, index) => (
-                      <div 
-                        key={participant.userId}
-                        className={`flex items-center justify-between p-4 rounded-xl ${
-                          index < 3 
-                            ? 'bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30' 
-                            : 'bg-gray-800/50 border border-gray-700'
-                        }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
-                            index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-black' :
-                            index === 1 ? 'bg-gradient-to-r from-gray-300 to-gray-500 text-black' :
-                            index === 2 ? 'bg-gradient-to-r from-orange-400 to-orange-600 text-black' :
-                            'bg-gray-700 text-gray-300'
-                          }`}>
-                            {index < 3 ? (
-                              index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'
-                            ) : (
-                              participant.rank
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-lg">{participant.username}</p>
-                            <p className="text-sm text-gray-400">
-                              {participant.completedCheckIns}/{participant.maxCheckIns} check-ins
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center gap-1">
-                            <Star className="w-4 h-4 text-yellow-500" />
-                            <span className="font-bold text-lg text-purple-400">{participant.points}</span>
-                          </div>
-                          <p className="text-xs text-gray-400">Points</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-4">📈</div>
+                  <p className="text-gray-400 text-lg">Keep going! Focus on your own journey and check-ins.</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Rankings are only visible to challenge administrators.
+                  </p>
+                </div>
               </div>
             </Card>
           </div>
@@ -524,6 +561,80 @@ export default function ChallengePage({
                 </div>
               </div>
             </Card>
+
+            {/* 💰 MONETIZATION OFFERS */}
+            {monetizationOffers.length > 0 && userParticipation.isParticipating && (
+              <div className="space-y-4">
+                <h3 className="font-bold text-lg text-white">Exclusive Offers</h3>
+                
+                {monetizationOffers.map((offer) => {
+                  const isUnlocked = isOfferUnlocked(offer);
+                  const statusText = getOfferStatusText(offer);
+                  
+                  return (
+                    <Card 
+                      key={offer.id} 
+                      className={`border transition-all duration-300 ${
+                        isUnlocked 
+                          ? 'bg-gradient-to-r from-green-900/30 to-blue-900/30 border-green-500/50 cursor-pointer hover:border-green-400/70' 
+                          : 'bg-gray-900/50 border-gray-700/50 cursor-not-allowed opacity-60'
+                      }`}
+                      onClick={() => {
+                        if (isUnlocked) {
+                          // Redirect to Whop checkout with promo code
+                          const checkoutUrl = `https://whop.com/checkout/${offer.product.id}?promo=${offer.id}`;
+                          window.open(checkoutUrl, '_blank');
+                        }
+                      }}
+                    >
+                      <div className="p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          {offer.type === 'completion' ? (
+                            <Trophy className={`h-6 w-6 ${isUnlocked ? 'text-green-400' : 'text-gray-500'}`} />
+                          ) : (
+                            <Flame className={`h-6 w-6 ${isUnlocked ? 'text-blue-400' : 'text-gray-500'}`} />
+                          )}
+                          <div>
+                            <h4 className={`font-semibold ${isUnlocked ? 'text-white' : 'text-gray-400'}`}>
+                              {offer.type === 'completion' ? 'Challenge Completion Reward' : 'Mid-Challenge Boost'}
+                            </h4>
+                            <p className={`text-sm ${isUnlocked ? 'text-gray-300' : 'text-gray-500'}`}>
+                              {offer.product.name}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-lg font-bold ${isUnlocked ? 'text-green-400' : 'text-gray-500'}`}>
+                              {offer.discount}% OFF
+                            </span>
+                            <div className="text-right">
+                              <div className={`line-through text-sm ${isUnlocked ? 'text-gray-400' : 'text-gray-600'}`}>
+                                {offer.product.currency} {offer.product.price}
+                              </div>
+                              <div className={`font-bold ${isUnlocked ? 'text-white' : 'text-gray-500'}`}>
+                                {offer.product.currency} {Math.round(offer.product.price * (1 - offer.discount/100))}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className={`p-3 rounded-lg ${isUnlocked ? 'bg-green-900/30' : 'bg-gray-800/30'}`}>
+                            <p className={`text-sm text-center ${isUnlocked ? 'text-green-300' : 'text-gray-500'}`}>
+                              {isUnlocked ? (
+                                offer.type === 'completion' ? '🎉 Congratulations! Offer unlocked!' : '🚀 Boost unlocked! Claim now!'
+                              ) : (
+                                statusText
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
 
             <Card className="bg-gradient-to-br from-purple-900/50 to-blue-900/50 border-purple-500/20">
               <div className="p-6 text-center">
