@@ -2,6 +2,47 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 
+// Type definitions for better type safety
+interface EnrollmentWithUserAndProofs {
+  id: string;
+  joinedAt: Date;
+  user: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+  };
+  proofs: Array<{
+    id: string;
+    type: string;
+    text?: string | null;
+    url?: string | null;
+    createdAt: Date;
+  }>;
+}
+
+interface ParticipantData {
+  id: string;
+  enrollmentId: string;
+  name: string;
+  email: string;
+  avatar: string;
+  completedCheckIns: number;
+  requiredCheckIns: number;
+  completionRate: number;
+  isEligible: boolean;
+  hasRequiredCheckIns: boolean;
+  hasCorrectProofFormat: boolean;
+  points: number;
+  joinedAt: string;
+  proofs: Array<{
+    id: string;
+    type: string;
+    text?: string | null;
+    url?: string | null;
+    createdAt: string;
+  }>;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ challengeId: string }> }
@@ -48,14 +89,14 @@ export async function GET(
 
     // Process participants and filter eligible ones
     const eligibleParticipants = challenge.enrollments
-      .map(enrollment => {
+      .map((enrollment: EnrollmentWithUserAndProofs) => {
         const completedCheckIns = enrollment.proofs.length;
         const completionRate = requiredCheckIns > 0 ? completedCheckIns / requiredCheckIns : 0;
         
         // Participant is eligible if they have completed all required check-ins
         // and all proofs match the required format
         const hasRequiredCheckIns = completedCheckIns >= requiredCheckIns;
-        const hasCorrectProofFormat = enrollment.proofs.every(proof => {
+        const hasCorrectProofFormat = enrollment.proofs.every((proof: any) => {
           // Check if proof format matches challenge requirement
           if (challenge.proofType === 'PHOTO') {
             return proof.url != null && proof.url.trim() !== '';
@@ -72,7 +113,7 @@ export async function GET(
         return {
           id: enrollment.user.id,
           enrollmentId: enrollment.id,
-          name: enrollment.user.name || enrollment.user.email?.split('@')[0] || 'Unbekannt',
+          name: enrollment.user.name || enrollment.user.email?.split('@')[0] || 'Unknown',
           email: enrollment.user.email || '',
           avatar: enrollment.user.name ? enrollment.user.name.charAt(0).toUpperCase() : '?',
           completedCheckIns,
@@ -83,7 +124,7 @@ export async function GET(
           hasCorrectProofFormat,
           points: Math.round(completionRate * 100) + completedCheckIns * 5,
           joinedAt: enrollment.joinedAt.toISOString(),
-          proofs: enrollment.proofs.map(proof => ({
+          proofs: enrollment.proofs.map((proof: any) => ({
             id: proof.id,
             type: proof.type,
             text: proof.text,
@@ -92,8 +133,8 @@ export async function GET(
           })),
         };
       })
-      .filter(participant => participant.isEligible) // Only return eligible participants
-      .sort((a, b) => {
+      .filter((participant: any) => participant.isEligible) // Only return eligible participants
+      .sort((a: any, b: any) => {
         // Sort by points (highest first), then by completion rate, then by check-ins
         if (b.points !== a.points) return b.points - a.points;
         if (b.completionRate !== a.completionRate) return b.completionRate - a.completionRate;

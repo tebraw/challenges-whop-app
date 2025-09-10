@@ -67,29 +67,41 @@ export async function POST(
       // For END_OF_CHALLENGE, allow replacing the proof anytime during challenge
       existingProof = await prisma.proof.findFirst({
         where: {
-          enrollmentId: enrollment.id
+          enrollmentId: enrollment.id,
+          isActive: true
+        },
+        orderBy: {
+          createdAt: 'desc'
         }
       });
       
       if (existingProof) {
         isUpdate = true;
+        console.log('Found existing END_OF_CHALLENGE proof for update:', existingProof.id);
       }
     } else if (enrollment.challenge.cadence === 'DAILY') {
       // For DAILY cadence, allow replacing proof on the same day
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+      const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
       
       existingProof = await prisma.proof.findFirst({
         where: {
           enrollmentId: enrollment.id,
+          isActive: true,
           createdAt: {
-            gte: today
+            gte: todayStart,
+            lte: todayEnd
           }
+        },
+        orderBy: {
+          createdAt: 'desc'
         }
       });
       
       if (existingProof) {
         isUpdate = true;
+        console.log('Found existing DAILY proof for update:', existingProof.id);
       }
     }
 
@@ -109,31 +121,40 @@ export async function POST(
     let proof;
     if (isUpdate && existingProof) {
       // Update existing proof
+      console.log('Updating existing proof:', existingProof.id);
       proof = await prisma.proof.update({
         where: { id: existingProof.id },
         data: {
           type: proofType,
           text: text || null,
           url: imageUrl || linkUrl || null,
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          version: existingProof.version + 1
         }
       });
+      console.log('Proof updated successfully:', proof.id);
     } else {
       // Create new proof
+      console.log('Creating new proof for enrollment:', enrollment.id);
       proof = await prisma.proof.create({
         data: {
           enrollmentId: enrollment.id,
           type: proofType,
           text: text || null,
           url: imageUrl || linkUrl || null,
-          createdAt: new Date()
+          createdAt: new Date(),
+          version: 1
         }
       });
+      console.log('New proof created:', proof.id);
     }
 
     // Calculate new stats for check-ins
     const allProofs = await prisma.proof.findMany({
-      where: { enrollmentId: enrollment.id },
+      where: { 
+        enrollmentId: enrollment.id,
+        isActive: true
+      },
       orderBy: { createdAt: 'desc' }
     });
 
@@ -141,9 +162,21 @@ export async function POST(
     const maxCheckIns = calculateMaxCheckIns(enrollment.challenge);
     const completionRate = maxCheckIns > 0 ? Math.round((completedCheckIns / maxCheckIns) * 100) : 0;
 
+    const responseMessage = isUpdate ? 
+      'Existing check-in will be replaced' : 
+      'Check-in successful!';
+
+    console.log('Check-in completed:', {
+      isUpdate,
+      proofId: proof.id,
+      completedCheckIns,
+      maxCheckIns,
+      completionRate
+    });
+
     return NextResponse.json({
       success: true,
-      message: isUpdate ? 'Proof updated successfully!' : 'Check-in successful!',
+      message: responseMessage,
       checkin: {
         id: proof.id,
         createdAt: proof.createdAt,
@@ -151,7 +184,8 @@ export async function POST(
         text: proof.text,
         imageUrl: proof.url,
         linkUrl: proof.url,
-        isUpdate: isUpdate
+        isUpdate: isUpdate,
+        version: proof.version
       },
       stats: {
         completedCheckIns,

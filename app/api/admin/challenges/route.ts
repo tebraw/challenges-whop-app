@@ -2,6 +2,37 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, requireAdmin } from '@/lib/auth';
 
+// Type definition for challenge with relations
+interface ChallengeWithRelations {
+  id: string;
+  tenantId: string;
+  title: string;
+  description: string | null;
+  startAt: Date;
+  endAt: Date;
+  proofType: string;
+  cadence: string;
+  createdAt: Date;
+  updatedAt: Date;
+  creatorId: string;
+  startDate: Date;
+  endDate: Date;
+  policy: string | null;
+  isPublic: boolean;
+  rewards: any; // JSON field
+  requireApproval: boolean;
+  featured: boolean;
+  creator: {
+    id: string;
+    name: string | null;
+    email: string | null;
+  } | null;
+  _count: {
+    enrollments: number;
+    winners: number;
+  };
+}
+
 // GET /api/admin/challenges - Admin view of challenges
 export async function GET(request: NextRequest) {
   try {
@@ -33,7 +64,7 @@ export async function GET(request: NextRequest) {
 
     // Enhanced with check-ins and streak data
     const enhancedChallenges = await Promise.all(
-      challenges.map(async (challenge) => {
+      challenges.map(async (challenge: any) => {
         // Count total check-ins for this challenge
         const totalCheckIns = await prisma.proof.count({
           where: {

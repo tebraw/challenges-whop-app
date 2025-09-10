@@ -180,7 +180,10 @@ export default function ChallengePage({
       const data = await response.json();
       
       if (response.ok) {
-        alert('Check-in successful! 🎉');
+        const successMessage = data.checkin?.isUpdate ? 
+          'Proof updated successfully! 🔄' : 
+          'Check-in successful! 🎉';
+        alert(successMessage);
         setShowProofModal(false);
         setProofText('');
         setProofLink('');
@@ -579,8 +582,11 @@ export default function ChallengePage({
                   <div className="mt-2 text-sm text-gray-400">
                     <p>Selected: {selectedFile.name}</p>
                     <p>Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                    {selectedFile.size > 500 * 1024 && (
-                      <p className="text-yellow-400">ℹ️ Large image will be automatically compressed for mobile compatibility</p>
+                    {selectedFile.size > 10 * 1024 * 1024 && (
+                      <p className="text-red-400">⚠️ File too large (max 10MB)</p>
+                    )}
+                    {selectedFile.size <= 10 * 1024 * 1024 && (
+                      <p className="text-green-400">✅ Image will be uploaded without compression</p>
                     )}
                   </div>
                 )}

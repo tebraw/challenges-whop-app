@@ -1,11 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Type definitions
+interface ChallengeData {
+  id: string;
+  cadence: string;
+  startAt: Date;
+  endAt: Date;
+}
+
+interface EnrollmentWithUserAndProofs {
+  id: string;
+  joinedAt: Date;
+  user: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+  };
+  proofs: Array<{
+    id: string;
+    type: string;
+    text?: string | null;
+    url?: string | null;
+    createdAt: Date;
+  }>;
+}
+
+interface EnrollmentWithUserAndCheckins {
+  id: string;
+  joinedAt: Date;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+  checkins: Array<{
+    id: string;
+    createdAt: Date;
+    imageUrl: string | null;
+    text: string | null;
+    linkUrl: string | null;
+    enrollmentId: string;
+  }>;
+}
+
+interface LeaderboardParticipant {
+  userId: string;
+  username: string;
+  email: string | null | undefined;
+  joinedAt: Date;
+  completedCheckIns: number;
+  maxCheckIns: number;
+  completionRate: number;
+  lastCheckin?: Date | null;
+  points: number;
+}
+
+interface RankedParticipant extends LeaderboardParticipant {
+  rank: number;
+}
+
 // Helper functions from status API
-function calculateMaxCheckIns(challenge: any): number {
+function calculateMaxCheckIns(challenge: ChallengeData): number {
   if (challenge.cadence === 'DAILY') {
-    const startDate = new Date(challenge.startDate);
-    const endDate = new Date(challenge.endDate);
+    const startDate = new Date(challenge.startAt);
+    const endDate = new Date(challenge.endAt);
     const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     return Math.max(1, daysDiff + 1);
   } else {
@@ -49,7 +108,7 @@ export async function GET(
     });
 
     // Calculate stats for each participant
-    const leaderboard = enrollments.map(enrollment => {
+    const leaderboard: LeaderboardParticipant[] = enrollments.map((enrollment: EnrollmentWithUserAndCheckins) => {
       const checkins = enrollment.checkins;
       const completedCheckIns = checkins.length;
       const completionRate = maxCheckIns > 0 ? completedCheckIns / maxCheckIns : 0;
@@ -70,14 +129,14 @@ export async function GET(
     });
 
     // Sort by points (highest first), then by completion rate, then by total check-ins
-    leaderboard.sort((a, b) => {
+    leaderboard.sort((a: LeaderboardParticipant, b: LeaderboardParticipant) => {
       if (b.points !== a.points) return b.points - a.points;
       if (b.completionRate !== a.completionRate) return b.completionRate - a.completionRate;
       return b.completedCheckIns - a.completedCheckIns;
     });
 
     // Add ranking
-    const rankedLeaderboard = leaderboard.map((participant, index) => ({
+    const rankedLeaderboard: RankedParticipant[] = leaderboard.map((participant: LeaderboardParticipant, index: number) => ({
       ...participant,
       rank: index + 1
     }));
@@ -86,11 +145,11 @@ export async function GET(
       leaderboard: rankedLeaderboard,
       totalParticipants: enrollments.length,
       stats: {
-        totalCheckIns: leaderboard.reduce((sum, p) => sum + p.completedCheckIns, 0),
+        totalCheckIns: leaderboard.reduce((sum: number, p: LeaderboardParticipant) => sum + p.completedCheckIns, 0),
         averageCompletionRate: leaderboard.length > 0 
-          ? leaderboard.reduce((sum, p) => sum + p.completionRate, 0) / leaderboard.length 
+          ? leaderboard.reduce((sum: number, p: LeaderboardParticipant) => sum + p.completionRate, 0) / leaderboard.length 
           : 0,
-        topCompletionRate: Math.max(...leaderboard.map(p => p.completionRate), 0)
+        topCompletionRate: Math.max(...leaderboard.map((p: LeaderboardParticipant) => p.completionRate), 0)
       }
     });
 

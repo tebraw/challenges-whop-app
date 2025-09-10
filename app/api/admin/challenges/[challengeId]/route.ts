@@ -2,6 +2,34 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 
+// Type definitions for better type safety
+interface EnrollmentWithUserAndProofs {
+  id: string;
+  joinedAt: Date;
+  user: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+  };
+  proofs: Array<{
+    id: string;
+    type: string;
+    text?: string | null;
+    url?: string | null;
+    createdAt: Date;
+  }>;
+}
+
+interface LeaderboardEntry {
+  id: string;
+  username: string;
+  email: string | null | undefined;
+  checkIns: number;
+  completionRate: number;
+  points: number;
+  joinedAt: string;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ challengeId: string }> }
@@ -68,7 +96,7 @@ export async function GET(
     const maxCheckIns = calculateMaxCheckIns(challenge);
 
     // Generate leaderboard from the challenge enrollments (already includes proofs)
-    const leaderboardData = challenge.enrollments.map(enrollment => {
+    const leaderboardData: LeaderboardEntry[] = challenge.enrollments.map((enrollment: EnrollmentWithUserAndProofs) => {
       const completedCheckIns = enrollment.proofs.length;
       const completionRate = maxCheckIns > 0 ? completedCheckIns / maxCheckIns : 0;
       return {
@@ -84,7 +112,7 @@ export async function GET(
 
     // Sort leaderboard by points (highest first)
     const transformedLeaderboard = leaderboardData
-      .sort((a, b) => {
+      .sort((a: LeaderboardEntry, b: LeaderboardEntry) => {
         if (b.points !== a.points) return b.points - a.points;
         if (b.completionRate !== a.completionRate) return b.completionRate - a.completionRate;
         return b.checkIns - a.checkIns;
@@ -93,7 +121,7 @@ export async function GET(
 
     // Calculate average completion rate
     let avgCompletionRate = 0;
-    challenge.enrollments.forEach(enrollment => {
+    challenge.enrollments.forEach((enrollment: EnrollmentWithUserAndProofs) => {
       const completedCheckIns = enrollment.proofs.length;
       const completionRate = maxCheckIns > 0 ? completedCheckIns / maxCheckIns : 0;
       avgCompletionRate += completionRate;
