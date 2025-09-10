@@ -117,7 +117,6 @@ export async function getExperienceContext(): Promise<ExperienceContext> {
   }
 
   // Check if we're running in an embedded context (iFrame)
-  const referer = h.get('referer') || '';
   const userAgent = h.get('user-agent') || '';
   const isEmbedded = referer.includes('whop.com') || 
                      h.get('x-frame-options') !== null ||
@@ -201,7 +200,7 @@ export async function getExperienceContext(): Promise<ExperienceContext> {
     hasExperienceId: !!context.experienceId,
     isEmbedded: context.isEmbedded,
     isCompanyOwner: context.isCompanyOwner,
-    refererDomain: referer ? new URL(referer).hostname : 'none',
+    refererDomain: referer ? (() => { try { return new URL(referer).hostname; } catch { return 'invalid-url'; } })() : 'none',
     extractionMethod: userId ? 
       (h.get('whop-user-id') || h.get('x-whop-user-id') ? 'direct-header' : 
        h.get('whop-user-token') || h.get('x-whop-user-token') ? 'token' : 'url-params') : 'none',
@@ -209,7 +208,7 @@ export async function getExperienceContext(): Promise<ExperienceContext> {
       hasWhopUserToken: !!(h.get('whop-user-token') || h.get('x-whop-user-token')),
       hasAccessLevel: !!(h.get('whop-access-level') || h.get('x-whop-access-level')),
       hasRole: !!(h.get('whop-role') || h.get('x-whop-role')),
-      refererHost: referer ? new URL(referer).hostname : 'none'
+      refererHost: referer ? (() => { try { return new URL(referer).hostname; } catch { return 'invalid-url'; } })() : 'none'
     }
   });
 
