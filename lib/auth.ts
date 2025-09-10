@@ -17,9 +17,17 @@ export async function isAdmin(): Promise<boolean> {
     const currentUser = await getCurrentUser();
     if (!currentUser) return false;
     
-    // PRODUCTION SECURITY: Only the app installer (company owner) is admin
-    // Must have ADMIN role AND valid Whop company ID
-    return currentUser.role === 'ADMIN' && !!currentUser.whopCompanyId;
+    // PRODUCTION SECURITY: Admin access through:
+    // 1. ADMIN role AND valid Whop company ID AND
+    // 2. Active subscription for the company
+    if (currentUser.role === 'ADMIN' && currentUser.whopCompanyId) {
+      // Check if company has active subscription
+      const hasActiveSubscription = await checkActiveSubscription(currentUser.whopCompanyId);
+      console.log(`🔐 Admin check: User ${currentUser.email}, Active Subscription: ${hasActiveSubscription}`);
+      return hasActiveSubscription;
+    }
+    
+    return false;
   } catch {
     return false;
   }
@@ -217,21 +225,21 @@ async function getWhopExperienceRole(userId: string, companyId?: string): Promis
     const experienceId = process.env.WHOP_EXPERIENCE_ID || process.env.NEXT_PUBLIC_WHOP_EXPERIENCE_ID;
     
     if (experienceId) {
-      console.log(`🎯 Using Experience access check for Experience ID: ${experienceId}`);
+      console.log(`🎯 Using Access Pass check for Experience ID: ${experienceId}`);
       
-      const accessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
+      const accessResult = await whopSdk.access.checkIfUserHasAccessToAccessPass({
         userId: userId,
-        experienceId: experienceId
+        accessPassId: experienceId
       });
       
-      console.log('🎯 Experience Access Result:', accessResult);
+      console.log('🎯 Access Pass Result:', accessResult);
       
-      // Official Whop Experience access levels:
+      // Official Whop Access Pass access levels:
       // 'admin' = Company Owner/Moderator → ADMIN role
       // 'customer' = Community Member → USER role  
       // 'no_access' = No access → USER role (fallback)
       const role = accessResult.accessLevel === 'admin' ? 'ADMIN' : 'USER';
-      console.log(`🎯 Experience Access Level: ${accessResult.accessLevel} → Database Role: ${role}`);
+      console.log(`🎯 Access Pass Level: ${accessResult.accessLevel} → Database Role: ${role}`);
       
       return role;
     }
@@ -258,5 +266,44 @@ async function getWhopExperienceRole(userId: string, companyId?: string): Promis
   } catch (error) {
     console.log('⚠️ Whop SDK access check failed, falling back to USER role:', error);
     return 'USER';
+  }
+}
+
+/**
+ * Check if company has active subscription for admin access
+ */
+async function checkActiveSubscription(companyId: string): Promise<boolean> {
+  try {
+    // Find tenant by company ID
+    const tenant = await prisma.tenant.findFirst({
+      where: { whopCompanyId: companyId }
+    });
+
+    if (!tenant) {
+      console.log(`⚠️ No tenant found for company ${companyId}`);
+      return false;
+    }
+
+    // Check for active subscription
+    const activeSubscription = await prisma.whopSubscription.findFirst({
+      where: {
+        tenantId: tenant.id,
+        status: 'active',
+        validUntil: {
+          gt: new Date() // Must be valid in the future
+        }
+      }
+    });
+
+    if (activeSubscription) {
+      console.log(`✅ Active subscription found for tenant ${tenant.id}: ${activeSubscription.whopProductId}`);
+      return true;
+    } else {
+      console.log(`❌ No active subscription found for tenant ${tenant.id}`);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error checking subscription status:', error);
+    return false;
   }
 }
