@@ -32,6 +32,40 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Check if we're using mock products
+    const isMockProduct = plan_ids.some((id: string) => id.startsWith('mock_'));
+    
+    if (isMockProduct) {
+      // For mock products, return a mock promo code response
+      console.log('🎭 Creating mock promo code for development:', {
+        code,
+        amount_off,
+        plan_ids,
+        message: 'Mock promo code created - connect real Whop products for production'
+      });
+      
+      return NextResponse.json({
+        success: true,
+        promoCode: {
+          id: `mock_promo_${Date.now()}`,
+          code: code,
+          amount_off: parseInt(amount_off),
+          promo_type: promo_type,
+          status: 'active',
+          uses: 0,
+          created_at: new Date().toISOString()
+        },
+        message: 'Mock promo code created for development. Connect your Whop account for real promo codes.'
+      });
+    }
+
+    // Check if Whop API credentials are available for real products
+    if (!process.env.WHOP_API_KEY) {
+      return NextResponse.json({
+        error: 'Whop API credentials not configured'
+      }, { status: 500 });
+    }
+
     // Calculate expiration date: 7 days from now
     const expirationDate = new Date();
     expirationDate.setDate(expirationDate.getDate() + 7);

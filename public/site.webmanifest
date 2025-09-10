@@ -9,15 +9,9 @@
   "icons": [
     {
       "src": "/logo-mark.png",
-      "sizes": "192x192",
+      "sizes": "any",
       "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/logo-mark.png", 
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any"
     }
   ]
 }

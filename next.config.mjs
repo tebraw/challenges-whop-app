@@ -12,6 +12,12 @@ const nextConfig = {
     },
   },
   
+  // Reduce build warnings
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
+  
   // Optimize performance and reduce warnings
   experimental: {
     optimizePackageImports: ['@whop/react'],
