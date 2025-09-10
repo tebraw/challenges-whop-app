@@ -4,17 +4,18 @@ const nextConfig = {
   images: {
     remotePatterns: [{ hostname: "**" }],
   },
-  experimental: {
-    // Increase body size limit for file uploads
-    bodySizeLimit: '50mb',
-  },
-  // API route config for larger payloads
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb',
-    },
-    responseLimit: false,
-  },
+  // For Next.js 15, body size limits are handled at the API route level
+  // experimental: {
+  //   bodySizeLimit: '50mb',  // Not supported in Next.js 15
+  // },
+  
+  // API route config moved to individual route files
+  // api: {
+  //   bodyParser: {
+  //     sizeLimit: '50mb',  // Not supported in Next.js 15 at config level
+  //   },
+  //   responseLimit: false,
+  // },
 };
 
 export default nextConfig;

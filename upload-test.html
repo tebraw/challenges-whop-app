@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .upload-form { border: 2px dashed #ccc; padding: 20px; border-radius: 10px; }
+        .result { margin-top: 20px; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>Upload Size Test</h1>
+    <p>This page tests the upload functionality with different file sizes.</p>
+    
+    <div class="upload-form">
+        <h3>File Upload Test</h3>
+        <input type="file" id="fileInput" accept="image/*">
+        <br><br>
+        <button onclick="uploadFile()">Upload File</button>
+        <br><br>
+        <div id="fileInfo"></div>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+                document.getElementById('fileInfo').innerHTML = `
+                    <strong>File selected:</strong><br>
+                    Name: ${file.name}<br>
+                    Size: ${sizeInMB} MB (${file.size} bytes)<br>
+                    Type: ${file.type}
+                `;
+            }
+        });
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const resultDiv = document.getElementById('result');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                resultDiv.innerHTML = '<div class="error">Please select a file first.</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="info">Uploading... Please wait.</div>';
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                console.log('Uploading file:', file.name, 'Size:', file.size, 'bytes');
+                
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <strong>Upload Successful!</strong><br>
+                            File: ${file.name}<br>
+                            Size: ${(file.size / (1024 * 1024)).toFixed(2)} MB<br>
+                            Server Response: ${data.message || 'Upload completed'}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <strong>Upload Failed!</strong><br>
+                            Status: ${response.status}<br>
+                            Error: ${data.message || data.error || 'Unknown error'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>Upload Error!</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

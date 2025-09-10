@@ -45,9 +45,9 @@ export async function POST(req: Request) {
       type: file.type
     });
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > 50 * 1024 * 1024) {
       console.log('File too large:', file.size);
-      return new NextResponse("File too large (>10MB)", { status: 413 });
+      return new NextResponse("File too large (>50MB)", { status: 413 });
     }
 
     if (!file.type.startsWith('image/')) {
