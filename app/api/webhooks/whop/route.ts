@@ -12,20 +12,27 @@ export async function POST(request: NextRequest) {
 
     console.log('🔔 Whop webhook received:', event.type);
 
-    // TODO: Implement webhook handlers once database is properly synced
-    // For now, just log the events
+    // Handle different webhook events
     switch (event.type) {
       case 'payment_succeeded':
         console.log('💰 Payment succeeded:', event.data);
-        // await handlePaymentSucceeded(event.data);
+        await handlePaymentSucceeded(event.data);
         break;
       case 'membership_went_valid':
         console.log('✅ Membership valid:', event.data);
-        // await handleMembershipValid(event.data);
+        await handleMembershipValid(event.data);
         break;
       case 'membership_went_invalid':
         console.log('❌ Membership invalid:', event.data);
-        // await handleMembershipInvalid(event.data);
+        await handleMembershipInvalid(event.data);
+        break;
+      case 'payment_failed':
+        console.log('💸 Payment failed:', event.data);
+        await handlePaymentFailed(event.data);
+        break;
+      case 'subscription_cancelled':
+        console.log('🚫 Subscription cancelled:', event.data);
+        await handleSubscriptionCancelled(event.data);
         break;
       default:
         console.log('Unhandled webhook event:', event.type);
@@ -67,13 +74,13 @@ async function handlePaymentSucceeded(data: any) {
   }
 
   // Create or update subscription
-  const subscription = await prisma.whopSubscription.findFirst({
+  const subscription = await (prisma as any).whopSubscription.findFirst({
     where: { tenantId: tenant.id }
   });
 
   if (subscription) {
     // Update existing subscription
-    await prisma.whopSubscription.update({
+    await (prisma as any).whopSubscription.update({
       where: { id: subscription.id },
       data: {
         whopProductId: product_id,
@@ -83,7 +90,7 @@ async function handlePaymentSucceeded(data: any) {
     });
   } else {
     // Create new subscription
-    await prisma.whopSubscription.create({
+    await (prisma as any).whopSubscription.create({
       data: {
         tenantId: tenant.id,
         whopProductId: product_id,
@@ -94,6 +101,36 @@ async function handlePaymentSucceeded(data: any) {
   }
 
   console.log(`✅ Subscription activated for tenant ${tenant.id}: ${plan.name}`);
+}
+
+async function handlePaymentFailed(data: any) {
+  const { company_id } = data;
+  console.log(`💸 Payment failed for company ${company_id}`);
+  // Could implement retry logic or notification here
+}
+
+async function handleSubscriptionCancelled(data: any) {
+  const { company_id } = data;
+  
+  // Find tenant by company ID
+  const tenant = await prisma.tenant.findFirst({
+    where: { whopCompanyId: company_id }
+  });
+
+  if (tenant) {
+    // Deactivate subscription
+    await (prisma as any).whopSubscription.updateMany({
+      where: { 
+        tenantId: tenant.id,
+        status: 'active'
+      },
+      data: {
+        status: 'cancelled'
+      }
+    });
+
+    console.log(`🚫 Subscription cancelled for tenant ${tenant.id}`);
+  }
 }
 
 async function handleMembershipValid(data: any) {
@@ -110,7 +147,7 @@ async function handleMembershipInvalid(data: any) {
 
   if (tenant) {
     // Deactivate subscription
-    await prisma.whopSubscription.updateMany({
+    await (prisma as any).whopSubscription.updateMany({
       where: { 
         tenantId: tenant.id,
         status: 'active'
