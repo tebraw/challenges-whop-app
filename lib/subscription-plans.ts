@@ -2,6 +2,7 @@ export interface SubscriptionPlan {
   id: string;
   name: string;
   whopProductId: string;
+  checkoutUrl: string;
   price: number;
   currency: string;
   limits: {
@@ -15,9 +16,33 @@ export interface SubscriptionPlan {
 
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
+    id: 'free',
+    name: 'Free Plan',
+    whopProductId: 'prod_RMsiHhaVQa8ER',
+    checkoutUrl: 'https://whop.com/api-app-zyu-hlz-hinp-a5-ce-free/',
+    price: 0,
+    currency: 'USD',
+    limits: {
+      challengesPerMonth: -1, // Unlimited for testing
+      participantsPerChallenge: -1, // Unlimited for testing
+      features: [
+        'Unlimited challenges (Testing)',
+        'Unlimited participants (Testing)',
+        'Full analytics access',
+        'Priority support',
+        'Custom branding',
+        'API access',
+        'Advanced integrations'
+      ]
+    },
+    description: 'Free testing plan with full features',
+    isPopular: true
+  },
+  {
     id: 'basic',
     name: 'Basic Plan',
     whopProductId: 'prod_YByUE3J5oT4Fq',
+    checkoutUrl: 'https://whop.com/api-app-zyu-hlz-hinp-a5-ce-basic/',
     price: 29,
     currency: 'USD',
     limits: {
@@ -36,6 +61,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     id: 'pro',
     name: 'Pro Plan',
     whopProductId: 'prod_Tj4T1U7pVwtgb',
+    checkoutUrl: 'https://whop.com/api-app-zyu-hlz-hinp-a5-ce-pro/',
     price: 99,
     currency: 'USD',
     limits: {
@@ -51,7 +77,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
       ]
     },
     description: 'For growing businesses and enterprises',
-    isPopular: true
+    isPopular: false
   }
 ];
 
