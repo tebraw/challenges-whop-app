@@ -218,10 +218,46 @@ export async function getCurrentUser(): Promise<{
  */
 async function getWhopExperienceRole(userId: string, companyId?: string): Promise<'ADMIN' | 'USER'> {
   try {
-    // Import Whop SDK dynamically
+    console.log(`🔍 Determining role for user ${userId} in company ${companyId}`);
+    
+    // PRIORITIZE COMPANY OWNERSHIP CHECK
+    // If user is a company owner, they get ADMIN access regardless of Experience setup
+    if (companyId) {
+      console.log('🏢 Checking company ownership first...');
+      
+      try {
+        const userCompaniesResponse = await fetch(`https://api.whop.com/v5/users/${userId}/companies`, {
+          headers: {
+            'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (userCompaniesResponse.ok) {
+          const userCompanies = await userCompaniesResponse.json();
+          const ownedCompanies = userCompanies.data || [];
+          
+          console.log('🔍 User owned companies:', ownedCompanies.map((c: any) => ({ id: c.id, name: c.name })));
+          
+          // Check if user owns the target company
+          const ownsTargetCompany = ownedCompanies.some((company: any) => company.id === companyId);
+          
+          if (ownsTargetCompany) {
+            console.log('👑 USER IS COMPANY OWNER - granting ADMIN access');
+            return 'ADMIN';
+          } else {
+            console.log('👤 User owns other companies but not this one - checking membership...');
+          }
+        }
+      } catch (companyError) {
+        console.log('⚠️ Company ownership check failed:', companyError);
+      }
+    }
+    
+    // Import Whop SDK dynamically for Experience check (fallback)
     const { whopSdk } = await import('./whop-sdk');
     
-    // Try Experience access check first
+    // Try Experience access check
     const experienceId = process.env.WHOP_EXPERIENCE_ID || process.env.NEXT_PUBLIC_WHOP_EXPERIENCE_ID;
     
     if (experienceId) {
@@ -244,7 +280,7 @@ async function getWhopExperienceRole(userId: string, companyId?: string): Promis
       return role;
     }
     
-    // Fallback to company access check
+    // Final fallback to company access check
     if (companyId) {
       console.log('⚠️ No Experience ID found, falling back to company access check');
       
@@ -261,10 +297,11 @@ async function getWhopExperienceRole(userId: string, companyId?: string): Promis
       return role;
     }
     
+    console.log('⚠️ No company ID or experience ID available, defaulting to USER');
     return 'USER';
     
   } catch (error) {
-    console.log('⚠️ Whop SDK access check failed, falling back to USER role:', error);
+    console.log('⚠️ Whop role check failed, falling back to USER role:', error);
     return 'USER';
   }
 }

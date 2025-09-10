@@ -27,12 +27,35 @@ export default function AdminGuard({ children }: AdminGuardProps) {
       try {
         console.log('🔍 Checking admin access and subscription status...');
         
-        // Check onboarding status (includes company owner and subscription checks)
+        // FIRST: Check basic access level
+        const accessResponse = await fetch('/api/auth/access-level');
+        if (accessResponse.ok) {
+          const accessData = await accessResponse.json();
+          console.log('📊 Access level:', accessData);
+          
+          // If already recognized as company owner with admin access, grant immediately
+          if (accessData.accessLevel?.userType === 'company_owner' && accessData.accessLevel?.canViewAdmin) {
+            console.log('✅ Already recognized as company owner with admin access');
+            setHasAccess(true);
+            setIsChecking(false);
+            return;
+          }
+        }
+        
+        // SECOND: Check onboarding status (includes company owner and subscription checks)
         const onboardingResponse = await fetch('/api/auth/onboarding-status');
         
         if (!onboardingResponse.ok) {
-          console.log('❌ Onboarding status check failed');
-          return;
+          console.log('❌ Onboarding status check failed, checking for auth issues...');
+          
+          // Try to get current user to see if authenticated
+          const userResponse = await fetch('/api/auth/me');
+          if (!userResponse.ok) {
+            console.log('❌ User not authenticated - this is expected for non-Whop access');
+            setHasAccess(false);
+            setIsChecking(false);
+            return;
+          }
         }
         
         const onboardingData = await onboardingResponse.json();
