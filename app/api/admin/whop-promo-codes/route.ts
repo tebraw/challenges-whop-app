@@ -68,11 +68,11 @@ export async function POST(request: NextRequest) {
 
     // 🔧 CONVERT PRODUCT IDS TO PLAN IDS
     // We need to get the plan IDs for the selected products
-    const { getCreatorProducts } = await import('@/lib/whopApi');
+    const { getCompanyProducts } = await import('@/lib/whopApi');
     
     try {
       // Get all products with their plan IDs
-      const allProducts = await getCreatorProducts(user.whopCompanyId || 'current');
+      const allProducts = await getCompanyProducts();
       const planIds: string[] = [];
       
       for (const productId of product_ids) {

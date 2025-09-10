@@ -283,8 +283,31 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
     let planToProductMap: Record<string, string> = {};
     let products: any[] = [];
 
-    // First, get memberships to build plan-to-product mapping
+    // First, get payments AND memberships to build comprehensive plan-to-product mapping
     try {
+      // Primary: Get payments (includes one-time purchases)
+      const paymentsResponse = await fetch(`${WHOP_API_BASE}/v5/company/payments?per=100`, {
+        headers: {
+          'Authorization': `Bearer ${WHOP_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (paymentsResponse.ok) {
+        const paymentsData = await paymentsResponse.json();
+        if (paymentsData.data) {
+          paymentsData.data.forEach((payment: any) => {
+            if (payment.product_id && payment.plan_id) {
+              planToProductMap[payment.product_id] = payment.plan_id;
+            }
+          });
+          if (!isProduction) {
+            console.log('💳 Built plan mapping from payments:', planToProductMap);
+          }
+        }
+      }
+
+      // Fallback: Get memberships for additional plan mapping
       const membershipsResponse = await fetch(`${WHOP_API_BASE}/v5/company/memberships`, {
         headers: {
           'Authorization': `Bearer ${WHOP_API_KEY}`,
@@ -296,10 +319,13 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
         const membershipsData = await membershipsResponse.json();
         if (membershipsData.data) {
           membershipsData.data.forEach((membership: any) => {
-            planToProductMap[membership.product_id] = membership.plan_id;
+            // Only add if not already mapped from payments
+            if (membership.product_id && membership.plan_id && !planToProductMap[membership.product_id]) {
+              planToProductMap[membership.product_id] = membership.plan_id;
+            }
           });
           if (!isProduction) {
-            console.log('🗺️ Built plan mapping:', planToProductMap);
+            console.log('� Enhanced plan mapping with memberships:', planToProductMap);
           }
         }
       }
@@ -414,6 +440,105 @@ export async function getCreatorProducts(creatorId: string): Promise<WhopProduct
       console.error('Error fetching creator products with enhanced scopes:', error);
     }
     return getMockProducts();
+  }
+}
+
+// Get all company products for current company context (for promo codes)
+export async function getCompanyProducts(): Promise<WhopProduct[]> {
+  try {
+    console.log('🔍 Fetching products from Whop Company API...');
+    
+    if (!WHOP_API_KEY) {
+      console.warn('Whop API key not configured - using mock products');
+      return getMockProducts();
+    }
+    
+    // Get products
+    const productsResponse = await fetch('https://api.whop.com/v5/company/products', {
+      headers: {
+        'Authorization': `Bearer ${WHOP_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!productsResponse.ok) {
+      console.error('❌ Products API error:', productsResponse.status, await productsResponse.text());
+      throw new Error(`Whop API error: ${productsResponse.status}`);
+    }
+
+    const productsData = await productsResponse.json();
+    console.log('📦 Products loaded:', productsData.data?.length || 0);
+
+    // Get payments to map product IDs to plan IDs (more comprehensive than memberships)
+    const paymentsResponse = await fetch('https://api.whop.com/v5/company/payments?per=100', {
+      headers: {
+        'Authorization': `Bearer ${WHOP_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    let planToProductMap: Record<string, string> = {};
+    
+    if (paymentsResponse.ok) {
+      const paymentsData = await paymentsResponse.json();
+      console.log('💳 Payments loaded for plan mapping:', paymentsData.data?.length || 0);
+      
+      // Build plan to product mapping from payments (includes one-time purchases)
+      for (const payment of paymentsData.data || []) {
+        if (payment.product_id && payment.plan_id) {
+          planToProductMap[payment.product_id] = payment.plan_id;
+          console.log(`📋 Plan mapping from payment: ${payment.product_id} → ${payment.plan_id} (${payment.billing_reason})`);
+        }
+      }
+    } else {
+      console.warn('⚠️ Could not fetch payments for plan mapping');
+    }
+
+    // Fallback: Try memberships if payments didn't provide enough mappings
+    if (Object.keys(planToProductMap).length === 0) {
+      console.log('🔄 Fallback: Trying memberships for plan mapping...');
+      const membershipsResponse = await fetch('https://api.whop.com/v5/company/memberships?per=100', {
+        headers: {
+          'Authorization': `Bearer ${WHOP_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (membershipsResponse.ok) {
+        const membershipsData = await membershipsResponse.json();
+        console.log('🔗 Memberships loaded for plan mapping:', membershipsData.data?.length || 0);
+        
+        for (const membership of membershipsData.data || []) {
+          if (membership.product_id && membership.plan_id && !planToProductMap[membership.product_id]) {
+            planToProductMap[membership.product_id] = membership.plan_id;
+            console.log(`📋 Plan mapping from membership: ${membership.product_id} → ${membership.plan_id}`);
+          }
+        }
+      }
+    }
+
+    // Transform products and add plan_id where available
+    const products: WhopProduct[] = (productsData.data || []).map((product: any) => ({
+      id: product.id,
+      title: product.name || `Product ${product.id}`,
+      description: product.description || '',
+      price: product.experiences?.[0]?.plans?.[0]?.base_currency_cost || 0,
+      currency: product.experiences?.[0]?.plans?.[0]?.currency || 'USD',
+      product_type: 'digital',
+      image_url: product.image_url || '',
+      checkout_url: `https://whop.com/checkout/${product.id}`,
+      is_active: product.visibility === 'visible',
+      creator_id: product.company_id,
+      created_at: product.created_at ? new Date(product.created_at * 1000).toISOString() : new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      plan_id: planToProductMap[product.id] || undefined // Add plan_id from mapping
+    }));
+
+    console.log('✅ Products with plan mapping loaded:', products.map(p => `${p.id} (plan: ${p.plan_id || 'undefined'})`));
+    return products;
+  } catch (error) {
+    console.error('❌ Error fetching creator products:', error);
+    throw error;
   }
 }
 
