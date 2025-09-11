@@ -1,174 +1,221 @@
-import { headers } from 'next/headers';
-import { whopSdk } from './whop-sdk';
+/**
+ * 🎯 WHOP EXPERIENCE AUTH SERVICE
+ * Implementiert die 10 Whop-Regeln für Experience-basierte Apps
+ */
+"use server";
 
-interface WhopExperienceAuthResult {
+import { headers } from "next/headers";
+import { whopSdk } from "./whop-sdk";
+import { getExperienceContext } from "./whop-experience";
+import { prisma } from "./prisma";
+
+// 🎯 WHOP RULE #2: Rollen sauber mappen
+export type WhopRole = 'admin' | 'customer' | 'no_access';
+export type AppRole = 'ersteller' | 'member' | 'guest';
+
+export interface ExperienceAuth {
   isAuthenticated: boolean;
   userId?: string;
   experienceId?: string;
-  userAccess?: 'guest' | 'member' | 'creator';
-  permissions?: {
-    canView: boolean;
-    canParticipate: boolean;
+  whopRole: WhopRole;
+  appRole: AppRole;
+  hasAccess: boolean;
+  permissions: {
+    canCreate: boolean;
     canManage: boolean;
+    canParticipate: boolean;
+    canViewAnalytics: boolean;
   };
 }
 
-export async function verifyExperienceAccess(
-  experienceId: string
-): Promise<WhopExperienceAuthResult> {
+/**
+ * 🎯 WHOP RULE #3: Auth nur auf dem Server
+ * Minimal-Flow implementiert
+ */
+export async function verifyExperienceAuth(requireAccess = true): Promise<ExperienceAuth> {
   try {
-    // Whop Experience Rule 1: Get user token from Whop headers
     const headersList = await headers();
     
-    // Whop Experience Rule 2: Verify user token with Whop API
-    const tokenResult = await whopSdk.verifyUserToken(headersList);
-    
-    if (!tokenResult || !tokenResult.userId) {
-      return {
-        isAuthenticated: false,
-        userAccess: 'guest',
-        permissions: { canView: false, canParticipate: false, canManage: false }
-      };
+    // Step 1: userId = verifyUserToken(headers)
+    const userToken = headersList.get('x-whop-user-token');
+    if (!userToken) {
+      return createGuestAuth();
     }
 
-    const userId = tokenResult.userId;
-
-    // Whop Experience Rule 3: Check if user has access to this Experience
-    let hasAccess = false;
-    let userRole = 'guest';
-
-    try {
-      const accessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
-        userId,
-        experienceId
-      });
-      
-      if (accessResult && accessResult.hasAccess) {
-        hasAccess = true;
-        
-        // Map Whop access levels to our app roles
-        // Official Whop access levels: 'admin', 'customer', 'no_access'
-        if (accessResult.accessLevel === 'admin') {
-          userRole = 'creator'; // Admin = Creator/Manager
-        } else if (accessResult.accessLevel === 'customer') {
-          userRole = 'member'; // Customer = Paying member
-        } else {
-          userRole = 'guest'; // no_access or undefined = Guest
-        }
-      }
-    } catch (error) {
-      console.log('Error checking experience access:', error);
-      // If experience check fails, fall back to any authentication as guest
-      hasAccess = false;
-      userRole = 'guest';
+    const { userId } = await whopSdk.verifyUserToken(headersList);
+    if (!userId) {
+      return createGuestAuth();
     }
 
-    // Whop Experience Rule 4: Map access to permissions
-    let userAccess: 'guest' | 'member' | 'creator' = userRole as 'guest' | 'member' | 'creator';
-    let permissions = { canView: false, canParticipate: false, canManage: false };
-
-    if (userAccess === 'creator') {
-      // Rule 5: Creator permissions - full access
-      permissions = { canView: true, canParticipate: true, canManage: true };
-    } else if (userAccess === 'member' && hasAccess) {
-      // Rule 6: Member permissions - can view and participate
-      permissions = { canView: true, canParticipate: true, canManage: false };
-    } else {
-      // Rule 7: Guest permissions - limited access
-      userAccess = 'guest';
-      permissions = { canView: true, canParticipate: false, canManage: false };
+    // Get Experience context
+    const experienceContext = await getExperienceContext();
+    if (!experienceContext.experienceId) {
+      console.warn('⚠️ No experienceId found - falling back to company-based auth');
+      return createGuestAuth();
     }
+
+    // Step 2: result = access.checkIfUserHasAccessToExperience
+    const accessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
+      userId,
+      experienceId: experienceContext.experienceId
+    });
+
+    // Step 3: if (!result.hasAccess) -> 403
+    if (!accessResult.hasAccess && requireAccess) {
+      throw new Error('Access denied to experience');
+    }
+
+    // Step 4: Map Whop roles to app roles (RULE #2)
+    const whopRole = accessResult.accessLevel as WhopRole;
+    const appRole = mapWhopRoleToAppRole(whopRole);
 
     return {
       isAuthenticated: true,
       userId,
-      experienceId,
-      userAccess,
-      permissions
+      experienceId: experienceContext.experienceId,
+      whopRole,
+      appRole,
+      hasAccess: accessResult.hasAccess,
+      permissions: calculatePermissions(appRole)
     };
 
   } catch (error) {
     console.error('Experience auth error:', error);
-    return {
-      isAuthenticated: false,
-      userAccess: 'guest',
-      permissions: { canView: false, canParticipate: false, canManage: false }
-    };
+    if (requireAccess) {
+      throw error;
+    }
+    return createGuestAuth();
   }
 }
 
-// Middleware helper to verify Experience access
-export async function requireExperienceAccess(
-  experienceId: string,
-  requiredAccess: 'guest' | 'member' | 'creator' = 'member'
-) {
-  const auth = await verifyExperienceAccess(experienceId);
+/**
+ * 🎯 WHOP RULE #4: UI darf rendern, Logik bleibt Server
+ * Für Admin-Aktionen verwenden
+ */
+export async function requireAdminAccess(): Promise<ExperienceAuth> {
+  const auth = await verifyExperienceAuth(true);
   
-  if (!auth.isAuthenticated) {
-    throw new Error('Authentication required');
-  }
-
-  const accessLevels = { guest: 0, member: 1, creator: 2 };
-  
-  if (accessLevels[auth.userAccess || 'guest'] < accessLevels[requiredAccess]) {
-    throw new Error(`Access denied. Required: ${requiredAccess}, Current: ${auth.userAccess}`);
+  // Step 4: if (admin-Action && result.accessLevel !== 'admin') -> 403
+  if (auth.whopRole !== 'admin') {
+    throw new Error('Admin access required');
   }
 
   return auth;
 }
 
-// Get current Experience ID from headers or environment
-export async function getCurrentExperienceId(): Promise<string | null> {
-  const headersList = await headers();
+/**
+ * 🎯 WHOP RULE #4: Für Member-Aktionen
+ */
+export async function requireMemberAccess(): Promise<ExperienceAuth> {
+  const auth = await verifyExperienceAuth(true);
   
-  // Try various Whop headers first (following existing app pattern)
-  let experienceId = headersList.get('x-whop-experience-id') ||
-                    headersList.get('X-Whop-Experience-Id') ||
-                    headersList.get('x-experience-id');
-  
-  if (!experienceId) {
-    // Fallback to environment variable for development
-    experienceId = process.env.NEXT_PUBLIC_WHOP_EXPERIENCE_ID || null;
+  if (!['admin', 'customer'].includes(auth.whopRole)) {
+    throw new Error('Member access required');
   }
-  
-  return experienceId;
+
+  return auth;
 }
 
-// Combined function for most common use case
-export async function verifyCurrentExperienceAccess() {
-  const experienceId = await getCurrentExperienceId();
-  
-  if (!experienceId) {
-    // In development mode, allow fallback but warn
-    console.warn('No Experience ID found in headers or environment');
-    
-    // Try to authenticate user anyway for development
-    const headersList = await headers();
-    const tokenResult = await whopSdk.verifyUserToken(headersList).catch(() => null);
-    
-    if (tokenResult?.userId) {
-      return {
-        isAuthenticated: true,
-        userId: tokenResult.userId,
-        experienceId: 'dev-fallback',
-        userAccess: 'member' as const,
-        permissions: { canView: true, canParticipate: true, canManage: false }
-      };
-    }
-    
-    throw new Error('No Experience ID found and authentication failed');
-  }
-  
-  return verifyExperienceAccess(experienceId);
-}
+// Helper Functions
 
-// Utility function to get Experience-scoped data filter
-export async function getExperienceDataFilter() {
-  const auth = await verifyCurrentExperienceAccess();
-  
+function createGuestAuth(): ExperienceAuth {
   return {
-    experienceId: auth.experienceId,
-    userId: auth.userId,
-    canAccess: auth.permissions?.canView || false
+    isAuthenticated: false,
+    whopRole: 'no_access',
+    appRole: 'guest',
+    hasAccess: false,
+    permissions: {
+      canCreate: false,
+      canManage: false,
+      canParticipate: false,
+      canViewAnalytics: false
+    }
   };
+}
+
+/**
+ * 🎯 WHOP RULE #2: Rollen sauber mappen
+ * ersteller → admin, member → customer, guest → no_access
+ */
+function mapWhopRoleToAppRole(whopRole: WhopRole): AppRole {
+  switch (whopRole) {
+    case 'admin':
+      return 'ersteller';  // Company Owner/Moderator
+    case 'customer':
+      return 'member';     // Community Member
+    case 'no_access':
+    default:
+      return 'guest';      // No access
+  }
+}
+
+/**
+ * 🎯 WHOP RULE #10: Sichtbare Rollen in deiner App
+ */
+function calculatePermissions(appRole: AppRole) {
+  switch (appRole) {
+    case 'ersteller':
+      return {
+        canCreate: true,        // darf konfigurieren, moderieren, veröffentlichen
+        canManage: true,        // Payouts anstoßen usw.
+        canParticipate: true,   // kann auch teilnehmen
+        canViewAnalytics: true  // Revenue, Statistics
+      };
+    case 'member':
+      return {
+        canCreate: false,       
+        canManage: false,       
+        canParticipate: true,   // darf konsumieren/teilnehmen
+        canViewAnalytics: false 
+      };
+    case 'guest':
+    default:
+      return {
+        canCreate: false,       
+        canManage: false,       
+        canParticipate: false,  // nur Public/Lite-Ansichten
+        canViewAnalytics: false 
+      };
+  }
+}
+
+/**
+ * 🎯 WHOP RULE #1: Experience-scoped data access
+ * Wrapper für sichere DB-Zugriffe
+ */
+export async function withExperienceScope<T>(
+  operation: (experienceId: string, auth: ExperienceAuth) => Promise<T>
+): Promise<T> {
+  const auth = await verifyExperienceAuth(true);
+  
+  if (!auth.experienceId) {
+    throw new Error('Experience context required');
+  }
+
+  return operation(auth.experienceId, auth);
+}
+
+/**
+ * 🎯 WHOP RULE #1: Safe Challenge queries mit Experience scoping
+ */
+export async function getChallengesForExperience(auth: ExperienceAuth) {
+  if (!auth.experienceId) {
+    return [];
+  }
+
+  return prisma.challenge.findMany({
+    where: {
+      experienceId: auth.experienceId,  // 🎯 RULE #1: Everything scoped by experienceId
+      ...(auth.appRole === 'guest' ? { isPublic: true } : {}) // 🎯 RULE #10: Guests only see public
+    },
+    include: {
+      enrollments: auth.permissions.canManage ? true : {
+        where: { 
+          user: { 
+            whopUserId: auth.userId // Users only see their own participation
+          } 
+        }
+      }
+    }
+  });
 }

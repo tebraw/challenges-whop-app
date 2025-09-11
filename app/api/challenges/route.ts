@@ -92,18 +92,17 @@ export async function POST(request: NextRequest) {
     console.log('✅ Validation successful:', challengeData);
 
     // Ensure tenant exists for this specific company
-    if (!user.whopCompanyId) {
-      return NextResponse.json({ error: 'No company ID found for user' }, { status: 400 });
-    }
-    
+    const tenantId = `tenant_${user.whopCompanyId}`;
     const tenant = await prisma.tenant.upsert({
-      where: { whopCompanyId: user.whopCompanyId },
+      where: { id: tenantId },
       create: {
+        id: tenantId,
         name: `Company ${user.whopCompanyId} Tenant`,
         whopCompanyId: user.whopCompanyId
       },
       update: {
-        // Tenant already exists, no need to update
+        // Always update the whopCompanyId to current user's company
+        whopCompanyId: user.whopCompanyId
       }
     });
 

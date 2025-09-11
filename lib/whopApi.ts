@@ -18,7 +18,6 @@ export interface WhopProduct {
   creator_id: string;
   created_at: string;
   updated_at: string;
-  plan_id?: string; // Add plan_id for promo code creation
 }
 
 export interface WhopSubscriptionTier {
@@ -242,303 +241,64 @@ export async function getCreatorInfo(creatorId: string): Promise<WhopCreator | n
   return Promise.resolve(mockCreators[creatorId] || null);
 }
 
-// Get creator's products from Whop using v5 API
+// Get creator's products from Whop
 export async function getCreatorProducts(creatorId: string): Promise<WhopProduct[]> {
   try {
     if (!WHOP_API_KEY) {
-      console.warn('Whop API key not configured - using mock products');
-      return getMockProducts();
+      // No API key - return empty array instead of mock data
+      console.warn('Whop API key not configured - no products available');
+      return [];
     }
 
-    const isProduction = process.env.NODE_ENV === 'production';
-    if (!isProduction) {
-      console.log(`🚀 Using Whop API v5 for creator: ${creatorId}`);
-    }
+    console.log(`Fetching plans from Whop API for creator: ${creatorId}`);
     
-    // v5 API endpoints - trying both company-specific and general approaches
-    const endpoints = [
-      // Primary: Get company products with plan mapping
-      {
-        url: `${WHOP_API_BASE}/v5/company/products`,
-        name: 'Company Products v5',
-        requiresCompanyContext: true,
-        fetchPlans: true
-      },
-      // Also get memberships to find plan-to-product mappings
-      {
-        url: `${WHOP_API_BASE}/v5/company/memberships`,
-        name: 'Company Memberships v5',
-        requiresCompanyContext: true,
-        fetchPlans: false
-      },
-      // Fallback to v2 if v5 doesn't work
-      {
-        url: `${WHOP_API_BASE}/api/v2/companies/${creatorId}/plans?per=50&expand=product`,
-        name: 'Creator Plans v2',
-        requiresCompanyContext: false,
-        fetchPlans: false
-      }
-    ];
-
-    let planToProductMap: Record<string, string> = {};
-    let products: any[] = [];
-
-    // First, get payments AND memberships to build comprehensive plan-to-product mapping
-    try {
-      // Primary: Get payments (includes one-time purchases)
-      const paymentsResponse = await fetch(`${WHOP_API_BASE}/v5/company/payments?per=100`, {
-        headers: {
-          'Authorization': `Bearer ${WHOP_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (paymentsResponse.ok) {
-        const paymentsData = await paymentsResponse.json();
-        if (paymentsData.data) {
-          paymentsData.data.forEach((payment: any) => {
-            if (payment.product_id && payment.plan_id) {
-              planToProductMap[payment.product_id] = payment.plan_id;
-            }
-          });
-          if (!isProduction) {
-            console.log('💳 Built plan mapping from payments:', planToProductMap);
-          }
-        }
-      }
-
-      // Fallback: Get memberships for additional plan mapping
-      const membershipsResponse = await fetch(`${WHOP_API_BASE}/v5/company/memberships`, {
-        headers: {
-          'Authorization': `Bearer ${WHOP_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (membershipsResponse.ok) {
-        const membershipsData = await membershipsResponse.json();
-        if (membershipsData.data) {
-          membershipsData.data.forEach((membership: any) => {
-            // Only add if not already mapped from payments
-            if (membership.product_id && membership.plan_id && !planToProductMap[membership.product_id]) {
-              planToProductMap[membership.product_id] = membership.plan_id;
-            }
-          });
-          if (!isProduction) {
-            console.log('� Enhanced plan mapping with memberships:', planToProductMap);
-          }
-        }
-      }
-    } catch (error) {
-      if (!isProduction) {
-        console.log('⚠️ Could not get plan mappings:', error);
-      }
-    }
-
-    // Now get products
-    for (const endpoint of endpoints) {
-      try {
-        if (!isProduction) {
-          console.log(`🔍 Trying ${endpoint.name}: ${endpoint.url}`);
-        }
-        
-        const response = await fetch(endpoint.url, {
-          headers: {
-            'Authorization': `Bearer ${WHOP_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!isProduction) {
-          console.log(`📊 ${endpoint.name} response: ${response.status}`);
-        }
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (!isProduction) {
-            console.log(`✅ ${endpoint.name} success:`, JSON.stringify(data, null, 2));
-          }
-          
-          let fetchedProducts = [];
-          
-          // Handle different v5 response structures
-          if (endpoint.name.includes('v5') && endpoint.name.includes('Products')) {
-            // v5 API returns products in a paginated format
-            if (data.data && Array.isArray(data.data)) {
-              fetchedProducts = data.data;
-            } else if (data.pagination && data.data) {
-              fetchedProducts = data.data;
-            } else if (Array.isArray(data)) {
-              fetchedProducts = data;
-            }
-          } else if (endpoint.name.includes('Memberships')) {
-            // Skip memberships endpoint for product fetching
-            continue;
-          } else {
-            // v2 API response structure
-            if (data.plans) {
-              fetchedProducts = data.plans;
-            } else if (data.data) {
-              fetchedProducts = Array.isArray(data.data) ? data.data : [data.data];
-            } else if (Array.isArray(data)) {
-              fetchedProducts = data;
-            }
-          }
-
-          if (fetchedProducts.length > 0) {
-            // Transform to our format with v5 compatibility and plan mapping
-            const transformedProducts: WhopProduct[] = fetchedProducts.map((product: any) => ({
-              id: product.id,
-              title: product.title || product.name || `Product ${product.id}`,
-              description: product.description || '',
-              price: product.price || 0, // v5 products might not have price directly
-              currency: product.currency || 'USD',
-              product_type: 'digital',
-              image_url: product.image_url,
-              checkout_url: `https://whop.com/checkout/${product.id}`,
-              is_active: product.visibility === 'visible',
-              creator_id: product.company_id || creatorId,
-              created_at: product.created_at ? new Date(product.created_at * 1000).toISOString() : new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              plan_id: planToProductMap[product.id] // Add the plan ID for promo code creation
-            }));
-
-            if (!isProduction) {
-              console.log(`🎯 Successfully transformed ${transformedProducts.length} products from ${endpoint.name}`);
-              console.log('Products with plan IDs:', transformedProducts.map(p => ({ 
-                product: p.id, 
-                plan: p.plan_id,
-                title: p.title 
-              })));
-            }
-            return transformedProducts;
-          } else {
-            if (!isProduction) {
-              console.log(`⚠️ ${endpoint.name} returned empty products array`);
-            }
-          }
-        } else {
-          if (!isProduction) {
-            const errorText = await response.text();
-            console.log(`❌ ${endpoint.name} failed (${response.status}):`, errorText);
-          }
-        }
-      } catch (endpointError) {
-        if (!isProduction) {
-          console.log(`❌ ${endpoint.name} error:`, endpointError);
-        }
-      }
-    }
-
-    // If all endpoints fail, try fallback
-    if (!isProduction) {
-      console.log('⚠️ All v5 endpoints failed, trying v2 fallback...');
-    }
-    return await getCreatorProductsFallback(creatorId);
-  } catch (error) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('Error fetching creator products with enhanced scopes:', error);
-    }
-    return getMockProducts();
-  }
-}
-
-// Get all company products for current company context (for promo codes)
-export async function getCompanyProducts(): Promise<WhopProduct[]> {
-  try {
-    console.log('🔍 Fetching products from Whop Company API...');
-    
-    if (!WHOP_API_KEY) {
-      console.warn('Whop API key not configured - using mock products');
-      return getMockProducts();
-    }
-    
-    // Get products
-    const productsResponse = await fetch('https://api.whop.com/v5/company/products', {
+    // Use the correct Whop API v2 endpoint for a specific company's plans
+    const response = await fetch(`${WHOP_API_BASE}/api/v2/companies/${creatorId}/plans?per=50&expand=product`, {
       headers: {
         'Authorization': `Bearer ${WHOP_API_KEY}`,
         'Content-Type': 'application/json'
       }
     });
 
-    if (!productsResponse.ok) {
-      console.error('❌ Products API error:', productsResponse.status, await productsResponse.text());
-      throw new Error(`Whop API error: ${productsResponse.status}`);
-    }
-
-    const productsData = await productsResponse.json();
-    console.log('📦 Products loaded:', productsData.data?.length || 0);
-
-    // Get payments to map product IDs to plan IDs (more comprehensive than memberships)
-    const paymentsResponse = await fetch('https://api.whop.com/v5/company/payments?per=100', {
-      headers: {
-        'Authorization': `Bearer ${WHOP_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    let planToProductMap: Record<string, string> = {};
-    
-    if (paymentsResponse.ok) {
-      const paymentsData = await paymentsResponse.json();
-      console.log('💳 Payments loaded for plan mapping:', paymentsData.data?.length || 0);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Whop API error: ${response.status} - ${errorText}`);
       
-      // Build plan to product mapping from payments (includes one-time purchases)
-      for (const payment of paymentsData.data || []) {
-        if (payment.product_id && payment.plan_id) {
-          planToProductMap[payment.product_id] = payment.plan_id;
-          console.log(`📋 Plan mapping from payment: ${payment.product_id} → ${payment.plan_id} (${payment.billing_reason})`);
-        }
+      // If this endpoint doesn't work, try the generic plans endpoint and filter
+      if (response.status === 404) {
+        console.log('Trying fallback: generic plans endpoint...');
+        return await getCreatorProductsFallback(creatorId);
       }
-    } else {
-      console.warn('⚠️ Could not fetch payments for plan mapping');
+      
+      throw new Error(`Whop API error: ${response.status}`);
     }
 
-    // Fallback: Try memberships if payments didn't provide enough mappings
-    if (Object.keys(planToProductMap).length === 0) {
-      console.log('🔄 Fallback: Trying memberships for plan mapping...');
-      const membershipsResponse = await fetch('https://api.whop.com/v5/company/memberships?per=100', {
-        headers: {
-          'Authorization': `Bearer ${WHOP_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (membershipsResponse.ok) {
-        const membershipsData = await membershipsResponse.json();
-        console.log('🔗 Memberships loaded for plan mapping:', membershipsData.data?.length || 0);
-        
-        for (const membership of membershipsData.data || []) {
-          if (membership.product_id && membership.plan_id && !planToProductMap[membership.product_id]) {
-            planToProductMap[membership.product_id] = membership.plan_id;
-            console.log(`📋 Plan mapping from membership: ${membership.product_id} → ${membership.plan_id}`);
-          }
-        }
-      }
-    }
-
-    // Transform products and add plan_id where available
-    const products: WhopProduct[] = (productsData.data || []).map((product: any) => ({
-      id: product.id,
-      title: product.name || `Product ${product.id}`,
-      description: product.description || '',
-      price: product.experiences?.[0]?.plans?.[0]?.base_currency_cost || 0,
-      currency: product.experiences?.[0]?.plans?.[0]?.currency || 'USD',
-      product_type: 'digital',
-      image_url: product.image_url || '',
-      checkout_url: `https://whop.com/checkout/${product.id}`,
-      is_active: product.visibility === 'visible',
-      creator_id: product.company_id,
-      created_at: product.created_at ? new Date(product.created_at * 1000).toISOString() : new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      plan_id: planToProductMap[product.id] || undefined // Add plan_id from mapping
+    const data = await response.json();
+    console.log('Whop API response:', data);
+    
+    // Transform Whop plans to our product format
+    const products: WhopProduct[] = (data.data || []).map((plan: any) => ({
+      id: plan.id,
+      title: plan.product?.title || `Plan ${plan.id}`,
+      description: plan.product?.description || plan.payment_link_description,
+      price: plan.initial_price || 0,
+      currency: plan.base_currency || 'USD',
+      product_type: plan.plan_type || 'digital',
+      image_url: plan.product?.image_url,
+      checkout_url: plan.direct_link || `https://whop.com/checkout/${plan.id}`,
+      is_active: plan.visibility === 'visible',
+      creator_id: creatorId,
+      created_at: new Date(plan.created_at * 1000).toISOString(),
+      updated_at: new Date().toISOString()
     }));
 
-    console.log('✅ Products with plan mapping loaded:', products.map(p => `${p.id} (plan: ${p.plan_id || 'undefined'})`));
+    console.log(`Found ${products.length} products/plans for company ${creatorId}`);
     return products;
   } catch (error) {
-    console.error('❌ Error fetching creator products:', error);
-    throw error;
+    console.error('Error fetching creator products:', error);
+    // Try fallback method
+    console.log('Trying fallback method...');
+    return await getCreatorProductsFallback(creatorId);
   }
 }
 
@@ -592,42 +352,8 @@ async function getCreatorProductsFallback(creatorId: string): Promise<WhopProduc
     return products;
   } catch (error) {
     console.error('Fallback method also failed:', error);
-    return getMockProducts();
+    return [];
   }
-}
-
-// Mock products for development and fallback
-function getMockProducts(): WhopProduct[] {
-  return [
-    {
-      id: 'mock_premium_course',
-      title: '💎 Premium Fitness Course',
-      description: 'Complete fitness transformation program',
-      price: 9900,
-      currency: 'USD',
-      product_type: 'course',
-      image_url: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400',
-      checkout_url: 'https://whop.com/checkout/mock_premium_course',
-      is_active: true,
-      creator_id: 'mock_creator',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: 'mock_supplement_bundle',
-      title: '🥤 Elite Supplement Bundle',
-      description: 'Professional-grade supplements bundle',
-      price: 14900,
-      currency: 'USD',
-      product_type: 'physical',
-      image_url: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400',
-      checkout_url: 'https://whop.com/checkout/mock_supplement_bundle',
-      is_active: true,
-      creator_id: 'mock_creator',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  ];
 }
 
 // Create special offer for a product

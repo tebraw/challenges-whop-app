@@ -1,28 +1,43 @@
+/**
+ * 🎯 ONBOARDING STATUS API
+ * GET /api/auth/onboarding-status
+ * 
+ * Check if user has completed onboarding
+ */
 import { NextRequest, NextResponse } from 'next/server';
+import { headers } from 'next/headers';
+import { whopSdk } from '@/lib/whop-sdk';
 import { getCurrentUser } from '@/lib/auth';
 
-// Check user onboarding status
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
     const user = await getCurrentUser();
     
     if (!user) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    // Check if user has completed onboarding
-    const isOnboarded = user.role === 'ADMIN'; // Simple check for now
-    
-    return NextResponse.json({ 
-      isOnboarded,
+    // For admins, onboarding is always complete
+    const isOnboardingComplete = user.role === 'ADMIN';
+
+    return NextResponse.json({
+      isOnboardingComplete,
       user: {
         id: user.id,
-        role: user.role,
-        email: user.email
+        email: user.email,
+        role: user.role
       }
     });
+
   } catch (error) {
-    console.error('Onboarding status error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Onboarding status check error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

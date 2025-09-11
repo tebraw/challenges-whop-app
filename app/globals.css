@@ -2,13 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Font optimization to reduce preload warnings */
-@layer base {
-  html {
-    font-display: swap;
-  }
-}
-
 :root {
   /* Light theme colors */
   --background: #ffffff;

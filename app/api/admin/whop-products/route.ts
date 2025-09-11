@@ -53,16 +53,16 @@ export async function GET(req: NextRequest) {
 
     // 🎯 DEVELOPMENT MODE: Check if we should use mock data
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const enableMockProducts = process.env.ENABLE_MOCK_PRODUCTS === 'true' || false; // Real products now working with v5 API!
+    const enableMockProducts = process.env.ENABLE_MOCK_PRODUCTS === 'true' || isDevelopment;
 
     try {
-      // 🚀 NEW SCOPES ENABLED: Try to load real creator products from Whop API
-      console.log(`✅ New Whop API scopes enabled! Fetching products for creator: ${creatorWhopId}`);
+      // Try to load real creator products from Whop API
+      console.log(`Attempting to fetch Whop products for creator: ${creatorWhopId}`);
       
       if (creatorWhopId) {
         const whopProducts = await getCreatorProducts(creatorWhopId);
 
-        console.log(`🎯 Successfully fetched ${whopProducts.length} products from Whop API with new scopes!`);
+        console.log(`Fetched ${whopProducts.length} products from Whop API`);
 
         if (whopProducts && whopProducts.length > 0) {
           const products = whopProducts.map((product) => ({
@@ -75,10 +75,8 @@ export async function GET(req: NextRequest) {
             imageUrl: product.image_url,
             checkoutUrl: product.checkout_url || `https://whop.com/checkout/${product.id}`,
             isActive: product.is_active,
-            affiliateEnabled: true, // 💰 Ready for affiliate features with new scope
+            affiliateEnabled: true, // 💰 Ready for affiliate features
             revenueShare: 10, // 💰 10% revenue share for app
-            canCreateDynamicOffers: true, // 🆕 plan:create scope enabled
-            hasStats: true, // 🆕 plan:stats:read scope enabled
           }));
 
           return NextResponse.json({

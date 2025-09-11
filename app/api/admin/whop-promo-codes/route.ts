@@ -15,13 +15,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if Whop API credentials are available
+    if (!process.env.WHOP_API_KEY) {
+      return NextResponse.json({
+        error: 'Whop API credentials not configured'
+      }, { status: 500 });
+    }
+
     const body = await request.json();
     const { 
       code, 
       amount_off, 
       promo_type = 'percentage', 
-      product_ids = [], // Frontend sends product IDs
+      plan_ids = [],
       unlimited_stock = true,
+      expiration_datetime = null,
       new_users_only = false 
     } = body;
 
@@ -32,140 +40,48 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Check if we're using mock products
-    const isMockProduct = product_ids.some((id: string) => id.startsWith('mock_'));
+    // Create promo code via Whop API v2
+    const promoData = {
+      code,
+      amount_off: parseInt(amount_off),
+      promo_type,
+      plan_ids,
+      unlimited_stock,
+      new_users_only,
+      ...(expiration_datetime && { expiration_datetime })
+    };
+
+    const response = await fetch('https://api.whop.com/api/v2/promo_codes', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(promoData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Whop API error: ${response.status} ${response.statusText} - ${errorData}`);
+    }
+
+    const promoCode = await response.json();
     
-    if (isMockProduct) {
-      // For mock products, return a mock promo code response
-      console.log('🎭 Creating mock promo code for development:', {
-        code,
-        amount_off,
-        product_ids,
-        message: 'Mock promo code created - connect real Whop products for production'
-      });
-      
-      return NextResponse.json({
-        success: true,
-        promoCode: {
-          id: `mock_promo_${Date.now()}`,
-          code: code,
-          amount_off: parseInt(amount_off),
-          promo_type: promo_type,
-          status: 'active',
-          uses: 0,
-          created_at: new Date().toISOString()
-        },
-        message: 'Mock promo code created for development. Connect your Whop account for real promo codes.'
-      });
-    }
-
-    // Check if Whop API credentials are available for real products
-    if (!process.env.WHOP_API_KEY) {
-      return NextResponse.json({
-        error: 'Whop API credentials not configured'
-      }, { status: 500 });
-    }
-
-    // 🔧 CONVERT PRODUCT IDS TO PLAN IDS
-    // We need to get the plan IDs for the selected products
-    const { getCompanyProducts } = await import('@/lib/whopApi');
-    
-    try {
-      // Get all products with their plan IDs
-      const allProducts = await getCompanyProducts();
-      const planIds: string[] = [];
-      
-      for (const productId of product_ids) {
-        const product = allProducts.find(p => p.id === productId);
-        if (product && product.plan_id) {
-          planIds.push(product.plan_id);
-          console.log(`✅ Mapped product ${productId} to plan ${product.plan_id}`);
-        } else {
-          console.log(`⚠️ No plan found for product ${productId}`);
-        }
+    return NextResponse.json({
+      success: true,
+      promoCode: {
+        id: promoCode.id,
+        code: promoCode.code,
+        amount_off: promoCode.amount_off,
+        promo_type: promoCode.promo_type,
+        status: promoCode.status,
+        uses: promoCode.uses || 0,
+        created_at: promoCode.created_at
       }
-      
-      if (planIds.length === 0) {
-        return NextResponse.json({
-          error: 'No valid plan IDs found for the selected products'
-        }, { status: 400 });
-      }
-
-      console.log(`🎯 Using plan IDs for promo code: ${planIds.join(', ')}`);
-
-      // Calculate expiration date: 7 days from now
-      const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + 7);
-      const calculatedExpiration = expirationDate.toISOString();
-
-      // Create promo code via Whop API v2 with plan IDs
-      const promoData = {
-        code,
-        amount_off: parseInt(amount_off),
-        promo_type,
-        plan_ids: planIds, // Use plan IDs instead of product IDs
-        unlimited_stock,
-        new_users_only,
-        expiration_datetime: calculatedExpiration
-      };
-
-      console.log('🔄 Creating Whop promo code:', {
-        code,
-        amount_off,
-        plan_ids: planIds, // Use the correct variable name
-        expiration_datetime: calculatedExpiration
-      });
-
-      const response = await fetch('https://api.whop.com/api/v2/promo_codes', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(promoData)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error('❌ Whop API Error Details:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorData,
-          requestData: promoData
-        });
-        throw new Error(`Whop API error: ${response.status} ${response.statusText} - ${errorData}`);
-      }
-
-      const promoCode = await response.json();
-      
-      return NextResponse.json({
-        success: true,
-        promoCode: {
-          id: promoCode.id,
-          code: promoCode.code,
-          amount_off: promoCode.amount_off,
-          promo_type: promoCode.promo_type,
-          status: promoCode.status,
-          uses: promoCode.uses || 0,
-          created_at: promoCode.created_at
-        }
-      });
-
-    } catch (error) {
-      console.error('❌ Error during plan ID conversion or promo code creation:', error);
-      return NextResponse.json({
-        error: 'Failed to create promo code',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }, { status: 500 });
-    }
+    });
 
   } catch (error) {
-    console.error('❌ Error creating Whop promo code:', error);
-    console.error('❌ Full error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      whopApiKey: process.env.WHOP_API_KEY ? 'Present' : 'Missing'
-    });
+    console.error('Error creating Whop promo code:', error);
     return NextResponse.json({
       error: 'Failed to create promo code',
       details: error instanceof Error ? error.message : 'Unknown error'

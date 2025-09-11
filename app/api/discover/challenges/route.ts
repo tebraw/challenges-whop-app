@@ -17,7 +17,8 @@ export async function GET(request: Request) {
     if (id) {
       const challenge = await prisma.challenge.findUnique({
         where: { 
-          id: id
+          id: id,
+          isPublic: true 
         },
         include: {
           tenant: true,
@@ -34,15 +35,13 @@ export async function GET(request: Request) {
       }
 
       // Auto-categorize if needed
-      const categoryValue = categorizeChallenge(
+      const categoryValue = challenge.category || categorizeChallenge(
         challenge.title,
         challenge.description,
         challenge.tenant?.name || null,
         null
       );
       
-      // Note: Category field removed from schema
-      /*
       if (!challenge.category && categoryValue) {
         await prisma.challenge.update({
           where: { id: challenge.id },
@@ -50,7 +49,6 @@ export async function GET(request: Request) {
         });
         challenge.category = categoryValue;
       }
-      */
 
       return NextResponse.json({
         challenges: [challenge],
@@ -61,13 +59,12 @@ export async function GET(request: Request) {
 
     // Build where conditions for filtering
     const where: any = {
-      // Remove isPublic requirement since we removed the field
+      isPublic: true
     };
 
-    // Category filtering removed since field no longer exists
-    // if (category && category !== 'all') {
-    //   where.category = category;
-    // }
+    if (category && category !== 'all') {
+      where.category = category;
+    }
 
     if (difficulty && difficulty !== 'all') {
       where.difficulty = difficulty.toUpperCase();
@@ -103,7 +100,7 @@ export async function GET(request: Request) {
           }
         },
         orderBy: [
-          // { featured: 'desc' }, // Featured field removed from schema
+          { featured: 'desc' },
           { createdAt: 'desc' }
         ],
         take: limit,
@@ -123,8 +120,6 @@ export async function GET(request: Request) {
             null
           );
           
-          // Category update removed since field no longer exists
-          /*
           // Update the challenge in the database
           await prisma.challenge.update({
             where: { id: challenge.id },
@@ -132,7 +127,6 @@ export async function GET(request: Request) {
           });
           
           return { ...challenge, category: categoryValue };
-          */
         }
         return challenge;
       })

@@ -1,6 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/auth';
+import { headers } from 'next/headers';
+import { whopSdk } from '@/lib/whop-sdk';
+import { getExperienceContext } from '@/lib/whop-experience';
+
+// 🎯 WHOP RULE #3: Auth nur auf dem Server - Minimal Flow
+async function verifyAdminAccess() {
+  const headersList = await headers();
+  
+  // Step 1: userId = verifyUserToken(headers)
+  const { userId } = await whopSdk.verifyUserToken(headersList);
+  if (!userId) {
+    throw new Error('Authentication required');
+  }
+
+  // Get Experience context
+  const experienceContext = await getExperienceContext();
+  if (!experienceContext.experienceId) {
+    // Fallback to company-based validation if no experienceId
+    if (!experienceContext.companyId) {
+      throw new Error('Experience or company context required');
+    }
+    
+    // Use company-based access check as fallback
+    const companyAccessResult = await whopSdk.access.checkIfUserHasAccessToCompany({
+      userId,
+      companyId: experienceContext.companyId
+    });
+    
+    if (!companyAccessResult.hasAccess || companyAccessResult.accessLevel !== 'admin') {
+      throw new Error('Admin access required');
+    }
+    
+    return {
+      userId,
+      companyId: experienceContext.companyId,
+      experienceId: null,
+      accessLevel: companyAccessResult.accessLevel
+    };
+  }
+
+  // Step 2: result = access.checkIfUserHasAccessToExperience
+  const accessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
+    userId,
+    experienceId: experienceContext.experienceId
+  });
+
+  // Step 3: if (!result.hasAccess) -> 403
+  if (!accessResult.hasAccess) {
+    throw new Error('Access denied to experience');
+  }
+
+  // Step 4: if (admin-Action && result.accessLevel !== 'admin') -> 403
+  if (accessResult.accessLevel !== 'admin') {
+    throw new Error('Admin access required');
+  }
+
+  return {
+    userId,
+    companyId: experienceContext.companyId,
+    experienceId: experienceContext.experienceId,
+    accessLevel: accessResult.accessLevel
+  };
+}
 
 // Type definition for challenge with relations
 interface ChallengeWithRelations {
@@ -18,6 +80,7 @@ interface ChallengeWithRelations {
   startDate: Date;
   endDate: Date;
   policy: string | null;
+  isPublic: boolean;
   rewards: any; // JSON field
   requireApproval: boolean;
   featured: boolean;
@@ -32,22 +95,29 @@ interface ChallengeWithRelations {
   };
 }
 
-// GET /api/admin/challenges - Admin view of challenges (TENANT-ISOLATED)
+// 🎯 WHOP RULE #1 & #3: Experience-scoped admin view with proper auth
 export async function GET(request: NextRequest) {
   try {
-    // ✅ SECURITY: Require admin authentication
-    const user = await getCurrentUser();
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    // 🎯 WHOP RULE #4: Logik bleibt Server - Server-side admin validation
+    const auth = await verifyAdminAccess();
+    
+    console.log('🔍 Admin challenges API called for experience:', auth.experienceId);
+    
+    // Find admin user to get current tenant (until experienceId migration)
+    const adminUser = await prisma.user.findUnique({
+      where: { whopUserId: auth.userId },
+      select: { id: true, tenantId: true, role: true }
+    });
+
+    if (!adminUser || adminUser.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Admin user not found' }, { status: 403 });
     }
-    
-    console.log('✅ Standard admin auth successful');
-    console.log('🔍 Admin challenges API called for tenant:', `tenant_${user.whopCompanyId}`);
-    
-    // ✅ SECURITY: Only show challenges from current tenant
+
+    // 🎯 WHOP RULE #1: Experience ist dein Mandant - Scoped data access
     const challenges = await prisma.challenge.findMany({
       where: {
-        tenantId: `tenant_${user.whopCompanyId}`  // 🔒 TENANT ISOLATION
+        tenantId: adminUser.tenantId  // 🔒 EXPERIENCE ISOLATION (using tenantId until migration)
+        // TODO: Replace with experienceId: auth.experienceId when migration complete
       },
       include: {
         creator: {

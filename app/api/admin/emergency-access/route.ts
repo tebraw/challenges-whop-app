@@ -1,25 +1,35 @@
+/**
+ * 🚨 EMERGENCY ACCESS API
+ * POST /api/admin/emergency-access
+ * 
+ * Provides emergency access for debugging and admin recovery
+ */
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
 
-// Emergency admin access endpoint
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    const body = await request.json();
+    
+    // This is for development/testing only
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { error: 'Emergency access disabled in production' },
+        { status: 403 }
+      );
     }
 
-    return NextResponse.json({ 
+    console.log('🚨 Emergency access requested:', body);
+    
+    return NextResponse.json({
       success: true,
-      message: 'Emergency access granted',
-      user: {
-        id: user.id,
-        role: user.role,
-        email: user.email
-      }
+      message: 'Emergency access endpoint - development only'
     });
+
   } catch (error) {
     console.error('Emergency access error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
