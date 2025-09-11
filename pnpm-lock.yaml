@@ -23,9 +23,12 @@ importers:
       '@whop/api':
         specifier: ^0.0.44
         version: 0.0.44(@auth/core@0.40.0(nodemailer@6.10.1))
+      '@whop/iframe':
+        specifier: ^0.0.3
+        version: 0.0.3
       '@whop/react':
-        specifier: ^0.2.41
-        version: 0.2.41(@auth/core@0.40.0(nodemailer@6.10.1))(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        specifier: ^0.2.45
+        version: 0.2.45(@auth/core@0.40.0(nodemailer@6.10.1))(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -1997,8 +2000,8 @@ packages:
     peerDependencies:
       '@auth/core': ^0.40.0
 
-  '@whop/api@0.0.46':
-    resolution: {integrity: sha512-9fBD9cFAFsB1OqWEO23hqmryL6er2/Od3cNb5780cnc89C8WkJQywYTnhUQXmuntAYs+i2mk6Td7C+2/fwfiKw==}
+  '@whop/api@0.0.50':
+    resolution: {integrity: sha512-jX4VMQAOeWqWTOsbzaF9AD8BzDcUgj9LZOauxlPgWdDv6wJVDG5udCzSRtk/0p7i298X3liw9RJL/hpadleMcA==}
     engines: {node: 22.x, pnpm: 9.15.9}
     peerDependencies:
       '@auth/core': ^0.40.0
@@ -2007,8 +2010,8 @@ packages:
     resolution: {integrity: sha512-Gb64GPKnFq0E/GRuKCEHbfxgB362ccAjEA7GHsEMDgRug7PCPCf0DmQRMA0//qV4XKzKKVyis5VGRQivwmnEJg==}
     engines: {node: 22.x, pnpm: 9.15.9}
 
-  '@whop/react@0.2.41':
-    resolution: {integrity: sha512-HuUyZDq/04HdO1TNTEZR70eNiV46QAqZilmkklKvQsUPp0d3p8rl9SyEQ0NRXmhmIAJjKyBQg9B5FM3zrF8brg==}
+  '@whop/react@0.2.45':
+    resolution: {integrity: sha512-Dc5AkG2OUMkxcrgrLlfTtYKMl4X7YXc2vI7sZ8ikr4PbVutYpEaJ6n1uW6/jymEbQ1m4GQYwYoUF9Ucj2qkF9A==}
     engines: {node: 22.x, pnpm: 9.15.9}
     peerDependencies:
       react: ^19.0.0
@@ -5657,7 +5660,7 @@ snapshots:
       js-md5: 0.8.3
       tiny-typed-emitter: 2.1.0
 
-  '@whop/api@0.0.46(@auth/core@0.40.0(nodemailer@6.10.1))':
+  '@whop/api@0.0.50(@auth/core@0.40.0(nodemailer@6.10.1))':
     dependencies:
       '@auth/core': 0.40.0(nodemailer@6.10.1)
       graphql: 16.11.0
@@ -5671,9 +5674,9 @@ snapshots:
     dependencies:
       zod: 3.22.3
 
-  '@whop/react@0.2.41(@auth/core@0.40.0(nodemailer@6.10.1))(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+  '@whop/react@0.2.45(@auth/core@0.40.0(nodemailer@6.10.1))(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
-      '@whop/api': 0.0.46(@auth/core@0.40.0(nodemailer@6.10.1))
+      '@whop/api': 0.0.50(@auth/core@0.40.0(nodemailer@6.10.1))
       '@whop/iframe': 0.0.3
       frosted-ui: 0.0.1-canary.77(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react: 19.1.0
