@@ -83,46 +83,25 @@ function PlansContent() {
     }
   };
 
-  const handlePlanSelect = async (plan: Plan) => {
+  const handlePlanSelect = (plan: Plan) => {
     if (loading) return;
     
     setLoading(true);
     setSelectedPlan(plan.id);
     
-    try {
-      console.log('🛒 Creating checkout for plan:', plan.name);
-      
-      // Create Whop checkout session
-      const checkoutResponse = await fetch('/api/whop/create-checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          productId: plan.productId,
-          planName: plan.name,
-          successUrl: `${window.location.origin}/dashboard?plan_purchased=true`,
-          cancelUrl: `${window.location.origin}/plans?cancelled=true`,
-          metadata: {
-            plan_type: plan.id,
-            new_installation: isNewInstallation,
-            company_id: companyId
-          }
-        })
-      });
-
-      if (!checkoutResponse.ok) {
-        throw new Error('Failed to create checkout');
-      }
-
-      const { checkoutUrl } = await checkoutResponse.json();
-      
-      // Redirect to Whop checkout
+    // Direct Whop checkout URLs
+    const checkoutUrls = {
+      'basic': 'https://whop.com/api-app-zyu-hlz-hinp-a5-ce-basic/',
+      'pro': 'https://whop.com/api-app-zyu-hlz-hinp-a5-ce-pro/'
+    };
+    
+    const checkoutUrl = checkoutUrls[plan.id as keyof typeof checkoutUrls];
+    
+    if (checkoutUrl) {
+      console.log('🛒 Redirecting to Whop checkout:', plan.name);
       window.location.href = checkoutUrl;
-      
-    } catch (error) {
-      console.error('Error creating checkout:', error);
-      alert('Failed to start checkout. Please try again.');
+    } else {
+      console.error('No checkout URL found for plan:', plan.id);
       setLoading(false);
       setSelectedPlan(null);
     }
