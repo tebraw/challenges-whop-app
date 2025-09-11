@@ -19,10 +19,24 @@ export default function AdminGuard({ children }: AdminGuardProps) {
         console.log('Starting Whop admin access check...');
         
         // First check experience context and auth status
-        const contextResponse = await fetch('/api/auth/experience-context');
+        const contextResponse = await fetch('/api/auth/experience-context', {
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        if (!contextResponse.ok) {
+          throw new Error(`Experience context API failed: ${contextResponse.status} ${contextResponse.statusText}`);
+        }
+        
         const contextData = await contextResponse.json();
         
         console.log('Experience context:', contextData);
+        
+        // Check if there's an error in the response
+        if (contextData.error) {
+          throw new Error(`Experience context error: ${contextData.error}`);
+        }
         
         if (!contextData.isAuthenticated) {
           console.log('Not authenticated - redirecting to Whop login');
@@ -43,7 +57,11 @@ export default function AdminGuard({ children }: AdminGuardProps) {
         }
         
         // User is authenticated and has admin role - now test admin API access
-        const adminResponse = await fetch('/api/admin/challenges');
+        const adminResponse = await fetch('/api/admin/challenges', {
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
         console.log('Admin challenges API response status:', adminResponse.status);
         
         if (adminResponse.ok) {
@@ -73,8 +91,13 @@ export default function AdminGuard({ children }: AdminGuardProps) {
           }
         }
       } catch (error: any) {
-        console.error('Admin check failed:', error);
-        setDebugInfo({ error: error?.message || 'Network error', networkError: true });
+        console.error('Experience context error:', error);
+        setDebugInfo({ 
+          error: error?.message || 'Network error', 
+          networkError: true,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent.substring(0, 50) + '...'
+        });
       } finally {
         setIsChecking(false);
       }

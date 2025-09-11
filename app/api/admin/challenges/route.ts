@@ -94,6 +94,12 @@ export async function GET(request: NextRequest) {
         userId,
         accessLevel: accessResult.accessLevel
       }
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-experience-id'
+      }
     });
 
   } catch (error) {
@@ -102,6 +108,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ 
       error: 'Authentication required - please login via Whop',
       debug: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 401 });
+    }, { 
+      status: 401,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-experience-id'
+      }
+    });
   }
+}
+
+// Add OPTIONS handler for CORS
+export async function OPTIONS(request: NextRequest) {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-experience-id'
+    }
+  });
 }

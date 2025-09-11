@@ -28,6 +28,12 @@ export async function GET(request: NextRequest) {
     // 🎯 WHOP RULE #3: Server-side auth validation
     const headersList = await headers();
     
+    console.log('Experience context API called');
+    console.log('Headers available:', {
+      experienceId: headersList.get('x-experience-id'),
+      authorization: headersList.get('authorization') ? 'present' : 'missing'
+    });
+    
     // Try to verify user token
     let userId: string | null = null;
     let whopRole: string = 'no_access';
@@ -86,6 +92,12 @@ export async function GET(request: NextRequest) {
       whopRole,
       isAuthenticated: !!userId && whopRole !== 'no_access',
       isEmbedded: experienceContext.isEmbedded
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-experience-id'
+      }
     });
 
   } catch (error) {
@@ -99,7 +111,26 @@ export async function GET(request: NextRequest) {
       userRole: 'guest',
       whopRole: 'no_access',
       isAuthenticated: false,
-      isEmbedded: false
+      isEmbedded: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-experience-id'
+      }
     });
   }
+}
+
+// Add OPTIONS handler for CORS
+export async function OPTIONS(request: NextRequest) {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-experience-id'
+    }
+  });
 }

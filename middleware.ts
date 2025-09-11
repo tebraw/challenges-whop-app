@@ -3,6 +3,22 @@ import { NextRequest, NextResponse } from 'next/server';
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
+  // Handle CORS for API routes
+  if (pathname.startsWith('/api/')) {
+    // Handle preflight OPTIONS requests
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-experience-id, x-whop-user-token, x-whop-experience-id, x-whop-company-id',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    }
+  }
+  
   // Check for Whop app installation context
   const isWhopContext = request.headers.get('x-whop-user-token');
   const experienceId = request.headers.get('x-whop-experience-id');
@@ -36,10 +52,26 @@ export default function middleware(request: NextRequest) {
     if (asUser) {
       response.cookies.set('as', asUser, { path: '/' });
     }
+    
+    // Add CORS headers to response
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-experience-id, x-whop-user-token, x-whop-experience-id, x-whop-company-id');
+    
     return response;
   }
   
-  return NextResponse.next();
+  // Create response with CORS headers
+  const response = NextResponse.next();
+  
+  // Add CORS headers for API routes
+  if (pathname.startsWith('/api/')) {
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-experience-id, x-whop-user-token, x-whop-experience-id, x-whop-company-id');
+  }
+  
+  return response;
 }
 
 export const config = {
