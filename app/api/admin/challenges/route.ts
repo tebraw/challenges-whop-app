@@ -31,7 +31,17 @@ async function getCompanyFromExperience() {
   // Method 3: Get experienceId for access checks
   const experienceId = headersList.get('x-experience-id') || 
                       headersList.get('experience-id') ||
-                      process.env.WHOP_EXPERIENCE_ID;
+                      headersList.get('x-whop-experience-id') ||
+                      process.env.WHOP_EXPERIENCE_ID ||
+                      process.env.NEXT_PUBLIC_WHOP_EXPERIENCE_ID;
+  
+  console.log('🔍 Context extraction:', {
+    companyId,
+    experienceId,
+    hasCompanyHeader: !!headersList.get('x-whop-company-id'),
+    hasExperienceHeader: !!headersList.get('x-experience-id'),
+    hasEnvExperience: !!process.env.WHOP_EXPERIENCE_ID
+  });
   
   return { companyId, experienceId };
 }
