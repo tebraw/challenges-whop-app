@@ -5,7 +5,7 @@ const nextConfig = {
     remotePatterns: [{ hostname: "**" }],
   },
   
-  // Temporarily ignore TypeScript errors due to Next.js module resolution bugs
+  // Temporarily ignore TypeScript errors for build success
   typescript: {
     ignoreBuildErrors: true,
   },
