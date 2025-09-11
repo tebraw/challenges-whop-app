@@ -219,7 +219,7 @@ async function handleManageRewards() {
 }
 
 // Placeholder components
-function Header({ userRole, permissions }: { userRole: string; permissions: any }) {
+function Header({ userRole, permissions }: { userRole: string; permissions: Record<string, boolean> }) {
   return (
     <header>
       <h1>Experience App</h1>

@@ -5,14 +5,14 @@ const nextConfig = {
     remotePatterns: [{ hostname: "**" }],
   },
   
-  // Skip type checking during build to avoid module resolution issues
+  // Temporarily ignore TypeScript errors due to Next.js module resolution bugs
   typescript: {
     ignoreBuildErrors: true,
   },
   
-  // Skip ESLint during build
+  // Keep ESLint enabled for code quality checks
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   
   // For Next.js 15, body size limits are handled at the API route level

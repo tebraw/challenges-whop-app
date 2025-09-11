@@ -1,1 +1,6 @@
-import { clsx } from "clsx"; export function cn(...inputs:any[]){ return clsx(inputs);}
+import { clsx } from "clsx"; 
+import { ClassValue } from "clsx";
+
+export function cn(...inputs: ClassValue[]){ 
+  return clsx(inputs);
+}
