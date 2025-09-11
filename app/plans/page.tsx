@@ -73,6 +73,7 @@ function PlansContent() {
       const data = await response.json();
       
       // If user already has admin access, redirect to dashboard
+      console.log('User access data:', data);
       if (data.accessLevel?.userType === 'admin') {
         router.push('/dashboard');
         return;
