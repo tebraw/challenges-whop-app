@@ -85,6 +85,111 @@ export async function getWhopSession(): Promise<WhopSession | null> {
 }
 
 /**
+ * Check if user has active subscription to our products
+ */
+export async function hasActiveSubscription(session: WhopSession): Promise<{
+  hasSubscription: boolean;
+  plan: 'basic' | 'pro' | null;
+  productId?: string;
+}> {
+  try {
+    const basicProductId = 'prod_YByUE3J5oT4Fq';
+    const proProductId = 'prod_Tj4T1U7pVwtgb';
+    
+    // Check for Pro subscription first (higher tier)
+    const proSubscription = session.memberships.find(m => 
+      m.productId === proProductId && m.valid && m.status === 'active'
+    );
+    
+    if (proSubscription) {
+      return {
+        hasSubscription: true,
+        plan: 'pro',
+        productId: proProductId
+      };
+    }
+    
+    // Check for Basic subscription
+    const basicSubscription = session.memberships.find(m => 
+      m.productId === basicProductId && m.valid && m.status === 'active'
+    );
+    
+    if (basicSubscription) {
+      return {
+        hasSubscription: true,
+        plan: 'basic',
+        productId: basicProductId
+      };
+    }
+    
+    return {
+      hasSubscription: false,
+      plan: null
+    };
+    
+  } catch (error) {
+    console.error('Error checking subscription:', error);
+    return {
+      hasSubscription: false,
+      plan: null
+    };
+  }
+}
+
+/**
+ * Upgrade user to admin after successful subscription payment
+ * Called when user purchases access pass
+ */
+export async function upgradeUserToAdmin(session: WhopSession): Promise<void> {
+  try {
+    console.log('💰 Upgrading user to admin after subscription payment...');
+    
+    // Check if user owns companies and has active subscription
+    const userCompaniesResponse = await fetch(`https://api.whop.com/v5/users/${session.userId}/companies`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    let ownsCompanies = false;
+    if (userCompaniesResponse.ok) {
+      const userCompanies = await userCompaniesResponse.json();
+      ownsCompanies = (userCompanies.data || []).length > 0;
+    }
+
+    const hasActiveSubscription = session.memberships.some(m => 
+      m.valid && m.status === 'active'
+    );
+
+    // Only upgrade if user owns companies AND has paid subscription
+    if (ownsCompanies && hasActiveSubscription) {
+      const updatedUser = await prisma.user.update({
+        where: { whopUserId: session.userId },
+        data: {
+          role: 'ADMIN',
+          isFreeTier: false,
+          subscriptionStatus: 'active',
+          tier: 'enterprise'
+        }
+      });
+
+      console.log('🎉 User upgraded to ADMIN after purchasing subscription!');
+      console.log(`   User: ${updatedUser.email}`);
+      console.log(`   Role: USER → ADMIN`);
+      console.log(`   Tier: basic → enterprise`);
+    } else {
+      console.log('⚠️ User not eligible for admin upgrade:', {
+        ownsCompanies,
+        hasActiveSubscription
+      });
+    }
+  } catch (error) {
+    console.error('Error upgrading user to admin:', error);
+  }
+}
+
+/**
  * Create or update admin user in database
  * MULTI-TENANT: Creates separate tenant for each company
  */
@@ -129,6 +234,7 @@ async function createOrUpdateAdminUser(session: WhopSession): Promise<void> {
         }
 
         // Create or update user for this tenant
+        // PAY-TO-CREATE: Company owners start as USER until they purchase subscription
         if (tenant) {
           await prisma.user.upsert({
             where: { 
@@ -137,25 +243,25 @@ async function createOrUpdateAdminUser(session: WhopSession): Promise<void> {
             update: {
               email: session.email,
               name: session.username || session.email.split('@')[0],
-              role: 'ADMIN',
+              role: 'USER', // Start as USER - will become ADMIN after subscription
               whopCompanyId: company.id,
-              isFreeTier: false,
-              tier: 'enterprise'
+              isFreeTier: true, // Until they pay
+              tier: 'basic'
             },
             create: {
               email: session.email,
               name: session.username || session.email.split('@')[0],
-              role: 'ADMIN',
+              role: 'USER', // Start as USER - will become ADMIN after subscription
               tenantId: tenant.id,
               whopUserId: session.userId,
               whopCompanyId: company.id,
-              isFreeTier: false,
-              subscriptionStatus: 'active',
-              tier: 'enterprise'
+              isFreeTier: true, // Until they pay
+              subscriptionStatus: 'inactive', // Until they pay
+              tier: 'basic'
             }
           });
 
-          console.log(`🔑 Company owner ${session.email} granted admin access for ${company.name}`);
+          console.log(`� Company owner ${session.email} created as USER - needs to purchase access pass for admin rights`);
         }
       }
     } else {
@@ -205,8 +311,10 @@ async function createOrUpdateAdminUser(session: WhopSession): Promise<void> {
  */
 export async function getUserRole(session: WhopSession): Promise<'ADMIN' | 'USER'> {
   try {
-    // MULTI-TENANT APPROACH: Check if user owns ANY company
-    // If they own a company, they are admin for that company's challenges
+    // PAY-TO-CREATE MODEL: User needs BOTH company ownership AND active subscription
+    // 1. Check if user owns companies
+    // 2. Check if user has paid for access pass (active membership)
+    // 3. Only THEN grant admin access
     
     const userCompaniesResponse = await fetch(`https://api.whop.com/v5/users/${session.userId}/companies`, {
       headers: {
@@ -215,30 +323,45 @@ export async function getUserRole(session: WhopSession): Promise<'ADMIN' | 'USER
       }
     });
 
+    let ownsCompanies = false;
     if (userCompaniesResponse.ok) {
       const userCompanies = await userCompaniesResponse.json();
       const ownedCompanies = userCompanies.data || [];
+      ownsCompanies = ownedCompanies.length > 0;
       
       console.log('🔍 User owned companies:', ownedCompanies.map((c: any) => ({ id: c.id, name: c.name })));
-      
-      // If user owns any companies, they are an admin
-      if (ownedCompanies.length > 0) {
-        console.log('🔑 User owns companies - granting admin access');
-        return 'ADMIN';
-      }
     }
 
-    // Check if user has memberships (they are a member of communities)
-    const hasAnyMembership = session.memberships.some(m => 
+    // Check if user has PAID for access (active membership/subscription)
+    const hasActiveSubscription = session.memberships.some(m => 
       m.valid && m.status === 'active'
     );
     
-    if (hasAnyMembership) {
-      console.log('🔑 User has valid memberships - user access');
+    console.log('💰 Subscription check:', {
+      ownsCompanies,
+      hasActiveSubscription,
+      memberships: session.memberships.length
+    });
+
+    // ADMIN ACCESS: Requires BOTH company ownership AND paid subscription
+    if (ownsCompanies && hasActiveSubscription) {
+      console.log('🔑 Company owner WITH subscription - granting ADMIN access');
+      return 'ADMIN';
+    }
+    
+    // USER ACCESS: Has subscription but no companies (regular member)
+    if (hasActiveSubscription) {
+      console.log('🔑 User has paid subscription - granting USER access');
+      return 'USER';
+    }
+    
+    // NO ACCESS: Company owner without subscription
+    if (ownsCompanies && !hasActiveSubscription) {
+      console.log('� Company owner needs to purchase access pass for admin rights');
       return 'USER';
     }
 
-    console.log('❌ User has no companies or memberships');
+    console.log('❌ User has no subscription - no access');
     return 'USER';
   } catch (error) {
     console.error('Error determining user role:', error);

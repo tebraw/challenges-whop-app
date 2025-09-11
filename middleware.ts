@@ -3,6 +3,28 @@ import { NextRequest, NextResponse } from 'next/server';
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
+  // Check for Whop app installation context
+  const isWhopContext = request.headers.get('x-whop-user-token');
+  const experienceId = request.headers.get('x-whop-experience-id');
+  const companyId = request.headers.get('x-whop-company-id');
+  
+  // NEW USER ONBOARDING: Redirect to plan selection
+  if (isWhopContext && !experienceId && companyId) {
+    // This is a company owner installing the app
+    console.log('🎯 New app installation detected - company context');
+    
+    // Don't redirect if already on plans page
+    if (pathname !== '/plans' && pathname !== '/api/whop/subscription-webhook') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/plans';
+      url.searchParams.set('new_install', 'true');
+      url.searchParams.set('company_id', companyId);
+      
+      console.log('🔄 Redirecting to plan selection:', url.toString());
+      return NextResponse.redirect(url);
+    }
+  }
+  
   // Allow admin routes to be handled by AdminGuard component instead of middleware
   // The AdminGuard will handle the authentication check properly
   
