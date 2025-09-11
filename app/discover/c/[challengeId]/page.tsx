@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { getOptimizedWhopUrl, generateJoinMessage, trackUrlOptimization } from "@/lib/whop-url-optimizer";
+import { getOptimizedWhopUrlString, generateJoinMessage, trackUrlOptimization } from "@/lib/whop-url-optimizer";
 
 interface Challenge {
   id: string;
@@ -150,17 +150,14 @@ export default function PublicChallengePage() {
         
         // For state tracking in UI
         const canAccess = hasCommunityAccess;
-        const optimizedUrlInfo = getOptimizedWhopUrl({
-          name: challenge.tenant.name,
-          whopCompanyId: challenge.tenant.whopCompanyId
-        });
+        const optimizedUrl = getOptimizedWhopUrlString(challenge.tenant);
         
         setUserAccess({
           access: accessData.userType === 'guest' ? 'no_access' : 'customer',
           user: accessData.userId ? { id: accessData.userId } : null,
           canAccessChallenge: canAccess,
           needsWhopAccess: !canAccess && !!challenge?.tenant.whopCompanyId,
-          whopJoinUrl: optimizedUrlInfo.url
+          whopJoinUrl: optimizedUrl
         });
         
         // Note: Removed old state setters as we only need userAccess for UI
@@ -168,16 +165,13 @@ export default function PublicChallengePage() {
       } catch (error) {
         console.error('❌ Error checking access:', error);
         // Default to no access
-        const optimizedUrlInfo = getOptimizedWhopUrl({
-          name: challenge?.tenant.name,
-          whopCompanyId: challenge?.tenant.whopCompanyId
-        });
+        const optimizedUrl = getOptimizedWhopUrlString(challenge?.tenant);
         
         setUserAccess({
           access: 'no_access',
           canAccessChallenge: false,
           needsWhopAccess: !!challenge?.tenant.whopCompanyId,
-          whopJoinUrl: optimizedUrlInfo.url
+          whopJoinUrl: optimizedUrl
         });
       } finally {
         setLoading(false);
@@ -232,34 +226,27 @@ export default function PublicChallengePage() {
       }
     } else {
       // Non-community members -> redirect to optimized Whop URL
-      const { url: optimizedUrl, isOptimized, type } = getOptimizedWhopUrl({
-        name: challenge.tenant.name,
-        whopCompanyId: challenge.tenant.whopCompanyId
-      });
+      const optimizedUrl = getOptimizedWhopUrlString(challenge.tenant);
       
       console.log('🔗 Using optimized Whop URL:', {
         url: optimizedUrl,
-        isOptimized,
-        type,
         tenantName: challenge.tenant.name
       });
       
-      // Show user-friendly message with URL type awareness
-      const message = generateJoinMessage(challenge.tenant.name || 'this community', isOptimized);
+      // Show user-friendly message
+      const message = generateJoinMessage(challenge.tenant.name || 'this community', true);
       const confirmJoin = confirm(message);
       
       if (confirmJoin) {
         // Track URL optimization for analytics
-        trackUrlOptimization(type, challenge.tenant.id);
+        trackUrlOptimization('handle_with_product', challenge.tenant.id);
         
         // Open in new tab so user can come back
         window.open(optimizedUrl, '_blank', 'noopener,noreferrer');
         
         // Show contextual success message
         setTimeout(() => {
-          const successMessage = isOptimized 
-            ? 'After joining the community, refresh this page to participate in the challenge!'
-            : 'After joining via Whop, come back here to participate in the challenge!';
+          const successMessage = 'After joining the community, refresh this page to participate in the challenge!';
           alert(successMessage);
         }, 1000);
       }

@@ -115,47 +115,48 @@ async function createOrUpdateAdminUser(session: WhopSession): Promise<void> {
         });
         
         if (!tenant) {
-          // 🔄 Create tenant with REAL Whop data (no test data!)
+          // Create tenant with basic company data
           tenant = await prisma.tenant.create({
             data: {
               name: company.name || `Company ${company.id}`,
               whopCompanyId: company.id
             }
           });
-          console.log(`🆕 Created tenant with REAL data:`, {
+          console.log(`🆕 Created tenant:`, {
             name: tenant.name,
-            whopCompanyId: tenant.whopCompanyId,
-            availableFields: Object.keys(company)
+            whopCompanyId: tenant.whopCompanyId
           });
         }
 
         // Create or update user for this tenant
-        await prisma.user.upsert({
-          where: { 
-            whopUserId: session.userId 
-          },
-          update: {
-            email: session.email,
-            name: session.username || session.email.split('@')[0],
-            role: 'ADMIN',
-            whopCompanyId: company.id,
-            isFreeTier: false,
-            tier: 'enterprise'
-          },
-          create: {
-            email: session.email,
-            name: session.username || session.email.split('@')[0],
-            role: 'ADMIN',
-            tenantId: tenant.id,
-            whopUserId: session.userId,
-            whopCompanyId: company.id,
-            isFreeTier: false,
-            subscriptionStatus: 'active',
-            tier: 'enterprise'
-          }
-        });
+        if (tenant) {
+          await prisma.user.upsert({
+            where: { 
+              whopUserId: session.userId 
+            },
+            update: {
+              email: session.email,
+              name: session.username || session.email.split('@')[0],
+              role: 'ADMIN',
+              whopCompanyId: company.id,
+              isFreeTier: false,
+              tier: 'enterprise'
+            },
+            create: {
+              email: session.email,
+              name: session.username || session.email.split('@')[0],
+              role: 'ADMIN',
+              tenantId: tenant.id,
+              whopUserId: session.userId,
+              whopCompanyId: company.id,
+              isFreeTier: false,
+              subscriptionStatus: 'active',
+              tier: 'enterprise'
+            }
+          });
 
-        console.log(`🔑 Company owner ${session.email} granted admin access for ${company.name}`);
+          console.log(`🔑 Company owner ${session.email} granted admin access for ${company.name}`);
+        }
       }
     } else {
       // Fallback: Create default tenant if no companies found
@@ -192,67 +193,9 @@ async function createOrUpdateAdminUser(session: WhopSession): Promise<void> {
         }
       });
     }
+
   } catch (error) {
     console.error('Error creating/updating admin user:', error);
-  }
-}
-
-/**
- * Check if user is the app creator (automatic admin access)
- */
-export async function isAppCreator(userId: string): Promise<boolean> {
-  try {
-    // Method 1: Check if user owns the company we're checking
-    const companyResponse = await fetch(`https://api.whop.com/v5/companies/${process.env.NEXT_PUBLIC_WHOP_COMPANY_ID}`, {
-      headers: {
-        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (companyResponse.ok) {
-      const company = await companyResponse.json();
-      console.log('🔍 Company data:', { 
-        id: company.id, 
-        owner: company.owner_id || company.owner?.id,
-        name: company.name 
-      });
-      
-      // Check if user is the company owner
-      if (company.owner_id === userId || company.owner?.id === userId) {
-        console.log('✅ User is company owner');
-        return true;
-      }
-    }
-
-    // Method 2: Check user's companies to see if they own the target company
-    const userCompaniesResponse = await fetch(`https://api.whop.com/v5/users/${userId}/companies`, {
-      headers: {
-        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (userCompaniesResponse.ok) {
-      const userCompanies = await userCompaniesResponse.json();
-      console.log('🔍 User companies FULL DATA:', JSON.stringify(userCompanies.data, null, 2));
-      console.log('🔍 User companies summary:', userCompanies.data?.map((c: any) => ({ id: c.id, name: c.name, handle: c.handle, username: c.username })));
-      
-      const ownsTargetCompany = userCompanies.data?.some((company: any) => 
-        company.id === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID
-      );
-      
-      if (ownsTargetCompany) {
-        console.log('✅ User owns target company');
-        return true;
-      }
-    }
-
-    console.log('❌ User is not company owner');
-    return false;
-  } catch (error) {
-    console.error('Error checking if user is app creator:', error);
-    return false;
   }
 }
 
@@ -300,75 +243,6 @@ export async function getUserRole(session: WhopSession): Promise<'ADMIN' | 'USER
   } catch (error) {
     console.error('Error determining user role:', error);
     return 'USER';
-  }
-}
-
-/**
- * Check if user has access to specific product
- */
-export async function hasProductAccess(
-  userId: string, 
-  productId: string
-): Promise<boolean> {
-  try {
-    const session = await getWhopSession();
-    if (!session || session.userId !== userId) {
-      return false;
-    }
-
-    return session.memberships.some(
-      membership => 
-        membership.productId === productId && 
-        membership.valid && 
-        membership.status === 'active'
-    );
-  } catch (error) {
-    console.error('Error checking product access:', error);
-    return false;
-  }
-}
-
-/**
- * Create Whop checkout URL
- * Uses your real Whop app credentials
- */
-export async function createWhopCheckout(options: {
-  planId: string;
-  userId?: string;
-  successUrl?: string;
-  cancelUrl?: string;
-  metadata?: Record<string, any>;
-}): Promise<string> {
-  try {
-    const { planId, successUrl, cancelUrl, metadata } = options;
-    
-    const response = await fetch('https://api.whop.com/v5/payments/checkout-sessions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
-        'Content-Type': 'application/json',
-        'X-Whop-App-Id': process.env.NEXT_PUBLIC_WHOP_APP_ID!
-      },
-      body: JSON.stringify({
-        plan_id: planId,
-        company_id: process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
-        ...(successUrl && { success_url: successUrl }),
-        ...(cancelUrl && { cancel_url: cancelUrl }),
-        ...(metadata && { metadata })
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Whop checkout error:', errorText);
-      throw new Error('Failed to create checkout session');
-    }
-
-    const session = await response.json();
-    return session.checkout_url;
-  } catch (error) {
-    console.error('Error creating Whop checkout:', error);
-    throw error;
   }
 }
 
@@ -458,32 +332,5 @@ export async function handleWhopCallback(code: string): Promise<WhopSession | nu
   } catch (error) {
     console.error('Error handling Whop callback:', error);
     return null;
-  }
-}
-
-/**
- * Validate membership for specific product
- */
-export async function validateMembership(
-  userId: string, 
-  productId: string
-): Promise<{ valid: boolean; membership?: WhopMembership }> {
-  try {
-    const session = await getWhopSession();
-    if (!session || session.userId !== userId) {
-      return { valid: false };
-    }
-
-    const membership = session.memberships.find(
-      m => m.productId === productId && m.valid && m.status === 'active'
-    );
-
-    return {
-      valid: !!membership,
-      membership
-    };
-  } catch (error) {
-    console.error('Error validating membership:', error);
-    return { valid: false };
   }
 }

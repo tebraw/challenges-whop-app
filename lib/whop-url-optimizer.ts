@@ -40,6 +40,14 @@ export function generateWhopCommunityUrl(options: WhopUrlOptions): string {
 }
 
 /**
+ * 🔗 Simple URL helper - returns just the URL string
+ */
+export function getOptimizedWhopUrlString(tenant: any): string {
+  const result = getOptimizedWhopUrl(tenant);
+  return result.url;
+}
+
+/**
  * Attempts to extract company handle from company ID or name
  * This is a heuristic approach until we can fetch handles from Whop API
  */
