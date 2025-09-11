@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/request';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { whopSdk } from '@/lib/whop-sdk';
@@ -172,7 +172,8 @@ export async function GET(request: NextRequest) {
       include: {
         _count: {
           select: {
-            enrollments: true
+            enrollments: true,
+            checkins: true
           }
         }
       },
@@ -192,10 +193,12 @@ export async function GET(request: NextRequest) {
         imageUrl: challenge.imageUrl,
         category: challenge.category,
         difficulty: challenge.difficulty,
-        startDate: challenge.startAt,
-        endDate: challenge.endAt,
+        tags: challenge.tags,
+        startDate: challenge.startDate,
+        endDate: challenge.endDate,
         enrollmentCount: challenge._count.enrollments,
-        isActive: new Date() >= challenge.startAt && new Date() <= challenge.endAt,
+        checkinCount: challenge._count.checkins,
+        isActive: new Date() >= challenge.startDate && new Date() <= challenge.endDate,
         createdAt: challenge.createdAt
       })),
       context: {
