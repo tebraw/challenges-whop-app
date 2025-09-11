@@ -2,6 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { whopSdk } from '@/lib/whop-sdk';
 import { headers } from 'next/headers';
+import { createCorsResponse, handleCorsPreflightOptions } from '@/lib/cors';
 
 // Helper: Get Experience Context
 async function getExperienceContext() {
@@ -22,20 +23,20 @@ export async function GET(request: NextRequest) {
     const { userId } = await whopSdk.verifyUserToken(headersList);
     
     if (!userId) {
-      return NextResponse.json({ 
+      return createCorsResponse({ 
         error: 'Authentication required - please login via Whop',
         debug: 'No valid Whop token found'
-      }, { status: 401 });
+      }, 401);
     }
 
     // Step 2: Get experience context
     const { experienceId } = await getExperienceContext();
     
     if (!experienceId) {
-      return NextResponse.json({ 
+      return createCorsResponse({ 
         error: 'Experience context required',
         debug: 'No experienceId found in headers or environment'
-      }, { status: 400 });
+      }, 400);
     }
 
     // Step 3: Check experience access and role
@@ -45,18 +46,18 @@ export async function GET(request: NextRequest) {
     });
 
     if (!accessResult.hasAccess) {
-      return NextResponse.json({ 
+      return createCorsResponse({ 
         error: 'Access denied to experience',
         debug: 'User does not have access to this experience'
-      }, { status: 403 });
+      }, 403);
     }
 
     // Step 4: Admin role required for this endpoint
     if (accessResult.accessLevel !== 'admin') {
-      return NextResponse.json({ 
+      return createCorsResponse({ 
         error: 'Admin access required',
         debug: `Current access level: ${accessResult.accessLevel}, admin required`
-      }, { status: 403 });
+      }, 403);
     }
 
     console.log('Admin access verified for experience:', experienceId, 'user:', userId);
@@ -87,46 +88,26 @@ export async function GET(request: NextRequest) {
       ]
     });
 
-    return NextResponse.json({
+    return createCorsResponse({
       challenges,
       experienceContext: {
         experienceId,
         userId,
         accessLevel: accessResult.accessLevel
       }
-    }, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-experience-id'
-      }
     });
 
   } catch (error) {
     console.error('Admin challenges API error:', error);
     
-    return NextResponse.json({ 
+    return createCorsResponse({ 
       error: 'Authentication required - please login via Whop',
       debug: error instanceof Error ? error.message : 'Unknown error'
-    }, { 
-      status: 401,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-experience-id'
-      }
-    });
+    }, 401);
   }
 }
 
 // Add OPTIONS handler for CORS
-export async function OPTIONS(request: NextRequest) {
-  return new Response(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-experience-id'
-    }
-  });
+export async function OPTIONS() {
+  return handleCorsPreflightOptions();
 }

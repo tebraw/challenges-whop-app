@@ -76,6 +76,8 @@ export default function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    // Include API routes explicitly for CORS handling
+    '/api/:path*',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

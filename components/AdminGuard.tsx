@@ -20,9 +20,13 @@ export default function AdminGuard({ children }: AdminGuardProps) {
         
         // First check experience context and auth status
         const contextResponse = await fetch('/api/auth/experience-context', {
+          method: 'GET',
           headers: {
-            'Cache-Control': 'no-cache'
-          }
+            'Cache-Control': 'no-cache',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          credentials: 'include'
         });
         
         if (!contextResponse.ok) {
@@ -58,9 +62,13 @@ export default function AdminGuard({ children }: AdminGuardProps) {
         
         // User is authenticated and has admin role - now test admin API access
         const adminResponse = await fetch('/api/admin/challenges', {
+          method: 'GET',
           headers: {
-            'Cache-Control': 'no-cache'
-          }
+            'Cache-Control': 'no-cache',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          credentials: 'include'
         });
         console.log('Admin challenges API response status:', adminResponse.status);
         

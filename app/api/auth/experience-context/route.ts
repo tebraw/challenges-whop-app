@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { whopSdk } from '@/lib/whop-sdk';
 import { getExperienceContext } from '@/lib/whop-experience';
+import { createCorsResponse, handleCorsPreflightOptions } from '@/lib/cors';
 
 // 🎯 WHOP RULE #2: Rollen sauber mappen
 function mapWhopRoleToAppRole(whopRole: string): 'ersteller' | 'member' | 'guest' {
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
     
     const experienceContext = await getExperienceContext();
     
-    return NextResponse.json({
+    return createCorsResponse({
       userId,
       experienceId: experienceContext.experienceId,
       companyId: experienceContext.companyId,
@@ -92,19 +93,13 @@ export async function GET(request: NextRequest) {
       whopRole,
       isAuthenticated: !!userId && whopRole !== 'no_access',
       isEmbedded: experienceContext.isEmbedded
-    }, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-experience-id'
-      }
     });
 
   } catch (error) {
     console.error('Experience context API error:', error);
     
     // Return guest context on error
-    return NextResponse.json({
+    return createCorsResponse({
       userId: null,
       experienceId: null,
       companyId: null,
@@ -113,24 +108,11 @@ export async function GET(request: NextRequest) {
       isAuthenticated: false,
       isEmbedded: false,
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-experience-id'
-      }
-    });
+    }, 500);
   }
 }
 
 // Add OPTIONS handler for CORS
-export async function OPTIONS(request: NextRequest) {
-  return new Response(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-experience-id'
-    }
-  });
+export async function OPTIONS() {
+  return handleCorsPreflightOptions();
 }
