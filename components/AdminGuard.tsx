@@ -1,5 +1,4 @@
-// components/AdminGuard.tsx - Admin Route Protection
-"use client";
+﻿"use client";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
@@ -17,51 +16,54 @@ export default function AdminGuard({ children }: AdminGuardProps) {
   useEffect(() => {
     async function checkAdminAccess() {
       try {
-        console.log('🔍 Starting admin access check...');
+        console.log('Starting Whop experience admin access check...');
         
-        // Get debug information first
-        const debugResponse = await fetch('/api/debug/user');
-        const debugData = await debugResponse.json();
-        console.log('🔍 Debug data:', debugData);
-        setDebugInfo(debugData);
+        // Test the admin challenges API directly - it has the proper Whop auth
+        const adminResponse = await fetch('/api/admin/challenges');
+        console.log('Admin challenges API response status:', adminResponse.status);
         
-        // Check user authentication status
-        const response = await fetch('/api/auth/me');
-        console.log('🔍 Auth me response status:', response.status);
-        
-        if (!response.ok) {
-          console.log('❌ Auth me failed:', response.status);
-          setDebugInfo((prev: any) => ({ ...prev, authMeError: `Status: ${response.status}` }));
-          return;
-        }
-        
-        const user = await response.json();
-        console.log('👤 User from /api/auth/me:', user);
-        setDebugInfo((prev: any) => ({ ...prev, authMeUser: user }));
-        
-        // Check if user is admin (has role ADMIN and whopCompanyId)
-        if (user.role === 'ADMIN' && user.whopCompanyId) {
-          console.log('✅ Admin access granted!');
+        if (adminResponse.ok) {
+          console.log('Admin access granted via Whop experience auth!');
           setIsAdmin(true);
-        } else {
-          console.log('❌ Access denied - User needs subscription!');
-          console.log('❌ Role:', user.role, 'Company ID:', user.whopCompanyId);
           
-          // REDIRECT TO PLAN SELECTION: User needs to purchase subscription
-          console.log('🔄 Redirecting to plan selection for company owner...');
-          router.push('/plans?reason=no_subscription');
-          return;
+          // Get additional debug info
+          const data = await adminResponse.json();
+          setDebugInfo({ 
+            success: true, 
+            experienceContext: data.experienceContext,
+            challengeCount: data.challenges?.length || 0
+          });
+        } else {
+          const errorData = await adminResponse.json().catch(() => ({ error: 'Unknown error' }));
+          console.log('Admin access denied:', errorData);
+          setDebugInfo({ 
+            success: false, 
+            error: errorData.error,
+            debug: errorData.debug,
+            status: adminResponse.status
+          });
+
+          // Check specific error types
+          if (adminResponse.status === 401) {
+            console.log('Authentication required - redirecting to Whop login');
+            window.location.href = '/auth/whop';
+            return;
+          } else if (adminResponse.status === 403) {
+            console.log('Access denied - redirecting to plans');
+            router.push('/plans?reason=admin_access_required');
+            return;
+          }
         }
       } catch (error: any) {
-        console.error('❌ Admin check failed:', error);
-        setDebugInfo((prev: any) => ({ ...prev, error: error?.message || 'Unknown error' }));
+        console.error('Admin check failed:', error);
+        setDebugInfo({ error: error?.message || 'Network error', networkError: true });
       } finally {
         setIsChecking(false);
       }
     }
 
     checkAdminAccess();
-  }, []);
+  }, [router]);
 
   if (isChecking) {
     return (
@@ -75,12 +77,20 @@ export default function AdminGuard({ children }: AdminGuardProps) {
   }
 
   if (!isAdmin) {
-    // Show loading while redirect happens
     return (
       <div className="max-w-4xl mx-auto p-6">
         <Card className="p-8 text-center">
           <div className="animate-spin w-8 h-8 border-2 border-brand border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p>Redirecting to plan selection...</p>
+          <p>Access verification in progress...</p>
+          
+          {debugInfo && (
+            <div className="mt-4 p-4 bg-gray-100 rounded text-left text-sm">
+              <h3 className="font-bold mb-2">Debug Information:</h3>
+              <pre className="whitespace-pre-wrap">
+                {JSON.stringify(debugInfo, null, 2)}
+              </pre>
+            </div>
+          )}
         </Card>
       </div>
     );
