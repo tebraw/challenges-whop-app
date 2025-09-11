@@ -107,19 +107,26 @@ async function createOrUpdateAdminUser(session: WhopSession): Promise<void> {
     // If user owns companies, create/update tenant for each
     if (userCompanies.length > 0) {
       for (const company of userCompanies) {
+        console.log('🔍 REAL COMPANY DATA FROM WHOP API:', JSON.stringify(company, null, 2));
+        
         // Get or create tenant for this company
         let tenant = await prisma.tenant.findFirst({
           where: { whopCompanyId: company.id }
         });
         
         if (!tenant) {
+          // 🔄 Create tenant with REAL Whop data (no test data!)
           tenant = await prisma.tenant.create({
             data: {
               name: company.name || `Company ${company.id}`,
               whopCompanyId: company.id
             }
           });
-          console.log(`🆕 Created tenant for company: ${company.name} (${company.id})`);
+          console.log(`🆕 Created tenant with REAL data:`, {
+            name: tenant.name,
+            whopCompanyId: tenant.whopCompanyId,
+            availableFields: Object.keys(company)
+          });
         }
 
         // Create or update user for this tenant
@@ -228,7 +235,8 @@ export async function isAppCreator(userId: string): Promise<boolean> {
 
     if (userCompaniesResponse.ok) {
       const userCompanies = await userCompaniesResponse.json();
-      console.log('🔍 User companies:', userCompanies.data?.map((c: any) => ({ id: c.id, name: c.name })));
+      console.log('🔍 User companies FULL DATA:', JSON.stringify(userCompanies.data, null, 2));
+      console.log('🔍 User companies summary:', userCompanies.data?.map((c: any) => ({ id: c.id, name: c.name, handle: c.handle, username: c.username })));
       
       const ownsTargetCompany = userCompanies.data?.some((company: any) => 
         company.id === process.env.NEXT_PUBLIC_WHOP_COMPANY_ID
