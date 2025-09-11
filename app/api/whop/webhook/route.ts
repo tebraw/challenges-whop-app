@@ -48,19 +48,45 @@ async function handleMembershipCreated(data: any) {
   try {
     console.log('🎟️ Membership created:', data?.id);
     
-    // User got access to product - could trigger welcome flow
+    // User got access to product - upgrade to admin if they have company
     if (data?.user_id && data?.product_id) {
-      // Could create default challenge enrollments for new members
       console.log(`New membership for user ${data.user_id} in product ${data.product_id}`);
       
-      // Find the user by whopUserId first
+      // Find the user by whopUserId
       const user = await prisma.user.findUnique({
         where: { whopUserId: data.user_id }
       });
       
       if (user) {
-        // Example: Auto-enroll in featured challenges
-        // Find challenges created by users who have this product
+        console.log(`👤 Found user: ${user.email}, current role: ${user.role}`);
+        
+        // Check if this is our Basic or Pro plan
+        const basicProductId = 'prod_YByUE3J5oT4Fq';
+        const proProductId = 'prod_Tj4T1U7pVwtgb';
+        
+        if (data.product_id === basicProductId || data.product_id === proProductId) {
+          console.log(`💰 User purchased admin plan (${data.product_id === proProductId ? 'Pro' : 'Basic'})`);
+          
+          // Upgrade user to admin if they have company ID (company owner)
+          if (user.whopCompanyId && user.role !== 'ADMIN') {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { 
+                role: 'ADMIN',
+                subscriptionStatus: data.product_id === proProductId ? 'pro' : 'basic',
+                isFreeTier: false
+              }
+            });
+            
+            console.log(`🚀 UPGRADED USER TO ADMIN: ${user.email} (${data.product_id === proProductId ? 'Pro' : 'Basic'} plan)`);
+          } else if (!user.whopCompanyId) {
+            console.log(`⚠️ User ${user.email} purchased but has no company ID - not upgrading to admin`);
+          } else {
+            console.log(`✅ User ${user.email} already has admin role`);
+          }
+        }
+        
+        // Auto-enroll in featured challenges (existing logic)
         const whopProduct = await prisma.whopProduct.findUnique({
           where: { whopProductId: data.product_id }
         });
@@ -69,7 +95,6 @@ async function handleMembershipCreated(data: any) {
           const featuredChallenges = await prisma.challenge.findMany({
             where: { 
               creatorId: whopProduct.creatorId,
-              // Add featured flag or similar
             },
             take: 3
           });
@@ -91,6 +116,8 @@ async function handleMembershipCreated(data: any) {
             });
           }
         }
+      } else {
+        console.log(`⚠️ No user found for whopUserId: ${data.user_id}`);
       }
     }
   } catch (error) {
