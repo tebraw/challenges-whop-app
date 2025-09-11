@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { headers } from 'next/headers';
-import { whopSdk } from '@/lib/whop-sdk';
-import { getExperienceContext } from '@/lib/whop-experience';
+import { verifySecureAdminAccess } from '@/lib/secure-admin-auth';
 
 // 🎯 WHOP RULE #3: Auth nur auf dem Server - Minimal Flow
 async function verifyAdminAccess() {
@@ -100,7 +98,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Admin challenges API called');
     
-    // Simplified admin verification - check for admin users directly
+    // CRITICAL: Strict admin verification with proper tenant isolation
     let adminUser;
     
     try {
@@ -110,25 +108,26 @@ export async function GET(request: NextRequest) {
       
       adminUser = await prisma.user.findUnique({
         where: { whopUserId: auth.userId },
-        select: { id: true, tenantId: true, role: true }
-      });
-    } catch (authError) {
-      console.log('⚠️ Whop auth failed, checking for any admin user:', authError);
-      
-      // Fallback: Find any admin user (for development/debugging)
-      adminUser = await prisma.user.findFirst({
-        where: { role: 'ADMIN' },
-        select: { id: true, tenantId: true, role: true }
+        select: { id: true, tenantId: true, role: true, whopCompanyId: true }
       });
       
-      if (adminUser) {
-        console.log('✅ Found fallback admin user:', adminUser.id);
+      if (!adminUser || adminUser.role !== 'ADMIN') {
+        console.log('❌ User found but not admin:', adminUser);
+        return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
       }
+      
+    } catch (authError) {
+      console.log('⚠️ Whop auth failed:', authError);
+      
+      // 🚨 REMOVED DANGEROUS FALLBACK - NO MORE CROSS-TENANT ACCESS
+      // Previously this allowed any admin to access any tenant's data!
+      return NextResponse.json({ 
+        error: 'Authentication required - please login via Whop',
+        debug: 'Fallback admin access disabled for security'
+      }, { status: 401 });
     }
 
-    if (!adminUser || adminUser.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Admin user not found' }, { status: 403 });
-    }
+    console.log('🔒 Admin user verified for tenant:', adminUser.tenantId);
 
     // 🎯 WHOP RULE #1: Experience ist dein Mandant - Scoped data access
     const challenges = await prisma.challenge.findMany({
