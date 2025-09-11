@@ -152,16 +152,32 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ Admin access verified for user:', userId, 'company:', companyId, 'experience:', experienceId || 'not_provided');
 
-    // Step 4: Get tenant based on company
-    const tenant = await prisma.tenant.findUnique({
+    // Step 4: Get or create tenant based on company
+    let tenant = await prisma.tenant.findUnique({
       where: { whopCompanyId: companyId }
     });
     
     if (!tenant) {
-      return createCorsResponse({ 
-        error: 'Tenant not found for company',
-        debug: `No tenant found for companyId: ${companyId}`
-      }, 404);
+      console.log(`🏗️ Creating new tenant for companyId: ${companyId}`);
+      
+      try {
+        tenant = await prisma.tenant.create({
+          data: {
+            name: `Company ${companyId}`,
+            whopCompanyId: companyId
+          }
+        });
+        console.log(`✅ Created new tenant with ID: ${tenant.id} for company: ${companyId}`);
+      } catch (error) {
+        console.error('Failed to create tenant:', error);
+        return createCorsResponse({ 
+          error: 'Failed to create tenant for company',
+          debug: `Could not create tenant for companyId: ${companyId}`,
+          originalError: error instanceof Error ? error.message : 'Unknown error'
+        }, 500);
+      }
+    } else {
+      console.log(`✅ Found existing tenant with ID: ${tenant.id} for company: ${companyId}`);
     }
 
     // Step 5: Fetch challenges for this company's tenant
