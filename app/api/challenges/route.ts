@@ -91,18 +91,20 @@ export async function POST(request: NextRequest) {
     const challengeData = validationResult.data;
     console.log('✅ Validation successful:', challengeData);
 
-    // Ensure tenant exists for this specific company
-    const tenantId = `tenant_${user.whopCompanyId}`;
+    // 🔧 FIX: Get or create tenant using whopCompanyId for proper isolation
+    if (!user.whopCompanyId) {
+      return NextResponse.json({ error: 'User has no company ID' }, { status: 400 });
+    }
+
     const tenant = await prisma.tenant.upsert({
-      where: { id: tenantId },
+      where: { whopCompanyId: user.whopCompanyId },
       create: {
-        id: tenantId,
-        name: `Company ${user.whopCompanyId} Tenant`,
+        name: `Company ${user.whopCompanyId.slice(-6)} Tenant`,
         whopCompanyId: user.whopCompanyId
       },
       update: {
-        // Always update the whopCompanyId to current user's company
-        whopCompanyId: user.whopCompanyId
+        // Always update the name if needed
+        name: `Company ${user.whopCompanyId.slice(-6)} Tenant`
       }
     });
 

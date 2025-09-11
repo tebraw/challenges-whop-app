@@ -168,15 +168,16 @@ export async function getCurrentUser(): Promise<{
             console.log(`🎯 Company Access Level: ${companyAccessResult.accessLevel} → Database Role: ${correctRole}`);
             
             if (!user) {
-              // Get or create tenant for this company
-              let tenant = await prisma.tenant.findFirst({
-                where: { name: `Company ${companyId?.slice(-6) || 'Unknown'}` }
+              // 🔧 FIX: Get or create tenant using whopCompanyId for proper isolation
+              let tenant = await prisma.tenant.findUnique({
+                where: { whopCompanyId: companyId }
               });
               
               if (!tenant) {
                 tenant = await prisma.tenant.create({
                   data: {
-                    name: `Company ${companyId?.slice(-6) || 'Unknown'}`
+                    name: `Company ${companyId?.slice(-6) || 'Unknown'}`,
+                    whopCompanyId: companyId
                   }
                 });
                 console.log(`🆕 Created tenant for Dashboard company: ${companyId}`);

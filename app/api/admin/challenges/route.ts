@@ -4,13 +4,36 @@ import { whopSdk } from '@/lib/whop-sdk';
 import { headers } from 'next/headers';
 import { createCorsResponse, handleCorsPreflightOptions } from '@/lib/cors';
 
-// Helper: Get Experience Context
-async function getExperienceContext() {
+// Helper: Get Company Context from Experience
+async function getCompanyFromExperience() {
   const headersList = await headers();
+  
+  // Method 1: Get companyId directly from headers
+  let companyId = headersList.get('x-whop-company-id') || 
+                  headersList.get('x-company-id') ||
+                  process.env.NEXT_PUBLIC_WHOP_COMPANY_ID;
+  
+  // Method 2: Extract from app config cookie if headers missing
+  if (!companyId) {
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    const appConfigCookie = cookieStore.get('whop.app-config')?.value;
+    if (appConfigCookie) {
+      try {
+        const appConfig = JSON.parse(atob(appConfigCookie.split('.')[1]));
+        companyId = appConfig.did;
+      } catch (error) {
+        console.log('Failed to parse app config for company ID');
+      }
+    }
+  }
+  
+  // Method 3: Get experienceId for access checks
   const experienceId = headersList.get('x-experience-id') || 
                       headersList.get('experience-id') ||
                       process.env.WHOP_EXPERIENCE_ID;
-  return { experienceId };
+  
+  return { companyId, experienceId };
 }
 
 // WHOP RULE: Experience-scoped admin access with proper role checking
@@ -29,8 +52,15 @@ export async function GET(request: NextRequest) {
       }, 401);
     }
 
-    // Step 2: Get experience context
-    const { experienceId } = await getExperienceContext();
+    // Step 2: Get company and experience context
+    const { companyId, experienceId } = await getCompanyFromExperience();
+    
+    if (!companyId) {
+      return createCorsResponse({ 
+        error: 'Company context required',
+        debug: 'No companyId found in headers or environment'
+      }, 400);
+    }
     
     if (!experienceId) {
       return createCorsResponse({ 
@@ -60,12 +90,23 @@ export async function GET(request: NextRequest) {
       }, 403);
     }
 
-    console.log('Admin access verified for experience:', experienceId, 'user:', userId);
+    console.log('Admin access verified for company:', companyId, 'experience:', experienceId, 'user:', userId);
 
-    // Step 5: Experience-scoped data query
+    // Step 5: Company-based data query (using companyId for tenant lookup)
+    const tenant = await prisma.tenant.findUnique({
+      where: { whopCompanyId: companyId }
+    });
+    
+    if (!tenant) {
+      return createCorsResponse({ 
+        error: 'Tenant not found for company',
+        debug: `No tenant found for companyId: ${companyId}`
+      }, 404);
+    }
+
     const challenges = await prisma.challenge.findMany({
       where: {
-        tenantId: experienceId
+        tenantId: tenant.id  // 🔧 FIX: Use company-based tenant, not experienceId
       },
       include: {
         creator: {
