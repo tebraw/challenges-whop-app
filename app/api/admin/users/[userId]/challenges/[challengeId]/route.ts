@@ -47,8 +47,8 @@ export async function GET(
       }, { status: 404 });
     }
 
-    // Get user info (also should be from same tenant)
-    const user = await prisma.user.findUnique({
+    // Get user info (check both same tenant and cross-tenant with valid enrollment)
+    let user = await prisma.user.findUnique({
       where: { 
         id: userId,
         tenantId: currentUser.tenantId  // 🔒 SECURITY: Only allow access to same tenant users
@@ -61,7 +61,41 @@ export async function GET(
       },
     });
 
-    console.log("Admin API Debug - User found:", !!user, user?.email);
+    console.log("Admin API Debug - User found in same tenant:", !!user, user?.email);
+
+    // If user not found in same tenant, check if there's a valid enrollment (cross-tenant case)
+    if (!user) {
+      const crossTenantEnrollment = await prisma.enrollment.findFirst({
+        where: {
+          challengeId: challengeId,
+          userId: userId,
+          challenge: {
+            tenantId: currentUser.tenantId  // 🔒 SECURITY: Challenge must be in admin's tenant
+          }
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              createdAt: true,
+              tenantId: true,
+            }
+          }
+        }
+      });
+
+      if (crossTenantEnrollment) {
+        user = {
+          id: crossTenantEnrollment.user.id,
+          email: crossTenantEnrollment.user.email,
+          name: crossTenantEnrollment.user.name,
+          createdAt: crossTenantEnrollment.user.createdAt,
+        };
+        console.log("Admin API Debug - Cross-tenant user found via enrollment:", user.email, "tenant:", crossTenantEnrollment.user.tenantId);
+      }
+    }
 
     if (!user) {
       return NextResponse.json({ ok: false, message: "User not found" }, { status: 404 });
