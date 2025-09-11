@@ -7,6 +7,7 @@ import { ThemeProvider } from "../lib/ThemeContext";
 import { WhopApp } from "@whop/react/components";
 import { WhopExperienceProvider } from "@/components/providers/WhopExperienceProvider";
 import { WhopChallengeWebSocketProvider } from "@/components/providers/WhopChallengeWebSocketProvider";
+import WhopErrorHandler from "@/components/WhopErrorHandler";
 
 export const metadata: Metadata = {
   title: "Challenges",
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <WhopExperienceProvider>
             <WhopChallengeWebSocketProvider>
               <ThemeProvider>
+                <WhopErrorHandler />
                 <AppHeader />
                 <div className="pt-16">{children}</div>
               </ThemeProvider>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import { getOptimizedWhopUrl, generateJoinMessage, trackUrlOptimization } from "@/lib/whop-url-optimizer";
 
 interface Challenge {
   id: string;
@@ -147,13 +148,17 @@ export default function PublicChallengePage() {
         
         // For state tracking in UI
         const canAccess = hasCommunityAccess;
+        const optimizedUrlInfo = getOptimizedWhopUrl({
+          name: challenge.tenant.name,
+          whopCompanyId: challenge.tenant.whopCompanyId
+        });
+        
         setUserAccess({
           access: accessData.userType === 'guest' ? 'no_access' : 'customer',
           user: accessData.userId ? { id: accessData.userId } : null,
           canAccessChallenge: canAccess,
           needsWhopAccess: !canAccess && !!challenge?.tenant.whopCompanyId,
-          whopJoinUrl: challenge?.tenant.whopCompanyId ? 
-            `https://whop.com/company/${challenge.tenant.whopCompanyId}` : undefined
+          whopJoinUrl: optimizedUrlInfo.url
         });
         
         // Note: Removed old state setters as we only need userAccess for UI
@@ -161,12 +166,16 @@ export default function PublicChallengePage() {
       } catch (error) {
         console.error('❌ Error checking access:', error);
         // Default to no access
+        const optimizedUrlInfo = getOptimizedWhopUrl({
+          name: challenge?.tenant.name,
+          whopCompanyId: challenge?.tenant.whopCompanyId
+        });
+        
         setUserAccess({
           access: 'no_access',
           canAccessChallenge: false,
           needsWhopAccess: !!challenge?.tenant.whopCompanyId,
-          whopJoinUrl: challenge?.tenant.whopCompanyId ? 
-            `https://whop.com/company/${challenge.tenant.whopCompanyId}` : undefined
+          whopJoinUrl: optimizedUrlInfo.url
         });
       } finally {
         setLoading(false);
@@ -220,16 +229,37 @@ export default function PublicChallengePage() {
         setJoining(false);
       }
     } else {
-      // Everyone else (including Default Tenant) -> redirect to product page
-      if (challenge.tenant.whopCompanyId) {
-        const productUrl = `https://whop.com/company/${challenge.tenant.whopCompanyId}`;
-        console.log('Redirecting to Whop product page:', productUrl);
-        window.open(productUrl, '_blank');
-      } else {
-        // Default Tenant - also redirect to Whop (use a default company or main page)
-        const defaultUrl = 'https://whop.com';
-        console.log('Default Tenant - redirecting to Whop main page:', defaultUrl);
-        window.open(defaultUrl, '_blank');
+      // Non-community members -> redirect to optimized Whop URL
+      const { url: optimizedUrl, isOptimized, type } = getOptimizedWhopUrl({
+        name: challenge.tenant.name,
+        whopCompanyId: challenge.tenant.whopCompanyId
+      });
+      
+      console.log('🔗 Using optimized Whop URL:', {
+        url: optimizedUrl,
+        isOptimized,
+        type,
+        tenantName: challenge.tenant.name
+      });
+      
+      // Show user-friendly message with URL type awareness
+      const message = generateJoinMessage(challenge.tenant.name || 'this community', isOptimized);
+      const confirmJoin = confirm(message);
+      
+      if (confirmJoin) {
+        // Track URL optimization for analytics
+        trackUrlOptimization(type, challenge.tenant.id);
+        
+        // Open in new tab so user can come back
+        window.open(optimizedUrl, '_blank', 'noopener,noreferrer');
+        
+        // Show contextual success message
+        setTimeout(() => {
+          const successMessage = isOptimized 
+            ? 'After joining the community, refresh this page to participate in the challenge!'
+            : 'After joining via Whop, come back here to participate in the challenge!';
+          alert(successMessage);
+        }, 1000);
       }
     }
   };
