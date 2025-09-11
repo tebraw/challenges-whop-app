@@ -39,25 +39,25 @@ export default function AdminGuard({ children }: AdminGuardProps) {
         
         // Check if there's an error in the response
         if (contextData.error) {
-          throw new Error(`Experience context error: ${contextData.error}`);
+          console.log('Experience context error - trying admin API directly:', contextData.error);
+          // Don't throw immediately, try admin API first
         }
         
-        if (!contextData.isAuthenticated) {
-          console.log('Not authenticated - redirecting to Whop login');
+        // 🎯 FLEXIBLE AUTH: Try admin API even if experience context has issues
+        // This handles cases where user is authenticated in Whop but our context detection fails
+        
+        if (!contextData.isAuthenticated && !contextData.userId) {
+          console.log('No authentication detected - redirecting to Whop login');
           window.location.href = '/auth/whop';
           return;
         }
         
-        if (contextData.userRole !== 'ersteller') {
-          console.log('Not admin role - redirecting to plans');
-          setDebugInfo({ 
-            success: false, 
-            error: 'Admin access required',
-            userRole: contextData.userRole,
-            whopRole: contextData.whopRole
-          });
-          router.push('/plans?reason=admin_access_required');
-          return;
+        // Skip role check if we have userId but role mapping failed
+        const shouldSkipRoleCheck = contextData.userId && contextData.userRole === 'guest';
+        
+        if (!shouldSkipRoleCheck && contextData.userRole !== 'ersteller') {
+          console.log('Not admin role - trying admin API anyway');
+          // Don't redirect immediately, try admin API first
         }
         
         // User is authenticated and has admin role - now test admin API access
@@ -85,18 +85,28 @@ export default function AdminGuard({ children }: AdminGuardProps) {
         } else {
           const errorData = await adminResponse.json().catch(() => ({ error: 'Unknown error' }));
           console.log('Admin API access denied:', errorData);
+          
+          // Check if this is just an auth issue that can be resolved
+          if (adminResponse.status === 401 && !contextData.isAuthenticated) {
+            console.log('Authentication required - redirecting to Whop login');
+            window.location.href = '/auth/whop';
+            return;
+          }
+          
+          if (adminResponse.status === 403 && contextData.userRole !== 'ersteller') {
+            console.log('Admin role required - redirecting to plans');
+            router.push('/plans?reason=admin_access_required');
+            return;
+          }
+          
           setDebugInfo({ 
             success: false, 
             error: errorData.error,
             debug: errorData.debug,
             status: adminResponse.status,
-            experienceContext: contextData
+            experienceContext: contextData,
+            headers: errorData.headers
           });
-          
-          // If admin API fails but user has correct role, it might be a temporary issue
-          if (adminResponse.status === 400) {
-            console.log('Experience context issue detected');
-          }
         }
       } catch (error: any) {
         console.error('Experience context error:', error);
