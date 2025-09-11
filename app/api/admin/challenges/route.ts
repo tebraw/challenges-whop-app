@@ -88,12 +88,19 @@ export async function GET(request: NextRequest) {
     // Step 2: Get company context (required)
     const { companyId, experienceId } = await getCompanyFromExperience();
     
-    if (!companyId) {
+    if (!companyId || companyId.trim() === '') {
       return createCorsResponse({ 
         error: 'Company context required',
-        debug: 'No companyId found in headers or environment'
+        debug: 'No valid companyId found in headers or environment - all requests must have company context',
+        userId,
+        headers: {
+          'x-whop-company-id': headersList.get('x-whop-company-id'),
+          'x-company-id': headersList.get('x-company-id')
+        }
       }, 400);
     }
+    
+    console.log(`🏢 Valid company context: ${companyId}`);
     
     // Step 3: Flexible admin access check - works with or without experienceId
     let hasAdminAccess = false;
@@ -152,7 +159,15 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ Admin access verified for user:', userId, 'company:', companyId, 'experience:', experienceId || 'not_provided');
 
-    // Step 4: Get or create tenant based on company
+    // Step 4: Get or create tenant based on company (with strict validation)
+    if (!companyId || typeof companyId !== 'string' || companyId.trim() === '') {
+      return createCorsResponse({ 
+        error: 'Invalid company ID',
+        debug: 'Company ID must be a non-empty string',
+        companyId: typeof companyId
+      }, 400);
+    }
+    
     let tenant = await prisma.tenant.findUnique({
       where: { whopCompanyId: companyId }
     });
@@ -178,6 +193,15 @@ export async function GET(request: NextRequest) {
       }
     } else {
       console.log(`✅ Found existing tenant with ID: ${tenant.id} for company: ${companyId}`);
+    }
+    
+    // Additional security check: Ensure tenant has the correct company ID
+    if (tenant.whopCompanyId !== companyId) {
+      console.error(`🚨 Security violation: Tenant ${tenant.id} has company ${tenant.whopCompanyId} but request for ${companyId}`);
+      return createCorsResponse({ 
+        error: 'Company mismatch',
+        debug: 'Tenant company ID does not match request company ID'
+      }, 403);
     }
 
     // Step 5: Fetch challenges for this company's tenant
