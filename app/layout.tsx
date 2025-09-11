@@ -5,6 +5,8 @@ import "./globals.css";
 import AppHeader from "../components/ui/AppHeader"; // <- RELATIV, sicher
 import { ThemeProvider } from "../lib/ThemeContext";
 import { WhopApp } from "@whop/react/components";
+import { WhopIframeSdkProvider } from "@whop/react/iframe";
+import { WhopWebsocketProvider } from "@whop/react/websockets";
 import ClientWrapper from "../components/ClientWrapper";
 
 export const metadata: Metadata = {
@@ -70,12 +72,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="antialiased">
         <WhopApp>
-          <ClientWrapper>
-            <ThemeProvider>
-              <AppHeader />
-              <div className="pt-16">{children}</div>
-            </ThemeProvider>
-          </ClientWrapper>
+          <WhopIframeSdkProvider>
+            <WhopWebsocketProvider>
+              <ClientWrapper>
+                <ThemeProvider>
+                  <AppHeader />
+                  <div className="pt-16">{children}</div>
+                </ThemeProvider>
+              </ClientWrapper>
+            </WhopWebsocketProvider>
+          </WhopIframeSdkProvider>
         </WhopApp>
       </body>
     </html>

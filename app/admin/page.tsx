@@ -8,9 +8,6 @@ import Badge from "@/components/ui/Badge";
 import { Copy, Trash2, Pencil, BarChart3, Users, TrendingUp, DollarSign, Trophy } from "lucide-react";
 import ChallengeCountdown from "@/components/ui/ChallengeCountdown";
 import EditChallengeModal from "@/components/admin/EditChallengeModal";
-import SubscriptionGuard from "@/components/SubscriptionGuard";
-import UsageWidget from "@/components/UsageWidget";
-import AdminProtection from "@/components/AdminProtection";
 
 type Challenge = {
   imageUrl: any;
@@ -46,13 +43,7 @@ export default function AdminList() {
     setError(null);
     try {
       const res = await fetch("/api/admin/challenges", { cache: "no-store" });
-      if (!res.ok) {
-        if (res.status === 403) {
-          setError("Access denied. Only company owners can view admin dashboard.");
-          return;
-        }
-        throw new Error(await res.text());
-      }
+      if (!res.ok) throw new Error(await res.text());
       const j = await res.json();
       const arr = Array.isArray(j?.challenges) ? (j.challenges as Challenge[]) : [];
       setItems(arr);
@@ -95,33 +86,23 @@ export default function AdminList() {
   }
 
   return (
-    <AdminProtection>
-      <div className="min-h-screen bg-gray-900 text-white">
-        <main className="mx-auto max-w-6xl px-4 sm:px-6 pb-12 pt-24 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">Challenge Dashboard</h1>
-              <p className="text-gray-400 text-sm sm:text-base">Manage your challenges and track performance</p>
-            </div>
-            <div className="flex gap-3">
-              <Link href="/subscription">
-                <Button className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
-                  💎 Subscription
-                </Button>
-              </Link>
-            <SubscriptionGuard action="create_challenge">
-              <Link href="/admin/new">
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
-                  + New Challenge
-                </Button>
-              </Link>
-            </SubscriptionGuard>
+    <div className="min-h-screen bg-gray-900 text-white">
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 pb-12 pt-24 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Challenge Dashboard</h1>
+            <p className="text-gray-400 text-sm sm:text-base">Manage your challenges and track performance</p>
           </div>
+          <Link href="/admin/new">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
+              + New Challenge
+            </Button>
+          </Link>
         </div>
 
-        {/* Quick Stats & Usage */}
+        {/* Quick Stats */}
         {!loading && items.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-gray-800 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-600 rounded-lg">
@@ -174,11 +155,6 @@ export default function AdminList() {
                   <div className="text-sm text-gray-400">Conversion Potential</div>
                 </div>
               </div>
-            </div>
-
-            {/* Usage Widget */}
-            <div className="xl:col-span-1">
-              <UsageWidget />
             </div>
           </div>
         )}
@@ -327,7 +303,6 @@ export default function AdminList() {
           }}
         />
       )}
-      </div>
-    </AdminProtection>
+    </div>
   );
 }

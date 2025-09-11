@@ -1,82 +1,28 @@
-// app/api/auth/onboarding-status/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
 
-export async function GET() {
+// Check user onboarding status
+export async function GET(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUser();
+    const user = await getCurrentUser();
     
-    if (!currentUser) {
-      return NextResponse.json({
-        isCompanyOwner: false,
-        hasActiveSubscription: false,
-        needsOnboarding: false,
-        error: 'Not authenticated'
-      }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    // Check if user is company owner (has whopCompanyId and is in Experience context)
-    const isCompanyOwner = !!(currentUser.whopCompanyId && currentUser.role === 'ADMIN');
-
-    if (!isCompanyOwner) {
-      return NextResponse.json({
-        isCompanyOwner: false,
-        hasActiveSubscription: false,
-        needsOnboarding: false,
-        message: 'User is not a company owner'
-      });
-    }
-
-    // Check for active subscription
-    const tenant = await prisma.tenant.findFirst({
-      where: { whopCompanyId: currentUser.whopCompanyId }
-    });
-
-    let hasActiveSubscription = false;
-    let currentPlan = null;
-
-    if (tenant) {
-      const activeSubscription = await prisma.whopSubscription.findFirst({
-        where: {
-          tenantId: tenant.id,
-          status: 'active',
-          validUntil: {
-            gt: new Date() // Must be valid in the future
-          }
-        }
-      });
-
-      if (activeSubscription) {
-        hasActiveSubscription = true;
-        // Get plan details
-        const { getPlanByWhopProductId } = await import('@/lib/subscription-plans');
-        currentPlan = getPlanByWhopProductId(activeSubscription.whopProductId);
-      }
-    }
-
-    // Determine if onboarding is needed
-    const needsOnboarding = isCompanyOwner && !hasActiveSubscription;
-
-    return NextResponse.json({
-      isCompanyOwner,
-      hasActiveSubscription,
-      currentPlan,
-      needsOnboarding,
+    // Check if user has completed onboarding
+    const isOnboarded = user.role === 'ADMIN'; // Simple check for now
+    
+    return NextResponse.json({ 
+      isOnboarded,
       user: {
-        email: currentUser.email,
-        name: currentUser.name,
-        whopCompanyId: currentUser.whopCompanyId
+        id: user.id,
+        role: user.role,
+        email: user.email
       }
     });
-
   } catch (error) {
-    console.error('Error checking onboarding status:', error);
-    return NextResponse.json({
-      isCompanyOwner: false,
-      hasActiveSubscription: false,
-      needsOnboarding: false,
-      error: 'Internal server error'
-    }, { status: 500 });
+    console.error('Onboarding status error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

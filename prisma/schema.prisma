@@ -9,68 +9,82 @@ datasource db {
 }
 
 model Tenant {
-  id                String             @id @default(cuid())
-  name              String
-  createdAt         DateTime           @default(now())
-  whopCompanyId     String?            @unique
-  challenges        Challenge[]
-  monthlyUsage      MonthlyUsage[]
-  users             User[]
-  whopSubscriptions WhopSubscription[]
+  id            String      @id @default(cuid())
+  name          String
+  createdAt     DateTime    @default(now())
+  whopCompanyId String?     @unique
+  whopExperienceId String?  @unique
+  challenges    Challenge[]
+  users         User[]
 }
 
 model User {
-  id                 String            @id @default(cuid())
-  email              String            @unique
+  id                 String                  @id @default(cuid())
+  email              String                  @unique
   name               String?
-  role               Role              @default(USER)
-  createdAt          DateTime          @default(now())
+  role               Role                    @default(USER)
+  createdAt          DateTime                @default(now())
   tenantId           String
-  whopUserId         String?           @unique
+  whopUserId         String?                 @unique
   whopAffiliateLink  String?
   whopCompanyId      String?
-  isFreeTier         Boolean           @default(true)
+  isFreeTier         Boolean                 @default(true)
   membershipId       String?
-  subscriptionStatus String            @default("free")
-  tier               String            @default("free")
-  createdChallenges  Challenge[]       @relation("Creator")
-  winnings           ChallengeWinner[] @relation("Winners")
+  subscriptionStatus String                  @default("free")
+  tier               String                  @default("free")
+  createdChallenges  Challenge[]             @relation("Creator")
+  winnings           ChallengeWinner[]       @relation("Winners")
   enrollments        Enrollment[]
-  conversions        OfferConversion[] @relation("UserConversions")
-  tenant             Tenant            @relation(fields: [tenantId], references: [id])
-  whopProducts       WhopProduct[]     @relation("CreatorProducts")
+  conversions        OfferConversion[]       @relation("UserConversions")
+  participants       ChallengeParticipant[]  @relation("Participants")
+  submissions        ChallengeSubmission[]   @relation("Submissions")
+  leaderboard        ChallengeLeaderboard[]  @relation("Leaderboard")
+  tenant             Tenant                  @relation(fields: [tenantId], references: [id])
+  whopProducts       WhopProduct[]           @relation("CreatorProducts")
 }
 
 model Challenge {
-  id                String            @id @default(cuid())
-  tenantId          String
-  title             String
-  description       String?
-  startAt           DateTime
-  endAt             DateTime
-  proofType         ProofType         @default(NONE)
-  cadence           Cadence           @default(DAILY)
-  rules             Json?
-  imageUrl          String?
-  createdAt         DateTime          @default(now())
-  creatorId         String?
-  whopCreatorId     String?
-  whopCategoryId    String?
-  whopCategoryName  String?
-  whopTags          Json?
-  monetizationRules Json?
-  targetAudience    Json?
-  marketingTags     Json?
-  category          String?           @default("general")
-  difficulty        String?           @default("BEGINNER")
-  isPublic          Boolean           @default(true)
-  featured          Boolean           @default(false)
-  creator           User?             @relation("Creator", fields: [creatorId], references: [id])
-  tenant            Tenant            @relation(fields: [tenantId], references: [id])
-  challengeOffers   ChallengeOffer[]
-  winners           ChallengeWinner[]
-  enrollments       Enrollment[]
-  conversions       OfferConversion[] @relation("ChallengeConversions")
+  id                    String                     @id @default(cuid())
+  title                 String
+  description           String?
+  creatorId             String
+  whopCreatorId         String?
+  experienceId          String?                    // Whop Experience ID for proper scoping
+  tenantId              String
+  startAt               DateTime
+  endAt                 DateTime
+  proofType             ProofType                  @default(TEXT)
+  cadence               ChallengeCadence           @default(DAILY)
+  status                ChallengeStatus            @default(UPCOMING)
+  imageUrl              String?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  rules                 Json
+  maxParticipants       Int?
+  difficulty            ChallengeDifficulty        @default(BEGINNER)
+  policy                String?
+  rewards               Json?
+  marketingTags         Json?
+  targetAudience        Json?
+  whopCategoryName      String?
+  monetizationRules     Json?
+  
+  creator               User                       @relation("Creator", fields: [creatorId], references: [id], onDelete: Cascade)
+  tenant                Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  participants          ChallengeParticipant[]
+  submissions           ChallengeSubmission[]
+  leaderboard           ChallengeLeaderboard[]
+  specialOffers         ChallengeSpecialOffer[]
+  enrollments           Enrollment[]
+  winners               ChallengeWinner[]
+  offers                ChallengeOffer[]
+  conversions           OfferConversion[]          @relation("ChallengeConversions")
+
+  @@index([tenantId])
+  @@index([experienceId])  // Index for Experience-based queries
+  @@index([creatorId])
+  @@index([startAt])
+  @@index([endAt])
 }
 
 model WhopProduct {
@@ -187,36 +201,30 @@ model ChallengeWinner {
   @@index([challengeId])
 }
 
-model WhopSubscription {
-  id            String   @id @default(cuid())
-  tenantId      String
-  whopProductId String
-  status        String   @default("active")
-  validUntil    DateTime
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId])
-  @@index([status])
-}
-
-model MonthlyUsage {
-  id                String   @id @default(cuid())
-  tenantId          String
-  month             String
-  challengesCreated Int      @default(0)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, month], name: "tenantId_month")
-  @@index([tenantId])
-}
-
 enum Cadence {
   DAILY
   END_OF_CHALLENGE
+}
+
+enum ChallengeCadence {
+  DAILY
+  WEEKLY
+  MONTHLY
+  END_OF_CHALLENGE
+}
+
+enum ChallengeStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ChallengeDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
 }
 
 enum Role {
@@ -229,4 +237,61 @@ enum ProofType {
   TEXT
   PHOTO
   LINK
+}
+
+// Add missing models for the relations
+
+model ChallengeParticipant {
+  id          String    @id @default(cuid())
+  challengeId String
+  userId      String
+  joinedAt    DateTime  @default(now())
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user        User      @relation("Participants", fields: [userId], references: [id])
+
+  @@unique([challengeId, userId])
+  @@index([challengeId])
+  @@index([userId])
+}
+
+model ChallengeSubmission {
+  id          String    @id @default(cuid())
+  challengeId String
+  userId      String
+  content     String
+  imageUrl    String?
+  submittedAt DateTime  @default(now())
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user        User      @relation("Submissions", fields: [userId], references: [id])
+
+  @@index([challengeId])
+  @@index([userId])
+}
+
+model ChallengeLeaderboard {
+  id          String    @id @default(cuid())
+  challengeId String
+  userId      String
+  score       Int       @default(0)
+  rank        Int?
+  updatedAt   DateTime  @updatedAt
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user        User      @relation("Leaderboard", fields: [userId], references: [id])
+
+  @@unique([challengeId, userId])
+  @@index([challengeId, score])
+}
+
+model ChallengeSpecialOffer {
+  id               String    @id @default(cuid())
+  challengeId      String
+  offerType        String
+  triggerCondition String
+  discountPercent  Int?
+  description      String
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  challenge        Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId])
 }

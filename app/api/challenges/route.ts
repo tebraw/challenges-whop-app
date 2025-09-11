@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, requireAdmin } from '@/lib/auth';
 import { challengeAdminSchema } from '@/lib/adminSchema';
-import { SubscriptionService } from '@/lib/subscription-service';
 
 // Generate simple ID - we'll use the built-in cuid() from Prisma
 function generateId() {
@@ -71,19 +70,6 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Admin access verified for user:', user.id);
 
-    // 🔒 SUBSCRIPTION CHECK: Verify user can create challenges
-    const canCreateChallenge = await SubscriptionService.checkCanCreateChallenge(user.tenantId);
-    
-    if (!canCreateChallenge.canCreate) {
-      return NextResponse.json(
-        { 
-          error: 'Subscription limit reached',
-          message: canCreateChallenge.reason || 'Cannot create more challenges with current subscription'
-        },
-        { status: 403 }
-      );
-    }
-
     // Parse request body
     const body = await request.json();
     console.log('📝 Request body received:', body);
@@ -106,17 +92,18 @@ export async function POST(request: NextRequest) {
     console.log('✅ Validation successful:', challengeData);
 
     // Ensure tenant exists for this specific company
-    const tenantId = `tenant_${user.whopCompanyId}`;
+    if (!user.whopCompanyId) {
+      return NextResponse.json({ error: 'No company ID found for user' }, { status: 400 });
+    }
+    
     const tenant = await prisma.tenant.upsert({
-      where: { id: tenantId },
+      where: { whopCompanyId: user.whopCompanyId },
       create: {
-        id: tenantId,
         name: `Company ${user.whopCompanyId} Tenant`,
         whopCompanyId: user.whopCompanyId
       },
       update: {
-        // Always update the whopCompanyId to current user's company
-        whopCompanyId: user.whopCompanyId
+        // Tenant already exists, no need to update
       }
     });
 
@@ -163,9 +150,6 @@ export async function POST(request: NextRequest) {
     });
 
     console.log('✅ Challenge created successfully:', newChallenge.id);
-
-    // 📊 INCREMENT USAGE: Update monthly challenge count
-    await SubscriptionService.incrementChallengeUsage(user.tenantId);
 
     return NextResponse.json({ 
       message: 'Challenge created successfully',

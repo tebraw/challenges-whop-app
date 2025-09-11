@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getCurrentUser, requireAdmin } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 
 // Type definition for challenge with relations
 interface ChallengeWithRelations {
@@ -18,7 +18,6 @@ interface ChallengeWithRelations {
   startDate: Date;
   endDate: Date;
   policy: string | null;
-  isPublic: boolean;
   rewards: any; // JSON field
   requireApproval: boolean;
   featured: boolean;
@@ -36,80 +35,19 @@ interface ChallengeWithRelations {
 // GET /api/admin/challenges - Admin view of challenges (TENANT-ISOLATED)
 export async function GET(request: NextRequest) {
   try {
-    // ENHANCED WHOP AUTH: Try multiple auth methods
-    let isAuthorized = false;
-    let currentUser = null;
-    
-    try {
-      // Standard admin check
-      await requireAdmin();
-      currentUser = await getCurrentUser();
-      isAuthorized = true;
-      console.log('✅ Standard admin auth successful');
-    } catch (authError) {
-      console.log('⚠️  Standard admin auth failed, trying Whop fallback...');
-      
-      // WHOP FALLBACK: If we're in Whop environment, be more permissive
-      const whopCompanyId = process.env.NEXT_PUBLIC_WHOP_COMPANY_ID;
-      
-      if (whopCompanyId) {
-        console.log('🔧 Whop environment detected, checking for admin users...');
-        
-        // Find any admin user for this company
-        const adminUser = await prisma.user.findFirst({
-          where: {
-            whopCompanyId: whopCompanyId,
-            role: 'ADMIN'
-          }
-        });
-        
-        if (adminUser) {
-          console.log('✅ Found admin user for Whop company, granting access');
-          currentUser = adminUser;
-          isAuthorized = true;
-        } else {
-          console.log('🚨 No admin user found, creating emergency admin...');
-          
-          // Auto-create admin for this company
-          const tenantId = `tenant_${whopCompanyId}`;
-          
-          currentUser = await prisma.user.create({
-            data: {
-              email: `emergency.admin.${Date.now()}@whop.local`,
-              name: 'Emergency Admin (Auto-created)',
-              role: 'ADMIN',
-              whopCompanyId: whopCompanyId,
-              tenantId: tenantId
-            }
-          });
-          
-          console.log('🚨 Emergency admin created:', currentUser.email);
-          isAuthorized = true;
-        }
-      }
+    // ✅ SECURITY: Require admin authentication
+    const user = await getCurrentUser();
+    if (!user || user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
     
-    if (!isAuthorized || !currentUser) {
-      console.log('❌ All auth methods failed');
-      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
-    }
+    console.log('✅ Standard admin auth successful');
+    console.log('🔍 Admin challenges API called for tenant:', `tenant_${user.whopCompanyId}`);
     
-    // Get current user with tenant info
-    if (!currentUser) {
-      currentUser = await getCurrentUser();
-    }
-    
-    if (!currentUser) {
-      console.log('❌ No current user found after auth');
-      return NextResponse.json({ error: 'User not found' }, { status: 401 });
-    }
-    
-    console.log('🔍 Admin challenges API called for tenant:', currentUser.tenantId);
-    
-    // SECURITY: Only show challenges from current user's tenant
+    // ✅ SECURITY: Only show challenges from current tenant
     const challenges = await prisma.challenge.findMany({
       where: {
-        tenantId: currentUser.tenantId  // 🔒 TENANT ISOLATION
+        tenantId: `tenant_${user.whopCompanyId}`  // 🔒 TENANT ISOLATION
       },
       include: {
         creator: {
