@@ -129,6 +129,7 @@ export default function SelectWinnersPage({
       if (response.ok) {
         const data = await response.json();
         console.log('Participant data loaded:', data);
+        console.log('Debug info:', data.debug);
         console.log('Raw proofs data:', data.enrollment?.proofs);
         console.log('Raw checkins data:', data.enrollment?.checkins);
         
@@ -144,6 +145,10 @@ export default function SelectWinnersPage({
         
         if (proofs.length === 0 && checkins.length === 0) {
           console.log('No proofs or checkins found for participant');
+          console.log('Expected data in proofs table, got:', data.debug?.proofsCount || 0);
+          console.log('Expected data in checkins table, got:', data.debug?.checkinCount || 0);
+        } else {
+          console.log('Found data - Proofs:', proofs.length, 'Checkins:', checkins.length);
         }
       } else {
         console.error('Failed to load participant data:', response.statusText);
@@ -904,8 +909,20 @@ export default function SelectWinnersPage({
                     {participantProofs.length === 0 && participantCheckins.length === 0 && (
                       <div className="text-center py-8">
                         <div className="text-gray-400 mb-2">No proofs or check-ins submitted yet</div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-gray-500 mb-4">
                           Participant: {selectedParticipant.email}
+                        </div>
+                        <div className="text-xs text-gray-600 space-y-1">
+                          <div>Debug Info:</div>
+                          <div>Proofs found: {participantProofs.length}</div>
+                          <div>Check-ins found: {participantCheckins.length}</div>
+                          <div>This participant may not have submitted any proofs yet</div>
+                          <div className="mt-2 p-2 bg-gray-700 rounded text-left">
+                            <div className="text-gray-300 font-medium">Troubleshooting:</div>
+                            <div>1. Check if participant has submitted proofs via the challenge page</div>
+                            <div>2. Verify the challenge allows proof submissions</div>
+                            <div>3. Check browser console for API errors</div>
+                          </div>
                         </div>
                       </div>
                     )}

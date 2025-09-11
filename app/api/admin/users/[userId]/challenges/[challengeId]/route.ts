@@ -106,6 +106,12 @@ export async function GET(
     console.log("Admin API Debug - Enrollment found:", !!enrollment);
     console.log("Admin API Debug - Check-ins count:", enrollment?.checkins?.length || 0);
     console.log("Admin API Debug - Proofs count:", enrollment?.proofs?.length || 0);
+    
+    // Debug: Log actual data
+    if (enrollment) {
+      console.log("Admin API Debug - Checkins data:", enrollment.checkins);
+      console.log("Admin API Debug - Proofs data:", enrollment.proofs);
+    }
 
     if (!enrollment) {
       return NextResponse.json({ ok: false, message: "User not enrolled in this challenge" }, { status: 404 });
@@ -121,6 +127,15 @@ export async function GET(
         checkins: enrollment.checkins,
         proofs: enrollment.proofs,
       },
+      // Debug information
+      debug: {
+        hasCheckins: (enrollment.checkins?.length || 0) > 0,
+        hasProofs: (enrollment.proofs?.length || 0) > 0,
+        checkinCount: enrollment.checkins?.length || 0,
+        proofsCount: enrollment.proofs?.length || 0,
+        enrollmentId: enrollment.id,
+        challengeId: enrollment.challenge.id
+      }
     });
   } catch (e: any) {
     console.error("admin user challenge data", e);
