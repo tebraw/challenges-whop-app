@@ -13,6 +13,8 @@ model Tenant {
   name          String
   createdAt     DateTime    @default(now())
   whopCompanyId String?     @unique
+  whopHandle    String?     @unique // e.g., "appmafia"
+  whopProductId String?             // e.g., "prod_eDCd1IVJV9gxZ"
   challenges    Challenge[]
   users         User[]
 }

@@ -20,6 +20,8 @@ interface Challenge {
     id: string;
     name: string;
     whopCompanyId?: string;
+    whopHandle?: string;      // NEW: Real handle from Whop
+    whopProductId?: string;   // NEW: Real product ID from Whop
   };
   _count: {
     enrollments: number;

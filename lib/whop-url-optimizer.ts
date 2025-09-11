@@ -83,17 +83,38 @@ export function generateJoinMessage(tenantName: string, isOptimizedUrl: boolean)
 
 /**
  * Gets the best available Whop URL with enhanced UX
+ * Now supports real Whop handles and product IDs from database
  */
 export function getOptimizedWhopUrl(tenant: {
   name?: string;
   whopCompanyId?: string;
+  whopHandle?: string;      // NEW: Real handle from Whop
+  whopProductId?: string;   // NEW: Real product ID from Whop
 }): {
   url: string;
   isOptimized: boolean;
-  type: 'handle' | 'company' | 'fallback';
+  type: 'handle_with_product' | 'handle' | 'company' | 'fallback';
 } {
-  const inferredHandle = inferWhopHandle(tenant.name, tenant.whopCompanyId);
+  // Priority 1: Real handle + product ID (like your AppMafia example)
+  if (tenant.whopHandle && tenant.whopProductId) {
+    return {
+      url: `https://whop.com/${tenant.whopHandle}/?productId=${tenant.whopProductId}`,
+      isOptimized: true,
+      type: 'handle_with_product'
+    };
+  }
   
+  // Priority 2: Real handle only
+  if (tenant.whopHandle) {
+    return {
+      url: `https://whop.com/${tenant.whopHandle}`,
+      isOptimized: true,
+      type: 'handle'
+    };
+  }
+  
+  // Priority 3: Inferred handle from name (fallback)
+  const inferredHandle = inferWhopHandle(tenant.name, tenant.whopCompanyId);
   if (inferredHandle) {
     return {
       url: `https://whop.com/${inferredHandle}`,
@@ -102,6 +123,7 @@ export function getOptimizedWhopUrl(tenant: {
     };
   }
   
+  // Priority 4: Company ID (current method)
   if (tenant.whopCompanyId) {
     return {
       url: `https://whop.com/company/${tenant.whopCompanyId}`,
@@ -110,6 +132,7 @@ export function getOptimizedWhopUrl(tenant: {
     };
   }
   
+  // Fallback: Main Whop page
   return {
     url: 'https://whop.com',
     isOptimized: false,
@@ -138,7 +161,7 @@ export function generateChallengeDiscoverUrl(
  * Analytics helper to track URL optimization success
  */
 export function trackUrlOptimization(
-  urlType: 'handle' | 'company' | 'fallback',
+  urlType: 'handle_with_product' | 'handle' | 'company' | 'fallback',
   tenantId: string
 ): void {
   // Log for analytics - can be enhanced with actual tracking service
@@ -146,6 +169,6 @@ export function trackUrlOptimization(
     type: urlType,
     tenantId,
     timestamp: new Date().toISOString(),
-    optimized: urlType === 'handle'
+    optimized: urlType === 'handle' || urlType === 'handle_with_product'
   });
 }
