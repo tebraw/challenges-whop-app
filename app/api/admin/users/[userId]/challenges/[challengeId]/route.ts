@@ -3,13 +3,22 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin, getCurrentUser } from "@/lib/auth";
 
 export async function GET(
-  _: Request,
+  request: Request,
   context: { params: Promise<{ userId: string; challengeId: string }> }
 ) {
   try {
+    console.log("=== API Route Called ===");
+    console.log("Request URL:", request.url);
+    console.log("Request method:", request.method);
+    console.log("Request headers:", Object.fromEntries(request.headers.entries()));
+    
     // Require admin access
+    console.log("Checking admin access...");
     await requireAdmin();
+    console.log("Admin access granted");
+    
     const currentUser = await getCurrentUser();
+    console.log("Current user:", currentUser?.id, currentUser?.email, currentUser?.role);
 
     if (!currentUser || !currentUser.tenantId) {
       return NextResponse.json(
@@ -138,7 +147,32 @@ export async function GET(
       }
     });
   } catch (e: any) {
+    console.error("=== API ERROR ===");
+    console.error("Error type:", e.constructor.name);
+    console.error("Error message:", e?.message);
+    console.error("Error stack:", e?.stack);
     console.error("admin user challenge data", e);
-    return NextResponse.json({ ok: false, message: e?.message || "Fehler" }, { status: 500 });
+    
+    // Check if it's an auth error
+    if (e?.message?.includes('Authentication') || e?.message?.includes('Admin') || e?.message?.includes('Unauthorized')) {
+      return NextResponse.json({ 
+        ok: false, 
+        message: `Auth Error: ${e?.message}`,
+        debug: {
+          errorType: e.constructor.name,
+          isAuthError: true,
+          url: 'admin/users/[userId]/challenges/[challengeId]'
+        }
+      }, { status: 401 });
+    }
+    
+    return NextResponse.json({ 
+      ok: false, 
+      message: e?.message || "Internal Server Error",
+      debug: {
+        errorType: e.constructor.name,
+        url: 'admin/users/[userId]/challenges/[challengeId]'
+      }
+    }, { status: 500 });
   }
 }
