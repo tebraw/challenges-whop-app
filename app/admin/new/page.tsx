@@ -107,7 +107,16 @@ function NewChallengePageContent() {
         }
         
         console.error("Failed to create challenge:", response.status, errorData);
-        alert(`Failed to create challenge: ${errorData.error || errorData.message || `Server error ${response.status}`}`);
+        
+        // Debug: Log the entire response for debugging
+        console.error("Full error response details:", {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Array.from(response.headers.entries()),
+          errorData
+        });
+        
+        alert(`Failed to create challenge: ${errorData.error || errorData.message || `Server error ${response.status}: ${response.statusText}`}`);
       }
     } catch (error) {
       console.error("Error creating challenge:", error);
