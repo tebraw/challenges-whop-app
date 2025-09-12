@@ -87,6 +87,16 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         
         try {
+          // Ensure dev tenant exists
+          const devTenant = await prisma.tenant.upsert({
+            where: { whopCompanyId: 'dev-company-id' },
+            create: {
+              name: 'Dev Tenant',
+              whopCompanyId: 'dev-company-id'
+            },
+            update: {}
+          });
+          
           // Create challenge with dev tenant ID
           const newChallenge = await prisma.challenge.create({
             data: {
@@ -97,7 +107,7 @@ export async function POST(request: NextRequest) {
               startAt: new Date(body.startAt),
               endAt: new Date(body.endAt),
               imageUrl: body.imageUrl,
-              tenantId: 'dev-tenant-id'
+              tenantId: devTenant.id
             }
           });
           

@@ -31,9 +31,9 @@ export async function getCurrentUser(): Promise<{
         name: 'Dev Admin User',
         role: 'ADMIN',
         createdAt: new Date(),
-        whopCompanyId: 'biz_6VbYXNrtpPosFU',
+        whopCompanyId: 'dev-company-id',
         whopUserId: 'user_eGf5vVjIuGLSy',
-        tenantId: 'dev-tenant-id'
+        tenantId: 'dev-company-id'
       };
     }
   }
