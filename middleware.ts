@@ -24,19 +24,27 @@ export default function middleware(request: NextRequest) {
   const experienceId = request.headers.get('x-whop-experience-id');
   const companyId = request.headers.get('x-whop-company-id');
   
-  // NEW USER ONBOARDING: Redirect to plan selection
+  // SMART ONBOARDING: Check subscription before redirecting
   if (isWhopContext && !experienceId && companyId) {
     // This is a company owner installing the app
-    console.log('🎯 New app installation detected - company context');
+    console.log('🎯 Company owner detected:', companyId);
     
-    // Don't redirect if already on plans page
-    if (pathname !== '/plans' && pathname !== '/api/whop/subscription-webhook') {
+    // Let them through to main app - auth system will handle subscription check
+    // Only redirect to plans if they specifically try to access admin creation features
+    // The /admin page itself should be accessible to show subscription status
+    
+    if (pathname.startsWith('/admin/new') || 
+        pathname.startsWith('/admin/edit') || 
+        pathname.startsWith('/admin/c/')) {
+      console.log('🔒 Company owner trying to create/edit, checking subscription...');
+      
       const url = request.nextUrl.clone();
       url.pathname = '/plans';
-      url.searchParams.set('new_install', 'true');
+      url.searchParams.set('feature_required', 'true');
       url.searchParams.set('company_id', companyId);
+      url.searchParams.set('redirect_to', pathname);
       
-      console.log('🔄 Redirecting to plan selection:', url.toString());
+      console.log('🔄 Redirecting to subscription check:', url.toString());
       return NextResponse.redirect(url);
     }
   }
