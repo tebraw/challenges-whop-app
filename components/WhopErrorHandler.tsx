@@ -22,12 +22,16 @@ export default function WhopErrorHandler() {
       }
       
       // Log all other errors normally
-      originalError.apply(console, args);
+      if (originalError && typeof originalError === 'function') {
+        originalError.apply(console, args);
+      }
     };
     
     // Cleanup
     return () => {
-      window.console.error = originalError;
+      if (originalError && typeof originalError === 'function') {
+        window.console.error = originalError;
+      }
     };
   }, []);
 
