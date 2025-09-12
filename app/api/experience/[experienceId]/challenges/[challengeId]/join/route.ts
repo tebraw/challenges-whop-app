@@ -61,7 +61,8 @@ export async function POST(
     const enrollment = await prisma.enrollment.create({
       data: {
         userId: dbUser.id,
-        challengeId: challenge.id
+        challengeId: challenge.id,
+        experienceId: experienceId
       }
     });
 

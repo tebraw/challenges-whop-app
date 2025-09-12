@@ -8,7 +8,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
-  try {
+      try {
     // SICHERHEIT: Nur Admins können Analytics einsehen
     await requireAdmin();
     

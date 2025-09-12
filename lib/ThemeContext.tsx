@@ -17,8 +17,10 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>('light');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     // Check for saved theme preference or default to 'light'
     const savedTheme = localStorage.getItem('theme') as Theme;
     if (savedTheme) {
@@ -27,6 +29,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   }, []);
 
   useEffect(() => {
+    // Only apply theme after component is mounted to avoid hydration mismatch
+    if (!mounted) return;
+    
     // Apply theme to document
     if (theme === 'light') {
       document.documentElement.setAttribute('data-theme', 'light');
@@ -38,7 +43,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       document.documentElement.classList.remove('light');
     }
     localStorage.setItem('theme', theme);
-  }, [theme]);
+  }, [theme, mounted]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');

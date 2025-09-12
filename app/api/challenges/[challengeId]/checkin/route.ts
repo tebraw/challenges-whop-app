@@ -32,7 +32,8 @@ export async function POST(
             proofType: true,
             cadence: true,
             startAt: true,
-            endAt: true
+            endAt: true,
+            experienceId: true
           }
         },
         proofs: {
@@ -115,7 +116,8 @@ export async function POST(
         type: proofType,
         text: text || null,
         url: imageUrl || linkUrl || null,
-        createdAt: new Date()
+        createdAt: new Date(),
+        experienceId: enrollment.challenge.experienceId
       }
     });
 

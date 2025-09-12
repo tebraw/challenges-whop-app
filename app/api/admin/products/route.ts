@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 
 // GET /api/admin/products - Get creator's products
 export async function GET(request: NextRequest) {
-  try {
+      try {
     // SICHERHEIT: Nur Admins können Produkte verwalten
     await requireAdmin();
     
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/admin/products/sync - Sync products from Whop
 export async function POST(request: NextRequest) {
-  try {
+      try {
     const { creatorId, whopCreatorId } = await request.json();
 
     if (!creatorId || !whopCreatorId) {

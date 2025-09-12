@@ -97,15 +97,27 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🚀 Challenge creation API called');
     
-    // Require admin access
-    await requireAdmin();
+    // Check authentication first
     const user = await getCurrentUser();
     
     if (!user) {
+      console.log('❌ No user found - authentication required');
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    console.log('✅ Admin access verified for user:', user.id);
+    console.log('👤 Current user:', { id: user.id, email: user.email, role: user.role });
+
+    // Require admin access
+    try {
+      await requireAdmin();
+      console.log('✅ Admin access verified for user:', user.id);
+    } catch (adminError) {
+      console.log('❌ Admin access denied for user:', user.id, 'Error:', adminError);
+      return NextResponse.json({ 
+        error: 'Admin access required',
+        details: adminError instanceof Error ? adminError.message : 'Access denied'
+      }, { status: 403 });
+    }
 
     // Parse request body
     const body = await request.json();
@@ -149,6 +161,7 @@ export async function POST(request: NextRequest) {
     // Create challenge in database
     const newChallenge = await prisma.challenge.create({
       data: {
+        experienceId: 'admin_created', // Default experienceId for admin-created challenges
         tenantId: tenant.id,
         title: challengeData.title,
         description: challengeData.description,

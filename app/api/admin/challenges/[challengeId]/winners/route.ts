@@ -6,7 +6,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
-  try {
+      try {
     await requireAdmin();
     
     const { challengeId } = await params;
@@ -97,7 +97,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
-  try {
+      try {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

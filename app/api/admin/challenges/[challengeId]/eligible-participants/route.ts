@@ -6,7 +6,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
-  try {
+      try {
     await requireAdmin();
     
     const { challengeId } = await params;

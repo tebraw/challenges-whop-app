@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
-  try {
+      try {
     console.log('👑 PROMOTING CURRENT USER TO APP INSTALLER...');
     
     // Get current user

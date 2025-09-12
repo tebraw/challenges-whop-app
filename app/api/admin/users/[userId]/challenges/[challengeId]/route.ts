@@ -7,7 +7,7 @@ export async function GET(
   _: Request,
   context: { params: Promise<{ userId: string; challengeId: string }> }
 ) {
-  try {
+      try {
     // Require admin access
     await requireAdmin();
     

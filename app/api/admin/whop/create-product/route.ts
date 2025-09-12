@@ -7,7 +7,7 @@ const WHOP_API_BASE = process.env.WHOP_API_BASE_URL || 'https://api.whop.com';
 const WHOP_API_KEY = process.env.WHOP_API_KEY;
 
 export async function POST(req: NextRequest) {
-  try {
+      try {
     // SECURITY: Require admin authentication
     await requireAdmin();
     

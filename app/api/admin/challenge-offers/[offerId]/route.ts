@@ -13,7 +13,7 @@ interface RouteParams {
 
 // DELETE /api/admin/challenge-offers/[offerId] - Delete challenge offer
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  try {
+      try {
     // SICHERHEIT: Nur Admins
     await requireAdmin();
 

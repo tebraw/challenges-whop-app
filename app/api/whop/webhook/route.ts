@@ -71,6 +71,10 @@ async function handleMembershipCreated(data: any) {
               creatorId: whopProduct.creatorId,
               // Add featured flag or similar
             },
+            select: {
+              id: true,
+              experienceId: true
+            },
             take: 3
           });
           
@@ -85,6 +89,7 @@ async function handleMembershipCreated(data: any) {
               create: {
                 challengeId: challenge.id,
                 userId: user.id,
+                experienceId: challenge.experienceId,
                 joinedAt: new Date()
               },
               update: {}

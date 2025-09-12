@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
-  try {
+      try {
     // SECURITY: Require admin authentication
     await requireAdmin();
     
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  try {
+      try {
     // SECURITY: Require admin authentication
     await requireAdmin();
     

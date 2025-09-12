@@ -8,7 +8,7 @@ export async function GET(
   request: Request,
   context: { params: Promise<{ challengeId: string }> }
 ) {
-  try {
+      try {
     // SICHERHEIT: Nur Admins
     await requireAdmin();
 

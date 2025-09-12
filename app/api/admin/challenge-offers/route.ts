@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 
 // POST /api/admin/challenge-offers - Create challenge offer
 export async function POST(request: NextRequest) {
-  try {
+      try {
     // SICHERHEIT: Nur Admins
     await requireAdmin();
 
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
 
 // GET /api/admin/challenge-offers - Get challenge offers
 export async function GET(request: NextRequest) {
-  try {
+      try {
     // SICHERHEIT: Nur Admins
     await requireAdmin();
 

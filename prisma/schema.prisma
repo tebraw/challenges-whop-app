@@ -40,6 +40,7 @@ model User {
 }
 
 model Challenge {
+  experienceId String
   id                String            @id @default(cuid())
   tenantId          String
   title             String
@@ -65,6 +66,7 @@ model Challenge {
   winners           ChallengeWinner[]
   enrollments       Enrollment[]
   conversions       OfferConversion[] @relation("ChallengeConversions")
+  @@index([experienceId])
 }
 
 model WhopProduct {
@@ -130,6 +132,7 @@ model OfferConversion {
 }
 
 model Enrollment {
+  experienceId String
   id          String    @id @default(cuid())
   challengeId String
   userId      String
@@ -140,9 +143,11 @@ model Enrollment {
   proofs      Proof[]
 
   @@unique([challengeId, userId])
+  @@index([experienceId])
 }
 
 model Proof {
+  experienceId String
   id           String     @id @default(cuid())
   enrollmentId String
   type         ProofType
@@ -155,6 +160,7 @@ model Proof {
   enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
   @@index([enrollmentId, isActive])
+  @@index([experienceId])
 }
 
 model Checkin {

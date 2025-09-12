@@ -22,6 +22,7 @@ export async function POST(
         title: true,
         startAt: true,
         endAt: true,
+        experienceId: true,
         _count: {
           select: { enrollments: true }
         }
@@ -59,6 +60,7 @@ export async function POST(
       data: {
         userId: user.id,
         challengeId: challengeId,
+        experienceId: challenge.experienceId,
         joinedAt: new Date()
       },
       include: {

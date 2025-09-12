@@ -7,7 +7,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
-  try {
+      try {
     // Authenticate and check admin permission
     await requireAdmin();
 
@@ -51,6 +51,7 @@ export async function POST(
         imageUrl: originalChallenge.imageUrl,
         tenantId: originalChallenge.tenantId,
         creatorId: user.id,
+        experienceId: originalChallenge.experienceId,
         whopCreatorId: originalChallenge.whopCreatorId,
         whopCategoryId: originalChallenge.whopCategoryId,
         whopCategoryName: originalChallenge.whopCategoryName,
