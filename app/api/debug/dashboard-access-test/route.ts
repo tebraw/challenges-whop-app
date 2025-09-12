@@ -10,9 +10,21 @@ export async function GET(req: NextRequest) {
     const headersList = await headers();
     const cookieStore = await cookies();
     
-    // Extract companyId from URL
+    // Extract companyId from URL or derive from experience ID
     const url = new URL(req.url);
-    const companyId = url.searchParams.get('companyId') || '9nmw5yleoqldrxf7n48c'; // Default to your company
+    const experienceId = headersList.get('x-experience-id');
+    let companyId = url.searchParams.get('companyId');
+    
+    // If no companyId provided, try to extract from experience ID
+    if (!companyId && experienceId) {
+      companyId = `biz_${experienceId.replace('exp_', '')}`;
+      console.log(`🎯 Extracted company ID: ${experienceId} → ${companyId}`);
+    }
+    
+    // Final fallback
+    if (!companyId) {
+      companyId = process.env.WHOP_COMPANY_ID || 'default_company';
+    }
     
     // Check for user token in headers and cookies
     const whopUserToken = headersList.get('x-whop-user-token') || cookieStore.get('whop_user_token')?.value;

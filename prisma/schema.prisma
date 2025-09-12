@@ -42,6 +42,8 @@ model User {
   whopProducts       WhopProduct[]     @relation("CreatorProducts")
 
   @@index([experienceId])
+  @@index([whopCompanyId])
+  @@index([tenantId])
 }
 
 model Challenge {
@@ -78,6 +80,8 @@ model Challenge {
   conversions       OfferConversion[] @relation("ChallengeConversions")
 
   @@index([experienceId])
+  @@index([whopCompanyId])
+  @@index([tenantId])
 }
 
 model WhopProduct {

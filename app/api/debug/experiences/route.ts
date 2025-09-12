@@ -26,8 +26,12 @@ export async function GET(req: NextRequest) {
     
     console.log('🎭 Experience ID from headers:', experienceId);
 
-    // Try different approaches to find experience access
-    const companyId = '9nmw5yleoqldrxf7n48c';
+    // Extract company ID from experience ID (same logic as main auth)
+    let companyId = process.env.WHOP_COMPANY_ID || 'default_company';
+    if (experienceId) {
+      companyId = `biz_${experienceId.replace('exp_', '')}`;
+      console.log(`🎯 Extracted company ID: ${experienceId} → ${companyId}`);
+    }
     
     const debugInfo: any = {
       userId,

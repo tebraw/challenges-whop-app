@@ -32,6 +32,10 @@ function toLocal(d: Date) {
 }
 
 export default function NewChallengePage() {
+  return <NewChallengePageContent />;
+}
+
+function NewChallengePageContent() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);

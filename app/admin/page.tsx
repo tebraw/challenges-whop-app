@@ -32,6 +32,10 @@ function fmt(d: string) {
 }
 
 export default function AdminList() {
+  return <AdminListContent />;
+}
+
+function AdminListContent() {
   const [items, setItems] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
