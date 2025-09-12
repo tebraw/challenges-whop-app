@@ -1,7 +1,8 @@
 // FINAL AUTH UPDATE: Auto Company ID Extraction on Every Login
 // This replaces ALL fallback logic with automatic extraction
 
-import { prisma } from '@/lib/prisma';
+import { prisma } from './prisma';
+import { whopSdk } from './whop-sdk';
 
 /**
  * Extract real company ID from experience ID - NO FALLBACKS!
@@ -84,10 +85,37 @@ export async function autoCreateOrUpdateUser(
   
   console.log(`✅ Real Company ID determined: ${realCompanyId}`);
   
-  // Determine user type and role
-  const isCompanyOwner = !experienceId && headerCompanyId;
-  const userRole = isCompanyOwner ? 'ADMIN' : 'USER';
-  const userType = isCompanyOwner ? 'Company Owner' : 'Experience Member';
+  // Determine user role with proper Whop access level checking
+  let userRole: 'USER' | 'ADMIN' = 'USER';
+  let userType = 'Experience Member';
+  
+  // Company Owner: no experience ID, has company ID from headers
+  if (!experienceId && headerCompanyId) {
+    userRole = 'ADMIN';
+    userType = 'Company Owner';
+  } else if (experienceId) {
+    // Experience Member: Check Whop access level
+    try {
+      const experienceAccessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
+        userId: whopUserId,
+        experienceId
+      });
+      
+      if (experienceAccessResult.hasAccess && experienceAccessResult.accessLevel === 'admin') {
+        userRole = 'ADMIN';
+        userType = 'Experience Admin';
+      } else {
+        userRole = 'USER';
+        userType = 'Experience Member';
+      }
+      
+      console.log(`🔐 Whop Access Check: ${experienceAccessResult.accessLevel} → Role: ${userRole}`);
+    } catch (error) {
+      console.log(`⚠️  Could not check Whop access level, defaulting to USER role`);
+      userRole = 'USER';
+      userType = 'Experience Member';
+    }
+  }
   
   console.log(`👤 User Type: ${userType} → Role: ${userRole}`);
   
