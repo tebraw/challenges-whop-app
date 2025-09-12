@@ -1,0 +1,30 @@
+# Environment Configuration - TEMPLATE MIT FEHLENDEN WERTEN
+NODE_ENV=development
+ENABLE_DEV_AUTH=true
+
+# ===== WHOP APP SETTINGS =====
+WHOP_API_KEY=xGCaKZ6n2xk4ZjdhNphMUI6MXMnTQmEKyDN1eCIuIIc
+WHOP_APP_ID=app_ZYUHlzHinpA5Ce
+
+# ❌ DIESE WERTE MÜSSEN AUS DEM WHOP DASHBOARD GEHOLT WERDEN:
+WHOP_CLIENT_ID=your_client_id_here  # ← ERSETZEN SIE DIES MIT ECHTEM WERT
+WHOP_CLIENT_SECRET=your_client_secret_here  # ← ERSETZEN SIE DIES MIT ECHTEM WERT  
+WHOP_WEBHOOK_SECRET=your_webhook_secret_here  # ← ERSETZEN SIE DIES MIT ECHTEM WERT
+
+# ===== WHOP PUBLIC IDs =====
+NEXT_PUBLIC_WHOP_APP_ID=app_ZYUHlzHinpA5Ce
+NEXT_PUBLIC_WHOP_AGENT_USER_ID=user_Z9GOqqGEJWyjG
+NEXT_PUBLIC_WHOP_COMPANY_ID=biz_YoIIIT73rXwrtK
+
+# ===== URLs - KORRIGIERT FÜR PORT 3001 =====
+WHOP_APP_URL=http://localhost:3001
+WHOP_REDIRECT_URL=http://localhost:3001/api/auth/whop/callback
+WHOP_WEBHOOK_URL=http://localhost:3001/api/whop/webhook
+
+# Database Configuration
+DATABASE_URL="postgres://d52d76d0acd7c3b9106aced0cccc0fac33677d545be55ac319c3322be519f8c5:sk_vJsj_G_7eXDCgSvMqOjKt@db.prisma.io:5432/postgres?sslmode=require"
+DIRECT_URL="postgres://d52d76d0acd7c3b9106aced0cccc0fac33677d545be55ac319c3322be519f8c5:sk_vJsj_G_7eXDCgSvMqOjKt@db.prisma.io:5432/postgres?sslmode=require"
+
+# NextAuth Configuration
+NEXTAUTH_URL=http://localhost:3001
+NEXTAUTH_SECRET=your-secret-key-change-in-production
