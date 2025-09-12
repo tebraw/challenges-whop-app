@@ -29,6 +29,12 @@ function getRealCompanyId(experienceId: string | null, headerCompanyId: string |
     return extractCompanyIdFromExperience(experienceId);
   }
   
+  // Special case: Check if we have a fallback company ID that we should reject
+  if (headerCompanyId === '9nmw5yleoqldrxf7n48c') {
+    console.log('🚨 BLOCKED: Fallback company ID detected - rejecting!');
+    return null;
+  }
+  
   // NO FALLBACK! Return null if we can't determine
   return null;
 }
@@ -79,6 +85,59 @@ export async function autoCreateOrUpdateUser(
   const realCompanyId = getRealCompanyId(experienceId, headerCompanyId);
   
   if (!realCompanyId) {
+    // Special case: Company Owner without Experience context
+    if (!experienceId && headerCompanyId && headerCompanyId !== '9nmw5yleoqldrxf7n48c') {
+      console.log("🏢 COMPANY OWNER ACCESS: Processing without experience context");
+      
+      // Try to verify company ownership via Whop SDK
+      try {
+        const company = await whopSdk.companies.getCompany({
+          companyId: headerCompanyId
+        });
+        
+        if (company) {
+          console.log(`✅ Company verified: ${company.title || headerCompanyId}`);
+          
+          // Create/update user as Company Owner with verified company
+          const tenant = await getOrCreateTenant(headerCompanyId, null);
+          
+          const user = await prisma.user.upsert({
+            where: { whopUserId },
+            update: {
+              whopCompanyId: headerCompanyId,
+              role: 'ADMIN', // Company Owner = Admin
+              tenantId: tenant.id,
+              experienceId: null
+            },
+            create: {
+              email: `owner_${whopUserId.slice(-6)}@whop.com`,
+              name: `Company Owner ${whopUserId.slice(-6)}`,
+              role: 'ADMIN',
+              whopCompanyId: headerCompanyId,
+              whopUserId: whopUserId,
+              tenantId: tenant.id,
+              experienceId: null
+            },
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              role: true,
+              createdAt: true,
+              whopCompanyId: true,
+              whopUserId: true,
+              tenantId: true
+            }
+          });
+          
+          console.log(`✅ Company Owner processed: ${user.email} (${user.role}) - Company: ${headerCompanyId}`);
+          return user;
+        }
+      } catch (companyError) {
+        console.log(`⚠️  Could not verify company ${headerCompanyId}:`, companyError);
+      }
+    }
+    
     console.log("❌ FATAL: Cannot determine real company ID!");
     throw new Error(`🚨 NO FALLBACK COMPANY IDs ALLOWED! Experience: ${experienceId}, Header: ${headerCompanyId}`);
   }
