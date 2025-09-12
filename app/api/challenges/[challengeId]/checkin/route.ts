@@ -118,19 +118,6 @@ export async function POST(
       return NextResponse.json({ error: 'Link proof is required' }, { status: 400 });
     }
 
-<<<<<<< HEAD
-    // Create new proof
-    const proof = await prisma.proof.create({
-      data: {
-        enrollmentId: enrollment.id,
-        type: proofType,
-        text: text || null,
-        url: imageUrl || linkUrl || null,
-        createdAt: new Date(),
-        experienceId: enrollment.challenge.experienceId
-      }
-    });
-=======
     // Create or update proof
     let proof;
     if (isUpdate && existingProof) {
@@ -152,6 +139,7 @@ export async function POST(
       console.log('Creating new proof for enrollment:', enrollment.id);
       proof = await prisma.proof.create({
         data: {
+          experienceId: enrollment.challenge.experienceId,
           enrollmentId: enrollment.id,
           type: proofType,
           text: text || null,
@@ -162,7 +150,6 @@ export async function POST(
       });
       console.log('New proof created:', proof.id);
     }
->>>>>>> 99f77f59641672e2b018911166d5a8fec7b9cf94
 
     // Calculate new stats for check-ins
     const allProofs = await prisma.proof.findMany({
