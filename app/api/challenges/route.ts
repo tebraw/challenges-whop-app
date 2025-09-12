@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, requireAdmin } from '@/lib/auth';
+import { autoCreateOrUpdateUser } from '@/lib/auto-company-extraction';
 import { challengeAdminSchema } from '@/lib/adminSchema';
 import { headers } from 'next/headers';
 import { whopSdk } from '@/lib/whop-sdk';
@@ -90,6 +91,8 @@ export async function POST(request: NextRequest) {
                         headersList.get('experience-id') ||
                         headersList.get('x-whop-experience-id');
     
+    const headerCompanyId = headersList.get('x-whop-company-id');
+    
     if (!experienceId) {
       return NextResponse.json({ 
         error: 'Experience context required',
@@ -154,32 +157,8 @@ export async function POST(request: NextRequest) {
 
     console.log('🏢 Experience tenant ready:', experienceId);
 
-    // Get or create user in our system
-    let user = await prisma.user.findUnique({
-      where: { whopUserId: userId }
-    });
-
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          whopUserId: userId,
-          email: `${userId}@whop.com`, // Fallback email
-          name: `User ${userId}`,
-          role: 'ADMIN',
-          tenantId: tenant.id,
-          whopCompanyId: experienceId
-        }
-      });
-    } else {
-      // Update user to correct tenant
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { 
-          tenantId: tenant.id,
-          whopCompanyId: experienceId
-        }
-      });
-    }
+    // 🎯 Use NEW clean auto-creation system - NO FALLBACKS!
+    const user = await autoCreateOrUpdateUser(userId, experienceId, headerCompanyId);
 
     // Create EXPERIENCE-SCOPED challenge
     const newChallenge = await prisma.challenge.create({
