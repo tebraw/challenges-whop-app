@@ -204,10 +204,12 @@ export async function GET(request: NextRequest) {
       }, 403);
     }
 
-    // Step 5: Fetch challenges for this company's tenant
+    // Step 5: Fetch challenges for this company's tenant with additional security
     const challenges = await prisma.challenge.findMany({
       where: {
-        tenantId: tenant.id
+        tenantId: tenant.id,
+        // 🔒 SECURITY: Double-check whopCompanyId matches for extra protection
+        whopCompanyId: companyId
       },
       include: {
         _count: {

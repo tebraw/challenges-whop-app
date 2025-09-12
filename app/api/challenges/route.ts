@@ -120,6 +120,7 @@ export async function POST(request: NextRequest) {
     const newChallenge = await prisma.challenge.create({
       data: {
         tenantId: tenant.id,
+        whopCompanyId: user.whopCompanyId, // 🔒 SECURITY FIX: Set company ID for isolation
         title: challengeData.title,
         description: challengeData.description,
         startAt: challengeData.startAt,

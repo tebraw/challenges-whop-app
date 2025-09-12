@@ -48,6 +48,7 @@ model Challenge {
   id                String            @id @default(cuid())
   tenantId          String
   experienceId      String?           // 🎯 WHOP RULE #1: Experience-based scoping
+  whopCompanyId     String?           // 🔒 SECURITY: Company isolation
   title             String
   description       String?
   startAt           DateTime
