@@ -77,15 +77,20 @@ export default async function Home() {
             
             console.log('🔑 Company Access Check:', companyAccess);
             
-            // Company Owner = Admin Access (check for admin or customer with access)
-            if (companyAccess.hasAccess && companyAccess.accessLevel !== 'no_access') {
-              console.log('👑 COMPANY OWNER/ADMIN DETECTED');
+            // IMPORTANT: In Whop, Company Owners often have "customer" access level
+            // but they should get admin access. Check for ANY access to the company.
+            if (companyAccess.hasAccess) {
+              console.log('👑 COMPANY OWNER/ADMIN DETECTED (has company access)');
               console.log(`🎯 Redirecting to admin panel for company: ${companyId}`);
               redirect('/admin');
             }
           } catch (error) {
             console.log('⚠️ Company access check failed:', error);
-            // Continue to experience check
+            
+            // FALLBACK: If user has companyId but access check fails,
+            // assume they're company owner (they shouldn't have companyId otherwise)
+            console.log('🔄 Fallback: Assuming company owner due to companyId presence');
+            redirect('/admin');
           }
         }
         
@@ -111,7 +116,14 @@ export default async function Home() {
         
         // If we have companyId but no valid access, still try admin
         if (companyId && !experienceId) {
-          console.log('🔄 No experience ID but have companyId - trying admin access');
+          console.log('🔄 No experience ID but have companyId - assuming company owner');
+          redirect('/admin');
+        }
+        
+        // Additional fallback: If we have companyId at all, give admin access
+        // (Company owners should always have companyId in headers)
+        if (companyId) {
+          console.log('🔄 CompanyId present - giving admin access');
           redirect('/admin');
         }
         
