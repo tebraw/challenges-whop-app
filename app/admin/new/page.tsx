@@ -95,9 +95,19 @@ function NewChallengePageContent() {
         console.log("Challenge created successfully:", data);
         router.push(`/admin/c/${data.id}`);
       } else {
-        const errorData = await response.json();
-        console.error("Failed to create challenge:", errorData);
-        alert(`Failed to create challenge: ${errorData.error || 'Unknown error'}`);
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (jsonError) {
+          // Server didn't return JSON, get text instead
+          const errorText = await response.text();
+          console.error("Failed to create challenge (non-JSON response):", response.status, errorText);
+          alert(`Failed to create challenge: Server error ${response.status} - ${errorText || 'Unknown error'}`);
+          return;
+        }
+        
+        console.error("Failed to create challenge:", response.status, errorData);
+        alert(`Failed to create challenge: ${errorData.error || errorData.message || `Server error ${response.status}`}`);
       }
     } catch (error) {
       console.error("Error creating challenge:", error);
