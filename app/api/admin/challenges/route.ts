@@ -85,16 +85,35 @@ export async function GET(request: NextRequest) {
       }, 401);
     }
 
-    // Step 2: Get experienceId (WHOP BEST PRACTICE!)
+    // Step 2: Smart context detection - Company Owner vs Experience Member
     const experienceId = headersList.get('x-experience-id') || 
                         headersList.get('experience-id') ||
                         headersList.get('x-whop-experience-id') ||
                         undefined;
     
-    if (!experienceId) {
+    const companyId = headersList.get('x-whop-company-id') || 
+                     headersList.get('x-company-id') || 
+                     undefined;
+    
+    // 🎯 CRITICAL: Company Owner (App Installer) vs Experience Member detection
+    const isCompanyOwner = !experienceId && companyId;
+    const isExperienceMember = experienceId && !companyId;
+    
+    console.log('🔍 User context:', {
+      userId,
+      experienceId,
+      companyId,
+      isCompanyOwner,
+      isExperienceMember
+    });
+    
+    // Company Owner gets admin access without experienceId
+    if (isCompanyOwner) {
+      console.log('🎯 Company Owner detected - granting admin access');
+    } else if (!experienceId) {
       return createCorsResponse({ 
-        error: 'Experience context required',
-        debug: 'No experienceId found in headers - this is required for proper tenant isolation',
+        error: 'Context required',
+        debug: 'Neither experienceId nor companyId found - please access via Whop app',
         userId,
         headers: {
           'x-experience-id': headersList.get('x-experience-id'),
@@ -105,75 +124,96 @@ export async function GET(request: NextRequest) {
 
     console.log(`� Experience-based isolation: ${experienceId}`);
 
-    // Step 3: WHOP RECOMMENDED AUTH FLOW
+    // Step 3: WHOP RECOMMENDED AUTH FLOW (skip for Company Owners)
     let hasAdminAccess = false;
     let accessLevel = 'no_access';
     
-    try {
-      const experienceAccessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
-        userId,
-        experienceId
-      });
-      hasAdminAccess = experienceAccessResult.hasAccess;
-      accessLevel = experienceAccessResult.accessLevel;
-      console.log('✅ Experience access check:', experienceAccessResult);
-      
-      // WHOP ROLE MAPPING: admin = ersteller, customer = member, no_access = guest
-      if (accessLevel !== 'admin') {
+    if (isCompanyOwner) {
+      // Company Owner gets automatic admin access
+      hasAdminAccess = true;
+      accessLevel = 'admin';
+      console.log('✅ Company Owner admin access granted');
+    } else {
+      try {
+        const experienceAccessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
+          userId,
+          experienceId: experienceId!
+        });
+        hasAdminAccess = experienceAccessResult.hasAccess;
+        accessLevel = experienceAccessResult.accessLevel;
+        console.log('✅ Experience access check:', experienceAccessResult);
+        
+        // WHOP ROLE MAPPING: admin = ersteller, customer = member, no_access = guest
+        if (accessLevel !== 'admin') {
+          return createCorsResponse({ 
+            error: 'Admin access required',
+            debug: `User ${userId} has accessLevel '${accessLevel}' but needs 'admin' for this action`,
+            accessLevel,
+            experienceId
+          }, 403);
+        }
+        
+      } catch (error) {
+        console.log('❌ Experience access check failed:', error);
         return createCorsResponse({ 
-          error: 'Admin access required',
-          debug: `User ${userId} has accessLevel '${accessLevel}' but needs 'admin' for this action`,
-          accessLevel,
+          error: 'Experience access verification failed',
+          debug: `Could not verify access for experienceId: ${experienceId}`,
           experienceId
         }, 403);
       }
-      
-    } catch (error) {
-      console.log('❌ Experience access check failed:', error);
-      return createCorsResponse({ 
-        error: 'Experience access verification failed',
-        debug: `Could not verify access for experienceId: ${experienceId}`,
-        experienceId
-      }, 403);
     }
 
-    console.log('✅ Admin access verified for user:', userId, 'experience:', experienceId);
+    console.log('✅ Admin access verified for user:', userId, 'context:', experienceId || companyId);
 
-    // Step 4: EXPERIENCE-SCOPED TENANT (Whop Best Practice)
+    // Step 4: CONTEXT-SCOPED TENANT (Company Owner vs Experience Member)
+    const tenantId = experienceId || companyId!; // Use experience for members, company for owners
+    
     let tenant = await prisma.tenant.findUnique({
-      where: { whopCompanyId: experienceId } // Use experienceId as the unique identifier
+      where: { whopCompanyId: tenantId }
     });
     
     if (!tenant) {
-      console.log(`🏗️ Creating new experience-scoped tenant for: ${experienceId}`);
+      const tenantName = isCompanyOwner 
+        ? `Company ${companyId}` 
+        : `Experience ${experienceId}`;
+      
+      console.log(`🏗️ Creating new tenant for: ${tenantName}`);
       
       try {
         tenant = await prisma.tenant.create({
           data: {
-            name: `Experience ${experienceId}`,
-            whopCompanyId: experienceId // Store experienceId as the company identifier
+            name: tenantName,
+            whopCompanyId: tenantId
           }
         });
-        console.log(`✅ Created new experience tenant with ID: ${tenant.id}`);
+        console.log(`✅ Created new tenant with ID: ${tenant.id}`);
       } catch (error) {
-        console.error('Failed to create experience tenant:', error);
+        console.error('Failed to create tenant:', error);
         return createCorsResponse({ 
-          error: 'Failed to create experience tenant',
-          debug: `Could not create tenant for experienceId: ${experienceId}`,
+          error: 'Failed to create tenant',
+          debug: `Could not create tenant for: ${tenantName}`,
           originalError: error instanceof Error ? error.message : 'Unknown error'
         }, 500);
       }
     } else {
-      console.log(`✅ Found existing experience tenant with ID: ${tenant.id}`);
+      console.log(`✅ Found existing tenant with ID: ${tenant.id}`);
     }
 
-    // Step 5: EXPERIENCE-SCOPED CHALLENGE QUERIES (Perfect Isolation)
+    // Step 5: CONTEXT-SCOPED CHALLENGE QUERIES
+    const whereClause = isCompanyOwner 
+      ? {
+          tenantId: tenant.id,
+          // Company Owner sees all challenges in their company
+          whopCompanyId: companyId
+        }
+      : {
+          tenantId: tenant.id,
+          // Experience Member sees only their experience challenges
+          experienceId: experienceId
+        };
+
     const challenges = await prisma.challenge.findMany({
-      where: {
-        tenantId: tenant.id,
-        // 🔒 DOUBLE SECURITY: Experience-based isolation
-        experienceId: experienceId
-      },
+      where: whereClause,
       include: {
         _count: {
           select: {
@@ -186,7 +226,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    console.log(`📋 Returning ${challenges.length} challenges for experience ${experienceId}`);
+    console.log(`📋 Returning ${challenges.length} challenges for ${isCompanyOwner ? 'company' : 'experience'}: ${tenantId}`);
 
     return createCorsResponse({
       success: true,
@@ -205,8 +245,10 @@ export async function GET(request: NextRequest) {
       })),
       context: {
         experienceId,
+        companyId,
         userId,
-        accessLevel
+        accessLevel,
+        isCompanyOwner
       }
     });
 
