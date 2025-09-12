@@ -307,9 +307,9 @@ export default function EditChallengePage({
                   className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none"
                   required
                 >
-                  <option value="DAILY">Täglich</option>
-                  <option value="END_OF_CHALLENGE">Am Ende der Challenge</option>
-                  <option value="WEEKLY">Wöchentlich</option>
+                  <option value="DAILY">Daily</option>
+                  <option value="END_OF_CHALLENGE">End of Challenge</option>
+                  <option value="WEEKLY">Weekly</option>
                   <option value="ONCE">Einmalig</option>
                 </select>
               </div>

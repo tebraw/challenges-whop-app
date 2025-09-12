@@ -1,23 +1,58 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { requireAdmin } from "@/lib/auth";
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
+import { requireAdmin, getCurrentUser } from "@/lib/auth";
 
 export async function GET(
-  _: Request,
+  request: Request,
   context: { params: Promise<{ userId: string; challengeId: string }> }
 ) {
-      try {
+  try {
+    console.log("=== API Route Called ===");
+    console.log("Request URL:", request.url);
+    console.log("Request method:", request.method);
+    console.log("Request headers:", Object.fromEntries(request.headers.entries()));
+    
     // Require admin access
+    console.log("Checking admin access...");
     await requireAdmin();
+    console.log("Admin access granted");
+    
+    const currentUser = await getCurrentUser();
+    console.log("Current user:", currentUser?.id, currentUser?.email, currentUser?.role);
+
+    if (!currentUser || !currentUser.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     const { userId, challengeId } = await context.params;
 
     console.log("Admin API Debug - Looking for user:", userId, "in challenge:", challengeId);
 
-    // Get user info
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    // 🔒 TENANT ISOLATION: First verify challenge belongs to admin's tenant
+    const challengeCheck = await prisma.challenge.findUnique({
+      where: { 
+        id: challengeId,
+        tenantId: currentUser.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      },
+      select: { id: true }
+    });
+
+    if (!challengeCheck) {
+      return NextResponse.json({ 
+        ok: false, 
+        message: "Challenge not found or access denied" 
+      }, { status: 404 });
+    }
+
+    // Get user info (check both same tenant and cross-tenant with valid enrollment)
+    let user = await prisma.user.findUnique({
+      where: { 
+        id: userId,
+        tenantId: currentUser.tenantId  // 🔒 SECURITY: Only allow access to same tenant users
+      },
       select: {
         id: true,
         email: true,
@@ -26,19 +61,54 @@ export async function GET(
       },
     });
 
-    console.log("Admin API Debug - User found:", !!user, user?.email);
+    console.log("Admin API Debug - User found in same tenant:", !!user, user?.email);
+
+    // If user not found in same tenant, check if there's a valid enrollment (cross-tenant case)
+    if (!user) {
+      const crossTenantEnrollment = await prisma.enrollment.findFirst({
+        where: {
+          challengeId: challengeId,
+          userId: userId,
+          challenge: {
+            tenantId: currentUser.tenantId  // 🔒 SECURITY: Challenge must be in admin's tenant
+          }
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              createdAt: true,
+              tenantId: true,
+            }
+          }
+        }
+      });
+
+      if (crossTenantEnrollment) {
+        user = {
+          id: crossTenantEnrollment.user.id,
+          email: crossTenantEnrollment.user.email,
+          name: crossTenantEnrollment.user.name,
+          createdAt: crossTenantEnrollment.user.createdAt,
+        };
+        console.log("Admin API Debug - Cross-tenant user found via enrollment:", user.email, "tenant:", crossTenantEnrollment.user.tenantId);
+      }
+    }
 
     if (!user) {
       return NextResponse.json({ ok: false, message: "User not found" }, { status: 404 });
     }
 
-    // Get enrollment for this user and challenge
-    const enrollment = await prisma.enrollment.findUnique({
+    // 🔒 TENANT ISOLATION: Get enrollment for this user and challenge (also checking tenant isolation)
+    const enrollment = await prisma.enrollment.findFirst({
       where: {
-        challengeId_userId: {
-          challengeId,
-          userId,
-        },
+        challengeId: challengeId,
+        userId: userId,
+        challenge: {
+          tenantId: currentUser.tenantId  // 🔒 SECURITY: Double-check challenge tenant
+        }
       },
       include: {
         challenge: {
@@ -79,6 +149,12 @@ export async function GET(
     console.log("Admin API Debug - Enrollment found:", !!enrollment);
     console.log("Admin API Debug - Check-ins count:", enrollment?.checkins?.length || 0);
     console.log("Admin API Debug - Proofs count:", enrollment?.proofs?.length || 0);
+    
+    // Debug: Log actual data
+    if (enrollment) {
+      console.log("Admin API Debug - Checkins data:", enrollment.checkins);
+      console.log("Admin API Debug - Proofs data:", enrollment.proofs);
+    }
 
     if (!enrollment) {
       return NextResponse.json({ ok: false, message: "User not enrolled in this challenge" }, { status: 404 });
@@ -94,9 +170,43 @@ export async function GET(
         checkins: enrollment.checkins,
         proofs: enrollment.proofs,
       },
+      // Debug information
+      debug: {
+        hasCheckins: (enrollment.checkins?.length || 0) > 0,
+        hasProofs: (enrollment.proofs?.length || 0) > 0,
+        checkinCount: enrollment.checkins?.length || 0,
+        proofsCount: enrollment.proofs?.length || 0,
+        enrollmentId: enrollment.id,
+        challengeId: enrollment.challenge.id
+      }
     });
   } catch (e: any) {
+    console.error("=== API ERROR ===");
+    console.error("Error type:", e.constructor.name);
+    console.error("Error message:", e?.message);
+    console.error("Error stack:", e?.stack);
     console.error("admin user challenge data", e);
-    return NextResponse.json({ ok: false, message: e?.message || "Fehler" }, { status: 500 });
+    
+    // Check if it's an auth error
+    if (e?.message?.includes('Authentication') || e?.message?.includes('Admin') || e?.message?.includes('Unauthorized')) {
+      return NextResponse.json({ 
+        ok: false, 
+        message: `Auth Error: ${e?.message}`,
+        debug: {
+          errorType: e.constructor.name,
+          isAuthError: true,
+          url: 'admin/users/[userId]/challenges/[challengeId]'
+        }
+      }, { status: 401 });
+    }
+    
+    return NextResponse.json({ 
+      ok: false, 
+      message: e?.message || "Internal Server Error",
+      debug: {
+        errorType: e.constructor.name,
+        url: 'admin/users/[userId]/challenges/[challengeId]'
+      }
+    }, { status: 500 });
   }
 }

@@ -1,16 +1,22 @@
 // app/api/admin/challenge-offers/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { createWhopOffer } from '@/lib/whopApi';
-import { requireAdmin } from '@/lib/auth';
-
-const prisma = new PrismaClient();
+import { requireAdmin, getCurrentUser } from '@/lib/auth';
 
 // POST /api/admin/challenge-offers - Create challenge offer
 export async function POST(request: NextRequest) {
       try {
     // SICHERHEIT: Nur Admins
     await requireAdmin();
+    const user = await getCurrentUser();
+
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     const {
       challengeId,
@@ -23,9 +29,12 @@ export async function POST(request: NextRequest) {
       triggerConditions
     } = await request.json();
 
-    // Get product details
+    // 🔒 TENANT ISOLATION: Get product details only from same tenant
     const product = await prisma.challenge.findUnique({
-      where: { id: challengeId }
+      where: { 
+        id: challengeId,
+        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      }
     });
 
     if (!product) {
@@ -107,6 +116,14 @@ export async function GET(request: NextRequest) {
       try {
     // SICHERHEIT: Nur Admins
     await requireAdmin();
+    const user = await getCurrentUser();
+
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     const { searchParams } = new URL(request.url);
     const challengeId = searchParams.get('challengeId');
@@ -118,8 +135,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 🔒 TENANT ISOLATION: Get challenge only from same tenant
     const challenge = await prisma.challenge.findUnique({
-      where: { id: challengeId }
+      where: { 
+        id: challengeId,
+        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      }
     });
 
     if (!challenge) {

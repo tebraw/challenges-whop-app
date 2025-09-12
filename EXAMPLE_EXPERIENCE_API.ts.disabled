@@ -1,0 +1,82 @@
+// EXAMPLE: Experience-based API Route (Following Whop Rules 1-10)
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyCurrentExperienceAccess, requireExperienceAccess } from '@/lib/whop-experience-auth';
+import { prisma } from '@/lib/prisma';
+
+export async function GET(request: NextRequest) {
+  try {
+    // Whop Rule 1-3: Verify Experience access
+    const auth = await verifyCurrentExperienceAccess();
+    
+    if (!auth.isAuthenticated) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    // Whop Rule 4: Experience-based data scoping
+    // Only return challenges that belong to this Experience
+    const challenges = await prisma.challenge.findMany({
+      where: {
+        // Rule 8: Use experienceId instead of tenantId for data isolation
+        experienceId: auth.experienceId,
+        
+        // Rule 9: Apply role-based visibility
+        ...(auth.userAccess === 'guest' ? {
+          isPublic: true // Guests only see public challenges
+        } : {}),
+        
+        // Rule 10: Creator can see draft challenges
+        ...(auth.userAccess !== 'creator' ? {
+          status: 'PUBLISHED'
+        } : {})
+      },
+      include: {
+        participants: auth.permissions?.canManage ? true : {
+          where: {
+            userId: auth.userId // Users can only see their own participation
+          }
+        }
+      }
+    });
+
+    return NextResponse.json({
+      challenges,
+      userAccess: auth.userAccess,
+      experienceId: auth.experienceId,
+      permissions: auth.permissions
+    });
+
+  } catch (error) {
+    console.error('Experience API error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    // Whop Rule 5: Require member access to create challenges
+    const auth = await requireExperienceAccess(
+      body.experienceId || await getCurrentExperienceId(), 
+      'member'
+    );
+
+    // Rule 6: Experience-scoped challenge creation
+    const challenge = await prisma.challenge.create({
+      data: {
+        ...body,
+        experienceId: auth.experienceId, // Always scope to current Experience
+        createdBy: auth.userId,
+        status: auth.userAccess === 'creator' ? 'PUBLISHED' : 'DRAFT'
+      }
+    });
+
+    return NextResponse.json(challenge);
+
+  } catch (error) {
+    if (error.message.includes('Access denied')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

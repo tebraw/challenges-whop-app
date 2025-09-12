@@ -1,16 +1,22 @@
 // app/api/admin/products/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { getCreatorProducts } from '@/lib/whopApi';
-import { requireAdmin } from '@/lib/auth';
-
-const prisma = new PrismaClient();
+import { requireAdmin, getCurrentUser } from '@/lib/auth';
 
 // GET /api/admin/products - Get creator's products
 export async function GET(request: NextRequest) {
       try {
     // SICHERHEIT: Nur Admins können Produkte verwalten
     await requireAdmin();
+    const user = await getCurrentUser();
+
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     const { searchParams } = new URL(request.url);
     const creatorId = searchParams.get('creatorId');

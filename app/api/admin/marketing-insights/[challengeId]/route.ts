@@ -1,8 +1,32 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from '@/lib/auth';
-import { PrismaClient } from "@prisma/client";
+import { requireAdmin, getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
-const prisma = new PrismaClient();
+// Type definitions for better type safety
+interface CheckinData {
+  id: string;
+  createdAt: Date;
+  text?: string | null;
+  imageUrl?: string | null;
+  linkUrl?: string | null;
+}
+
+interface EnrollmentData {
+  id: string;
+  userId: string;
+  checkins: CheckinData[];
+  user: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+  };
+}
+
+interface ChallengeData {
+  id: string;
+  title: string;
+  enrollments: EnrollmentData[];
+}
 
 export async function GET(
   request: Request,
@@ -11,12 +35,23 @@ export async function GET(
       try {
     // SICHERHEIT: Nur Admins
     await requireAdmin();
+    const user = await getCurrentUser();
+
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     const { challengeId } = await params;
     
-    // Get challenge data for analysis
+    // 🔒 TENANT ISOLATION: Get challenge data for analysis only from same tenant
     const challenge = await prisma.challenge.findUnique({
-      where: { id: challengeId },
+      where: { 
+        id: challengeId,
+        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      },
       include: {
         enrollments: {
           include: {
@@ -36,7 +71,7 @@ export async function GET(
     const insights = [];
 
     // High engagement insight
-    const highEngagementUsers = challenge.enrollments.filter(e => e.checkins.length > 5).length;
+    const highEngagementUsers = challenge.enrollments.filter((e: any) => e.checkins.length > 5).length;
     const highEngagementRate = totalParticipants > 0 ? (highEngagementUsers / totalParticipants) * 100 : 0;
     
     if (highEngagementRate > 20) {
@@ -62,7 +97,7 @@ export async function GET(
       (new Date(challenge.endAt).getTime() - new Date(challenge.startAt).getTime()) / (1000 * 60 * 60 * 24)
     );
     const avgCheckins = totalParticipants > 0 ? 
-      challenge.enrollments.reduce((sum, e) => sum + e.checkins.length, 0) / totalParticipants : 0;
+      challenge.enrollments.reduce((sum: number, e: any) => sum + e.checkins.length, 0) / totalParticipants : 0;
     const completionRate = challengeDays > 0 ? (avgCheckins / challengeDays) * 100 : 0;
     
     if (completionRate > 70) {
@@ -84,11 +119,11 @@ export async function GET(
     }
 
     // Engagement timing insight
-    const recentCheckins = challenge.enrollments.flatMap(e => e.checkins)
-      .filter(c => new Date(c.createdAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const recentCheckins = challenge.enrollments.flatMap((e: any) => e.checkins)
+      .filter((c: any) => new Date(c.createdAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000);
     
     const hourlyActivity = new Array(24).fill(0);
-    recentCheckins.forEach(checkin => {
+    recentCheckins.forEach((checkin: any) => {
       const hour = new Date(checkin.createdAt).getHours();
       hourlyActivity[hour]++;
     });
@@ -112,8 +147,8 @@ export async function GET(
     });
 
     // Retention strategy
-    const activeUsers = challenge.enrollments.filter(e => 
-      e.checkins.some(c => new Date(c.createdAt).getTime() > Date.now() - 3 * 24 * 60 * 60 * 1000)
+    const activeUsers = challenge.enrollments.filter((e: any) =>
+      e.checkins.some((c: any) => new Date(c.createdAt).getTime() > Date.now() - 3 * 24 * 60 * 60 * 1000)
     ).length;
     const retentionRate = totalParticipants > 0 ? (activeUsers / totalParticipants) * 100 : 0;
     

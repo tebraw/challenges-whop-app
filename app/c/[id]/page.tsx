@@ -133,7 +133,7 @@ export default function ChallengePage({
     try {
       setSubmittingProof(true);
       
-      let proofData: any = {};
+      let proofData: Record<string, unknown> = {};
       
       if (challenge?.proofType === 'TEXT') {
         if (!proofText.trim()) {
@@ -180,7 +180,10 @@ export default function ChallengePage({
       const data = await response.json();
       
       if (response.ok) {
-        alert('Check-in erfolgreich! 🎉');
+        const successMessage = data.checkin?.isUpdate ? 
+          'Proof updated successfully! 🔄' : 
+          'Check-in successful! 🎉';
+        alert(successMessage);
         setShowProofModal(false);
         setProofText('');
         setProofLink('');
@@ -368,31 +371,37 @@ export default function ChallengePage({
                       </div>
                     </div>
 
-                    {userParticipation.stats?.canCheckInToday && challenge.status === 'active' && (
+                    {challenge.status === 'active' && (userParticipation.stats?.canCheckInToday || userParticipation.stats?.hasCheckedInToday) && (
                       <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-xl p-6">
                         <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
                           <Upload className="w-5 h-5" />
-                          Submit Today's Proof
+                          {userParticipation.stats?.hasCheckedInToday ? 'Update Today\'s Proof' : 'Submit Today\'s Proof'}
                         </h3>
-                        <p className="text-gray-300 mb-4">
+                        <p className="text-gray-300 mb-2">
                           Proof Type: <span className="font-semibold text-white">{challenge.proofType}</span>
                         </p>
+                        {userParticipation.stats?.hasCheckedInToday && (
+                          <p className="text-yellow-400 text-sm mb-4 flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4" />
+                            You can update your proof until the day ends
+                          </p>
+                        )}
                         <Button 
                           onClick={() => setShowProofModal(true)}
                           className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 text-lg"
                         >
-                          Submit Proof Now! 🚀
+                          {userParticipation.stats?.hasCheckedInToday ? 'Update Proof 🔄' : 'Submit Proof Now! 🚀'}
                         </Button>
                       </div>
                     )}
 
-                    {userParticipation.stats?.hasCheckedInToday && (
-                      <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl p-6">
-                        <div className="flex items-center gap-3 text-green-400 mb-2">
-                          <CheckCircle className="w-6 h-6" />
-                          <span className="font-bold text-lg">Already completed today! 🎉</span>
+                    {!userParticipation.stats?.canCheckInToday && !userParticipation.stats?.hasCheckedInToday && challenge.status === 'active' && (
+                      <div className="bg-gradient-to-r from-gray-500/10 to-gray-600/10 border border-gray-500/20 rounded-xl p-6">
+                        <div className="flex items-center gap-3 text-gray-400 mb-2">
+                          <Clock className="w-6 h-6" />
+                          <span className="font-bold text-lg">No action needed today</span>
                         </div>
-                        <p className="text-gray-300">Come back tomorrow to continue your streak</p>
+                        <p className="text-gray-300">Come back when you can check-in based on the challenge cadence</p>
                       </div>
                     )}
                   </div>
@@ -532,7 +541,9 @@ export default function ChallengePage({
       {showProofModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 rounded-2xl p-8 w-full max-w-md border border-gray-700">
-            <h3 className="text-2xl font-bold mb-6 text-center">Submit Proof</h3>
+            <h3 className="text-2xl font-bold mb-6 text-center">
+              {userParticipation.stats?.hasCheckedInToday ? 'Update Your Proof' : 'Submit Proof'}
+            </h3>
             
             {challenge.proofType === 'TEXT' && (
               <div className="mb-6">
@@ -579,8 +590,11 @@ export default function ChallengePage({
                   <div className="mt-2 text-sm text-gray-400">
                     <p>Selected: {selectedFile.name}</p>
                     <p>Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                    {selectedFile.size > 500 * 1024 && (
-                      <p className="text-yellow-400">ℹ️ Large image will be automatically compressed for mobile compatibility</p>
+                    {selectedFile.size > 10 * 1024 * 1024 && (
+                      <p className="text-red-400">⚠️ File too large (max 10MB)</p>
+                    )}
+                    {selectedFile.size <= 10 * 1024 * 1024 && (
+                      <p className="text-green-400">✅ Image will be uploaded without compression</p>
                     )}
                   </div>
                 )}
@@ -601,7 +615,9 @@ export default function ChallengePage({
               >
                 {submittingProof ? (
                   challenge?.proofType === 'PHOTO' ? 'Uploading & Submitting...' : 'Submitting...'
-                ) : 'Submit Proof'}
+                ) : (
+                  userParticipation.stats?.hasCheckedInToday ? 'Update Proof' : 'Submit Proof'
+                )}
               </Button>
             </div>
           </div>

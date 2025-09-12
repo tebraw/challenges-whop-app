@@ -8,6 +8,14 @@ export async function POST(
 ) {
       try {
     await requireAdmin();
+    const user = await getCurrentUser();
+
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     const { challengeId } = await params;
     const { winners } = await request.json();
@@ -19,9 +27,12 @@ export async function POST(
       );
     }
 
-    // Validate challenge exists
+    // 🔒 TENANT ISOLATION: Validate challenge exists and belongs to same tenant
     const challenge = await prisma.challenge.findUnique({
-      where: { id: challengeId },
+      where: { 
+        id: challengeId,
+        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      },
     });
 
     if (!challenge) {

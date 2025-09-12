@@ -1,5 +1,4 @@
-// components/AdminGuard.tsx - Admin Route Protection
-"use client";
+﻿"use client";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
@@ -17,55 +16,193 @@ export default function AdminGuard({ children }: AdminGuardProps) {
   useEffect(() => {
     async function checkAdminAccess() {
       try {
-        console.log('🔍 Starting admin access check...');
-        
-        // Get debug information first
-        const debugResponse = await fetch('/api/debug/user');
-        const debugData = await debugResponse.json();
-        console.log('🔍 Debug data:', debugData);
-        setDebugInfo(debugData);
-        
-        // Check user authentication status
-        const response = await fetch('/api/auth/me');
-        console.log('🔍 Auth me response status:', response.status);
-        
-        if (!response.ok) {
-          console.log('❌ Auth me failed:', response.status);
-          setDebugInfo((prev: any) => ({ ...prev, authMeError: `Status: ${response.status}` }));
+        // DEV MODE: Allow admin access for localhost
+        if (typeof window !== 'undefined' && window.location.host.includes('localhost')) {
+          console.log('🔧 DEV MODE: Granting admin access for localhost');
+          setIsAdmin(true);
+          setIsChecking(false);
+          setDebugInfo({ devMode: true, host: window.location.host });
           return;
         }
         
-        const user = await response.json();
-        console.log('👤 User from /api/auth/me:', user);
-        setDebugInfo((prev: any) => ({ ...prev, authMeUser: user }));
+        console.log('Starting Whop admin access check...');
         
-        // Check if user is admin (has role ADMIN and whopCompanyId)
-        if (user.role === 'ADMIN' && user.whopCompanyId) {
-          console.log('✅ Admin access granted!');
-          setIsAdmin(true);
-        } else {
-          console.log('❌ Access denied - User:', user);
-          console.log('❌ Role:', user.role, 'Company ID:', user.whopCompanyId);
-          setDebugInfo((prev: any) => ({ 
-            ...prev, 
-            accessDeniedReason: {
-              role: user.role,
-              whopCompanyId: user.whopCompanyId,
-              hasRole: user.role === 'ADMIN',
-              hasCompanyId: !!user.whopCompanyId
+        // First check experience context and auth status
+        const contextResponse = await fetch('/api/auth/experience-context', {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          credentials: 'include'
+        });
+        
+        if (!contextResponse.ok) {
+          throw new Error(`Experience context API failed: ${contextResponse.status} ${contextResponse.statusText}`);
+        }
+        
+        const contextData = await contextResponse.json();
+        
+        console.log('Experience context:', contextData);
+        
+        // Check if there's an error in the response
+        if (contextData.error) {
+          console.log('Experience context error - trying admin API directly:', contextData.error);
+          // Don't throw immediately, try admin API first
+        }
+        
+        // 🎯 FLEXIBLE AUTH: Try admin API even if experience context has issues
+        // This handles cases where user is authenticated in Whop but our context detection fails
+        
+        if (!contextData.isAuthenticated && !contextData.userId) {
+          console.log('No authentication detected - redirecting to Whop login');
+          window.location.href = '/auth/whop';
+          return;
+        }
+        
+        // Skip role check if we have userId but role mapping failed
+        const shouldSkipRoleCheck = contextData.userId && contextData.userRole === 'guest';
+        
+        // Check for fallback company ID problem
+        const hasFallbackCompanyId = contextData.companyId === '9nmw5yleoqldrxf7n48c';
+        
+        if (hasFallbackCompanyId) {
+          console.log('🚨 Fallback Company ID detected - trying to clean up and re-authenticate');
+          
+          // First, try to clean up the fallback user
+          try {
+            const cleanupResponse = await fetch('/api/auth/cleanup-fallback', {
+              method: 'POST',
+              headers: {
+                'Cache-Control': 'no-cache',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
+              credentials: 'include'
+            });
+            
+            if (cleanupResponse.ok) {
+              const cleanupData = await cleanupResponse.json();
+              console.log('✅ Cleanup successful:', cleanupData);
+              
+              if (cleanupData.action === 'user_deleted') {
+                console.log('🔄 User deleted - attempting re-authentication');
+                
+                // Try Company Owner Access API after cleanup
+                const companyOwnerResponse = await fetch('/api/auth/company-owner-access', {
+                  method: 'GET',
+                  headers: {
+                    'Cache-Control': 'no-cache',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                  },
+                  credentials: 'include'
+                });
+                
+                if (companyOwnerResponse.ok) {
+                  const companyOwnerData = await companyOwnerResponse.json();
+                  console.log('✅ Re-authentication successful:', companyOwnerData);
+                  
+                  if (companyOwnerData.success && companyOwnerData.user.role === 'ADMIN') {
+                    setIsAdmin(true);
+                    setDebugInfo({ 
+                      success: true, 
+                      accessMethod: 'cleanup_and_reauth',
+                      userType: companyOwnerData.userType,
+                      user: companyOwnerData.user,
+                      cleanupResult: cleanupData
+                    });
+                    return;
+                  }
+                }
+              }
             }
-          }));
+          } catch (cleanupError) {
+            console.error('❌ Cleanup failed:', cleanupError);
+          }
+          
+          // If cleanup didn't work, show error
+          setDebugInfo({ 
+            success: false, 
+            error: 'Fallback Company ID detected',
+            debug: 'Please access the app via the Whop experience or app download to get proper authentication',
+            status: 400,
+            experienceContext: contextData,
+            fallbackCompanyId: true,
+            recommendation: 'Access via Whop app or experience to fix authentication'
+          });
+          return;
+        }
+        
+        if (!shouldSkipRoleCheck && contextData.userRole !== 'ersteller') {
+          console.log('Not admin role - trying admin API anyway');
+          // Don't redirect immediately, try admin API first
+        }
+        
+        // User is authenticated and has admin role - now test admin API access
+        const adminResponse = await fetch('/api/admin/challenges', {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          credentials: 'include'
+        });
+        console.log('Admin challenges API response status:', adminResponse.status);
+        
+        if (adminResponse.ok) {
+          console.log('Admin access granted!');
+          setIsAdmin(true);
+          
+          const data = await adminResponse.json();
+          setDebugInfo({ 
+            success: true, 
+            experienceContext: contextData,
+            challengeCount: data.challenges?.length || 0
+          });
+        } else {
+          const errorData = await adminResponse.json().catch(() => ({ error: 'Unknown error' }));
+          console.log('Admin API access denied:', errorData);
+          
+          // Check if this is just an auth issue that can be resolved
+          if (adminResponse.status === 401 && !contextData.isAuthenticated) {
+            console.log('Authentication required - redirecting to Whop login');
+            window.location.href = '/auth/whop';
+            return;
+          }
+          
+          if (adminResponse.status === 403 && contextData.userRole !== 'ersteller') {
+            console.log('Admin role required - redirecting to plans');
+            router.push('/plans?reason=admin_access_required');
+            return;
+          }
+          
+          setDebugInfo({ 
+            success: false, 
+            error: errorData.error,
+            debug: errorData.debug,
+            status: adminResponse.status,
+            experienceContext: contextData,
+            headers: errorData.headers
+          });
         }
       } catch (error: any) {
-        console.error('❌ Admin check failed:', error);
-        setDebugInfo((prev: any) => ({ ...prev, error: error?.message || 'Unknown error' }));
+        console.error('Experience context error:', error);
+        setDebugInfo({ 
+          error: error?.message || 'Network error', 
+          networkError: true,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent.substring(0, 50) + '...'
+        });
       } finally {
         setIsChecking(false);
       }
     }
 
     checkAdminAccess();
-  }, []);
+  }, [router]);
 
   if (isChecking) {
     return (
@@ -81,65 +218,18 @@ export default function AdminGuard({ children }: AdminGuardProps) {
   if (!isAdmin) {
     return (
       <div className="max-w-4xl mx-auto p-6">
-        <Card className="p-8">
-          <h1 className="text-2xl font-bold mb-4 text-red-500">🚫 No Privilege for This Area</h1>
-          <p className="text-muted mb-4">
-            You need Company Owner privileges to access the admin dashboard.
-          </p>
+        <Card className="p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-brand border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p>Access verification in progress...</p>
           
-          <div className="mt-6 p-4 bg-gray-100 rounded text-sm">
-            <h3 className="font-bold mb-2">Debug Information:</h3>
-            <div className="space-y-2">
-              <p><strong>Debug Info Available:</strong> {debugInfo ? 'Yes' : 'No'}</p>
-              {debugInfo?.error && (
-                <p className="text-red-600"><strong>Error:</strong> {debugInfo.error}</p>
-              )}
-              {debugInfo?.authMeError && (
-                <p className="text-red-600"><strong>Auth Me Error:</strong> {debugInfo.authMeError}</p>
-              )}
-              {debugInfo?.authMeUser && (
-                <div>
-                  <p><strong>User Role:</strong> {debugInfo.authMeUser.role}</p>
-                  <p><strong>Company ID:</strong> {debugInfo.authMeUser.whopCompanyId || 'None'}</p>
-                  <p><strong>User ID:</strong> {debugInfo.authMeUser.id}</p>
-                </div>
-              )}
-              {debugInfo?.accessDeniedReason && (
-                <div className="text-red-600">
-                  <p><strong>Access Denied Because:</strong></p>
-                  <p>- Has ADMIN role: {debugInfo.accessDeniedReason.hasRole ? 'Yes' : 'No'}</p>
-                  <p>- Has Company ID: {debugInfo.accessDeniedReason.hasCompanyId ? 'Yes' : 'No'}</p>
-                </div>
-              )}
-            </div>
-            <details className="mt-4">
-              <summary className="cursor-pointer font-medium">Raw Debug Data</summary>
-              <pre className="whitespace-pre-wrap overflow-auto text-xs mt-2 bg-white p-2 rounded">
+          {debugInfo && (
+            <div className="mt-4 p-4 bg-gray-100 rounded text-left text-sm">
+              <h3 className="font-bold mb-2">Debug Information:</h3>
+              <pre className="whitespace-pre-wrap">
                 {JSON.stringify(debugInfo, null, 2)}
               </pre>
-            </details>
-          </div>
-          
-          <div className="mt-6 flex gap-2">
-            <a 
-              href="/dev-login" 
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-            >
-              Try Dev Login
-            </a>
-            <a 
-              href="/api/debug/user" 
-              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-            >
-              View Raw Debug
-            </a>
-            <button 
-              onClick={() => window.location.reload()}
-              className="bg-brand text-black px-4 py-2 rounded hover:bg-brand/90"
-            >
-              Retry
-            </button>
-          </div>
+            </div>
+          )}
         </Card>
       </div>
     );

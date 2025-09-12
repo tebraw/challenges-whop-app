@@ -13,6 +13,8 @@ model Tenant {
   name          String
   createdAt     DateTime    @default(now())
   whopCompanyId String?     @unique
+  whopHandle    String?     @unique
+  whopProductId String?
   challenges    Challenge[]
   users         User[]
 }
@@ -31,16 +33,20 @@ model User {
   membershipId       String?
   subscriptionStatus String            @default("free")
   tier               String            @default("free")
+  experienceId       String?
   createdChallenges  Challenge[]       @relation("Creator")
   winnings           ChallengeWinner[] @relation("Winners")
   enrollments        Enrollment[]
   conversions        OfferConversion[] @relation("UserConversions")
   tenant             Tenant            @relation(fields: [tenantId], references: [id])
   whopProducts       WhopProduct[]     @relation("CreatorProducts")
+
+  @@index([experienceId])
+  @@index([whopCompanyId])
+  @@index([tenantId])
 }
 
 model Challenge {
-  experienceId String
   id                String            @id @default(cuid())
   tenantId          String
   title             String
@@ -60,13 +66,22 @@ model Challenge {
   monetizationRules Json?
   targetAudience    Json?
   marketingTags     Json?
+  category          String?           @default("general")
+  difficulty        String?           @default("BEGINNER")
+  isPublic          Boolean           @default(true)
+  featured          Boolean           @default(false)
+  experienceId      String
+  whopCompanyId     String?
   creator           User?             @relation("Creator", fields: [creatorId], references: [id])
   tenant            Tenant            @relation(fields: [tenantId], references: [id])
   challengeOffers   ChallengeOffer[]
   winners           ChallengeWinner[]
   enrollments       Enrollment[]
   conversions       OfferConversion[] @relation("ChallengeConversions")
+
   @@index([experienceId])
+  @@index([whopCompanyId])
+  @@index([tenantId])
 }
 
 model WhopProduct {

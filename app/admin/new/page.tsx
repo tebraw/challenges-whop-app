@@ -32,6 +32,10 @@ function toLocal(d: Date) {
 }
 
 export default function NewChallengePage() {
+  return <NewChallengePageContent />;
+}
+
+function NewChallengePageContent() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
@@ -91,9 +95,28 @@ export default function NewChallengePage() {
         console.log("Challenge created successfully:", data);
         router.push(`/admin/c/${data.id}`);
       } else {
-        const errorData = await response.json();
-        console.error("Failed to create challenge:", errorData);
-        alert(`Failed to create challenge: ${errorData.error || 'Unknown error'}`);
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (jsonError) {
+          // Server didn't return JSON, get text instead
+          const errorText = await response.text();
+          console.error("Failed to create challenge (non-JSON response):", response.status, errorText);
+          alert(`Failed to create challenge: Server error ${response.status} - ${errorText || 'Unknown error'}`);
+          return;
+        }
+        
+        console.error("Failed to create challenge:", response.status, errorData);
+        
+        // Debug: Log the entire response for debugging
+        console.error("Full error response details:", {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Array.from(response.headers.entries()),
+          errorData
+        });
+        
+        alert(`Failed to create challenge: ${errorData.error || errorData.message || `Server error ${response.status}: ${response.statusText}`}`);
       }
     } catch (error) {
       console.error("Error creating challenge:", error);

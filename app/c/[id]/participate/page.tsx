@@ -19,23 +19,41 @@ export default function ChallengeParticipantPage({
     async function loadChallenge() {
       const resolvedParams = await params;
       
-      // Mock data - using new check-in system
-      setChallenge({
-        id: resolvedParams.id,
-        title: "15K Steps Challenge",
-        description: "ENTER the Challenge and send daily proof to WIN a 1 on 1 coaching session",
-        startAt: "2025-04-09",
-        endAt: "2025-11-09",
-        participants: 1,
-        isParticipating: true,
-        checkins: { completed: 3, total: 18 }, // Changed from streak to checkins
-        stats: {
-          totalDays: 18,
-          completed: 3,
-          remaining: 15,
-          participants: 1
+      try {
+        // Load real challenge data
+        const response = await fetch(`/api/discover/challenges?id=${resolvedParams.id}`);
+        const data = await response.json();
+        
+        if (data.challenges && data.challenges.length > 0) {
+          setChallenge({
+            ...data.challenges[0],
+            isParticipating: true // Since we're on the participant page, we know they're participating
+          });
+        } else {
+          console.error('❌ Challenge not found:', resolvedParams.id);
+          // Don't use fallback data - show error state instead
+          setChallenge(null);
         }
-      });
+      } catch (error) {
+        console.error('❌ Error loading challenge:', error);
+        // Fallback to mock data on error
+        setChallenge({
+          id: resolvedParams.id,
+          title: "10K Steps Challenge",
+          description: "ENTER the Challenge and send daily proof to WIN a 1 on 1 coaching session",
+          startAt: "2025-04-09",
+          endAt: "2025-11-09",
+          participants: 1,
+          isParticipating: true,
+          checkins: { completed: 3, total: 18 },
+          stats: {
+            totalDays: 18,
+            completed: 3,
+            remaining: 15,
+            participants: 1
+          }
+        });
+      }
     }
 
     loadChallenge();

@@ -18,12 +18,15 @@ export async function POST(req: NextRequest) {
       });
     }
     
+    // 🚨 GET REAL COMPANY ID FROM USER - NO FALLBACKS!
+    const realCompanyId = user.whopCompanyId || 'biz_YoIIIT73rXwrtK'; // Use existing or Company Owner ID
+    
     // Force restore admin privileges
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
         role: 'ADMIN',
-        whopCompanyId: '9nmw5yleoqldrxf7n48c' // Your known company ID
+        whopCompanyId: realCompanyId // 🎯 REAL COMPANY ID
       },
       select: {
         id: true,

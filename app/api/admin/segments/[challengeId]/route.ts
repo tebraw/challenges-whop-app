@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from '@/lib/auth';
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { requireAdmin, getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: Request,
@@ -11,12 +9,23 @@ export async function GET(
       try {
     // SICHERHEIT: Nur Admins
     await requireAdmin();
+    const user = await getCurrentUser();
+
+    if (!user || !user.tenantId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     const { challengeId } = await context.params;
     
-    // Get challenge with participant data
+    // 🔒 TENANT ISOLATION: Get challenge with participant data only from same tenant
     const challenge = await prisma.challenge.findUnique({
-      where: { id: challengeId },
+      where: { 
+        id: challengeId,
+        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+      },
       include: {
         enrollments: {
           include: {
@@ -41,12 +50,12 @@ export async function GET(
     );
 
     // Analyze participants and create segments
-    const participants = challenge.enrollments.map(enrollment => {
+    const participants = challenge.enrollments.map((enrollment: any) => {
       const checkinCount = enrollment.checkins.length;
       const completionRate = challengeDuration > 0 ? (checkinCount / challengeDuration) * 100 : 0;
       
       // Check recent activity (last 3 days)
-      const recentCheckins = enrollment.checkins.filter(c => 
+      const recentCheckins = enrollment.checkins.filter((c: any) => 
         new Date(c.createdAt).getTime() > Date.now() - 3 * 24 * 60 * 60 * 1000
       );
       const isRecentlyActive = recentCheckins.length > 0;
@@ -87,7 +96,7 @@ export async function GET(
         id: "super_engaged",
         name: "Super Engaged",
         description: "Participants with 80%+ completion and recent activity",
-        participants: participants.filter(p => p.completionRate >= 80 && p.isRecentlyActive),
+        participants: participants.filter((p: any) => p.completionRate >= 80 && p.isRecentlyActive),
         engagementLevel: "high" as const,
         conversionPotential: "high" as const,
         characteristics: [
@@ -107,7 +116,7 @@ export async function GET(
         id: "consistent_performers",
         name: "Consistent Performers",
         description: "Regular participants with steady engagement",
-        participants: participants.filter(p => 
+        participants: participants.filter((p: any) => 
           p.completionRate >= 50 && p.completionRate < 80 && (p.isRecentlyActive || p.checkinCount >= 5)
         ),
         engagementLevel: "medium" as const,
@@ -129,7 +138,7 @@ export async function GET(
         id: "struggling_participants",
         name: "Struggling Participants",
         description: "Need motivation and support to stay engaged",
-        participants: participants.filter(p => 
+        participants: participants.filter((p: any) => 
           p.completionRate >= 20 && p.completionRate < 50
         ),
         engagementLevel: "low" as const,
@@ -151,7 +160,7 @@ export async function GET(
         id: "at_risk",
         name: "At Risk",
         description: "Low engagement, likely to drop out",
-        participants: participants.filter(p => p.completionRate < 20),
+        participants: participants.filter((p: any) => p.completionRate < 20),
         engagementLevel: "low" as const,
         conversionPotential: "low" as const,
         characteristics: [

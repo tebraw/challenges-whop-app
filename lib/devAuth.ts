@@ -5,7 +5,16 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export async function getDevUser() {
+export async function getDevUser(): Promise<{
+  id: string;
+  email: string;
+  name: string | null;
+  role: 'ADMIN' | 'USER';
+  createdAt: Date;
+  tenantId: string;
+  whopUserId: string | null;
+  whopCompanyId: string | null;
+} | null> {
   if (process.env.NODE_ENV !== 'development') {
     return null;
   }
@@ -19,6 +28,7 @@ export async function getDevUser() {
       name: true,
       role: true,
       createdAt: true,
+      tenantId: true,
       whopCompanyId: true,
       whopUserId: true
     }

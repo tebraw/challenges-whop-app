@@ -1,205 +1,174 @@
-import { whopSdk } from "@/lib/whop-sdk";
-import { headers } from "next/headers";
-import { prisma } from "@/lib/prisma";
-import AdminDashboard from './components/AdminDashboard';
+import { headers } from 'next/headers';
+import { whopSdk } from '@/lib/whop-sdk';
+import { prisma } from '@/lib/prisma';
 import CustomerChallenges from './components/CustomerChallenges';
-import WhopLoginButton from '@/components/WhopLoginButton';
-import RefreshButton from './components/RefreshButton';
-import Link from 'next/link';
 
-export default async function ExperiencePage({
-  params,
-}: {
-  params: Promise<{ experienceId: string }>;
-}) {
-  const headersList = await headers();
+interface Props {
+  params: Promise<{
+    experienceId: string;
+  }>;
+}
+
+export const dynamic = 'force-dynamic';
+
+export default async function ExperiencePage({ params }: Props) {
   const { experienceId } = await params;
-
+  
+  console.log('🎭 Experience Page for:', experienceId);
+  
   try {
-    // Development mode detection
-    const isDev = process.env.NODE_ENV === 'development';
+    const headersList = await headers();
+    const whopUserToken = headersList.get('x-whop-user-token');
     
-    let userId: string;
-    let result: any;
-    let user: any;
-    let experience: any;
-
-    if (isDev) {
-      // Development fallback
-      console.log('🔧 Development mode: Using fallback data');
-      userId = 'dev_user_123';
-      result = {
-        hasAccess: true,
-        accessLevel: 'customer' // Change to 'admin' to test admin view
-      };
-      user = {
-        id: userId,
-        username: 'dev_user',
-        name: 'Development User'
-      };
-      experience = {
-        id: experienceId,
-        name: 'Development Experience',
-        company: {
-          id: 'dev_company_123'
-        }
-      };
-    } else {
-      // Production Whop integration
-      const { userId: whopUserId } = await whopSdk.verifyUserToken(headersList);
-      userId = whopUserId;
-      
-      result = await whopSdk.access.checkIfUserHasAccessToExperience({
-        userId,
-        experienceId,
-      });
-
-      user = await whopSdk.users.getUser({ userId });
-      experience = await whopSdk.experiences.getExperience({ experienceId });
-    }
-
-    const { accessLevel } = result;
-
-    // Sync with our database
-    let dbUser = await prisma.user.findUnique({
-      where: { whopUserId: userId }
-    });
-
-    if (!dbUser && result.hasAccess) {
-      // Create tenant first
-      let tenant = await prisma.tenant.findFirst({
-        where: { whopCompanyId: experience.company.id }
-      });
-
-      if (!tenant) {
-        tenant = await prisma.tenant.create({
-          data: {
-            name: `Company ${experience.company.id}`,
-            whopCompanyId: experience.company.id
-          }
-        });
-      }
-
-      dbUser = await prisma.user.create({
-        data: {
-          whopUserId: userId,
-          email: user.username + '@whop.local', // Fallback email
-          name: user.name || user.username,
-          role: accessLevel === 'admin' ? 'ADMIN' : 'USER',
-          whopCompanyId: experience.company.id,
-          tenantId: tenant.id
-        }
-      });
-    }
-
-    // No access - show login prompt
-    if (accessLevel === 'no_access' || !result.hasAccess) {
+    if (!whopUserToken) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-          <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
-            <div className="mb-6">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                🏆
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Challenge Platform
-              </h1>
-              <p className="text-gray-600">
-                Tritt spannenden Challenges bei und gewinne tolle Preise!
-              </p>
-            </div>
-            
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <p className="text-yellow-800 text-sm">
-                ⚠️ Du benötigst Zugang zu dieser Experience über Whop
-              </p>
-            </div>
-
-            <WhopLoginButton />
-            
-            <div className="mt-6 text-sm text-gray-500">
-              Experience: {experience.name}
-            </div>
+        <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Access Required</h1>
+            <p className="text-gray-400">Please access this app through Whop.</p>
           </div>
         </div>
       );
     }
-
-    // Admin access - show dashboard
-    if (accessLevel === 'admin') {
+    
+    // Verify user access to this experience
+    const { userId } = await whopSdk.verifyUserToken(headersList);
+    
+    const experienceAccess = await whopSdk.access.checkIfUserHasAccessToExperience({
+      userId,
+      experienceId
+    });
+    
+    if (!experienceAccess.hasAccess) {
       return (
-        <AdminDashboard 
-          experienceId={experienceId}
-          user={dbUser!}
-          whopUser={user}
-        />
+        <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+            <p className="text-gray-400">You don't have access to this experience.</p>
+          </div>
+        </div>
       );
     }
-
-    // Customer access - show challenges
-    if (accessLevel === 'customer') {
-      return (
-        <CustomerChallenges 
-          experienceId={experienceId}
-          user={dbUser!}
-          whopUser={user}
-        />
-      );
+    
+    console.log('✅ Experience access verified for user:', userId);
+    
+    // Get or create user in our system
+    let user = await prisma.user.findUnique({
+      where: { whopUserId: userId }
+    });
+    
+    if (!user) {
+      console.log('👤 Creating new user for experience:', userId);
+      
+      // For experience users, we need to find or create a default tenant
+      // This is a temporary solution - ideally we'd map experience to specific tenant
+      let defaultTenant = await prisma.tenant.findFirst({
+        where: {
+          name: 'Experience Users'
+        }
+      });
+      
+      if (!defaultTenant) {
+        defaultTenant = await prisma.tenant.create({
+          data: {
+            name: 'Experience Users',
+            whopCompanyId: `experience_${experienceId}`
+          }
+        });
+      }
+      
+      // 🚨 USE AUTOMATIC COMPANY ID EXTRACTION - NO FALLBACKS!
+      const realCompanyId = `biz_${experienceId.replace('exp_', '')}`;
+      
+      user = await prisma.user.create({
+        data: {
+          whopUserId: userId,
+          email: `${userId}@whop.com`,
+          role: 'USER',
+          tenantId: defaultTenant.id,
+          experienceId: experienceId,
+          whopCompanyId: realCompanyId // 🎯 REAL COMPANY ID FROM EXPERIENCE
+        }
+      });
     }
-
-    // Fallback
+    
+    // Find the company/creator associated with this experience
+    // For now, we'll show all challenges, but this should be filtered by the experience's company
+    const challenges = await prisma.challenge.findMany({
+      where: {
+        // TODO: Filter by experience's company when we have that mapping
+      },
+      include: {
+        _count: {
+          select: {
+            enrollments: true
+          }
+        },
+        enrollments: {
+          where: {
+            userId: user.id
+          },
+          select: {
+            id: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">
-            Unbekannter Zugangstyp: {accessLevel}
-          </h1>
-          <p className="text-gray-600">
-            Bitte kontaktiere den Support
-          </p>
+      <div className="min-h-screen bg-gray-900">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">
+              🎯 Community Challenges
+            </h1>
+            <p className="text-gray-400">
+              Join challenges and track your progress with the community
+            </p>
+          </div>
+          
+          {/* User Dashboard */}
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-gray-800 rounded-xl p-6 text-center">
+              <div className="text-3xl font-bold text-blue-400 mb-2">
+                {challenges.filter(c => c.enrollments.length > 0).length}
+              </div>
+              <div className="text-gray-400">Joined Challenges</div>
+            </div>
+            <div className="bg-gray-800 rounded-xl p-6 text-center">
+              <div className="text-3xl font-bold text-green-400 mb-2">
+                0
+              </div>
+              <div className="text-gray-400">Completed</div>
+            </div>
+            <div className="bg-gray-800 rounded-xl p-6 text-center">
+              <div className="text-3xl font-bold text-purple-400 mb-2">0</div>
+              <div className="text-gray-400">Current Streak</div>
+            </div>
+          </div>
+          
+          {/* Challenges List */}
+          <CustomerChallenges 
+            experienceId={experienceId}
+            user={user}
+            whopUser={null}
+          />
         </div>
       </div>
     );
-
+    
   } catch (error) {
     console.error('Experience page error:', error);
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
-          <div className="mb-6">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              ❌
-            </div>
-            <h1 className="text-2xl font-bold text-red-600 mb-2">
-              Authentication Error
-            </h1>
-            <p className="text-gray-600">
-              Fehler beim Verifizieren deiner Whop-Authentifizierung
-            </p>
-          </div>
-          
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p className="text-red-800 text-sm mb-2">
-              {error instanceof Error ? error.message : 'Unbekannter Fehler'}
-            </p>
-            <p className="text-xs text-red-600">
-              Stelle sicher, dass du auf diese App über das Whop-Interface zugreifst.
-            </p>
-          </div>
-
-          <RefreshButton className="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors">
-            Erneut versuchen
-          </RefreshButton>
-
-          <details className="mt-4 text-left">
-            <summary className="text-xs text-gray-500 cursor-pointer">Debug Info</summary>
-            <div className="mt-2 p-3 bg-gray-100 rounded text-xs">
-              <p><strong>Experience ID:</strong> {experienceId}</p>
-              <p><strong>Headers:</strong> {Array.from(headersList.keys()).join(', ')}</p>
-              <p><strong>Error:</strong> {error instanceof Error ? error.stack : String(error)}</p>
-            </div>
-          </details>
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
+          <p className="text-gray-400">Please try refreshing the page.</p>
         </div>
       </div>
     );

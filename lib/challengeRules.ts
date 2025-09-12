@@ -1,4 +1,36 @@
-import { Cadence, Challenge, Enrollment, Checkin, Proof } from "@prisma/client";
+// Define types locally based on Prisma schema
+type Cadence = "DAILY" | "END_OF_CHALLENGE";
+
+interface Challenge {
+  cadence: Cadence;
+  startAt: Date | string;
+  endAt: Date | string;
+}
+
+interface Enrollment {
+  id: string;
+}
+
+interface Checkin {
+  id: string;
+  enrollmentId: string;
+  createdAt: Date | string;
+  text?: string | null;
+  imageUrl?: string | null;
+  linkUrl?: string | null;
+}
+
+interface Proof {
+  id: string;
+  enrollmentId: string;
+  type: string;
+  url?: string | null;
+  text?: string | null;
+  version: number;
+  isActive: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
 
 export interface ChallengeValidationResult {
   isValid: boolean;
@@ -19,7 +51,7 @@ export interface ProofConstraints {
 }
 
 /**
- * Validiert, ob ein Check-in basierend auf der Challenge-Cadence erlaubt ist
+ * Validates if a check-in is allowed based on the challenge cadence
  */
 export function validateCheckinRules(
   challenge: Pick<Challenge, 'cadence' | 'startAt' | 'endAt'>,
@@ -28,24 +60,24 @@ export function validateCheckinRules(
   currentDate: Date = new Date()
 ): CheckinConstraints {
   
-  // Grundlegende Zeitvalidierung
+  // Basic time validation
   const now = currentDate.getTime();
   const startTime = new Date(challenge.startAt).getTime();
   const endTime = new Date(challenge.endAt).getTime();
   
-  // Challenge noch nicht gestartet
+  // Challenge not started yet
   if (now < startTime) {
     return {
       canCheckin: false,
-      reason: "Challenge hat noch nicht begonnen"
+      reason: "Challenge has not started yet"
     };
   }
   
-  // Challenge bereits beendet
+  // Challenge already ended
   if (now > endTime) {
     return {
       canCheckin: false,
-      reason: "Challenge ist bereits beendet"
+      reason: "Challenge has already ended"
     };
   }
   
@@ -59,12 +91,12 @@ export function validateCheckinRules(
   
   return {
     canCheckin: false,
-    reason: "Unbekannte Challenge-Cadence"
+    reason: "Unknown challenge cadence"
   };
 }
 
 /**
- * Validierung für END_OF_CHALLENGE Cadence
+ * Validation for END_OF_CHALLENGE cadence
  */
 function validateEndOfChallengeCheckin(
   challenge: Pick<Challenge, 'cadence' | 'startAt' | 'endAt'>,
@@ -74,7 +106,7 @@ function validateEndOfChallengeCheckin(
   const now = currentDate.getTime();
   const endTime = new Date(challenge.endAt).getTime();
   
-  // Für END_OF_CHALLENGE: Check-in nur nach Ende der Challenge erlaubt
+  // For END_OF_CHALLENGE: Check-in only allowed after challenge ends
   if (now < endTime) {
     return {
       canCheckin: false,
@@ -82,12 +114,12 @@ function validateEndOfChallengeCheckin(
     };
   }
   
-  // Es gibt bereits einen Check-in - kann ersetzt werden
+  // Existing check-in can be replaced
   if (existingCheckins.length > 0) {
     return {
       canCheckin: true,
       existingTodayCheckin: existingCheckins[0],
-      reason: "Bestehender Check-in wird ersetzt"
+      reason: "Existing check-in will be replaced"
     };
   }
   
@@ -98,14 +130,14 @@ function validateEndOfChallengeCheckin(
 }
 
 /**
- * Validierung für DAILY Cadence
+ * Validation for DAILY cadence
  */
 function validateDailyCheckin(
   challenge: Pick<Challenge, 'cadence' | 'startAt' | 'endAt'>,
   existingCheckins: Checkin[],
   currentDate: Date
 ): CheckinConstraints {
-  // Prüfe, ob heute bereits ein Check-in existiert
+  // Check if a check-in already exists today
   const todayStart = new Date(currentDate);
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date(currentDate);
@@ -120,7 +152,7 @@ function validateDailyCheckin(
     return {
       canCheckin: true,
       existingTodayCheckin: todayCheckin,
-      reason: "Heutiger Check-in kann bearbeitet werden"
+      reason: "Today's check-in can be updated"
     };
   }
   
@@ -131,7 +163,7 @@ function validateDailyCheckin(
 }
 
 /**
- * Validiert Proof-Einreichung basierend auf Challenge-Regeln
+ * Validates proof submission based on challenge rules
  */
 export function validateProofRules(
   challenge: Pick<Challenge, 'cadence' | 'startAt' | 'endAt'>,
@@ -140,21 +172,21 @@ export function validateProofRules(
   currentDate: Date = new Date()
 ): ProofConstraints {
   
-  // Grundlegende Zeitvalidierung
+  // Basic time validation
   const now = currentDate.getTime();
   const startTime = new Date(challenge.startAt).getTime();
   const endTime = new Date(challenge.endAt).getTime();
   
-  // Challenge noch nicht gestartet
+  // Challenge not started yet
   if (now < startTime) {
     return {
       canSubmitProof: false,
-      reason: "Challenge hat noch nicht begonnen"
+      reason: "Challenge has not started yet"
     };
   }
   
   if (challenge.cadence === "END_OF_CHALLENGE") {
-    // Für END_OF_CHALLENGE: Nur eine Datei insgesamt erlaubt, die letzte ersetzt alle vorherigen
+    // For END_OF_CHALLENGE: Only one file total allowed, the last one replaces all previous ones
     const activeProofs = existingProofs.filter(p => p.isActive);
     
     if (activeProofs.length > 0) {
@@ -172,15 +204,15 @@ export function validateProofRules(
   }
   
   if (challenge.cadence === "DAILY") {
-    // Für DAILY: Proof kann täglich eingereicht werden, solange Challenge läuft
+    // For DAILY: Proof can be submitted daily while challenge is running
     if (now > endTime) {
       return {
         canSubmitProof: false,
-        reason: "Challenge ist bereits beendet"
+        reason: "Challenge has already ended"
       };
     }
     
-    // Prüfe, ob heute bereits ein Proof eingereicht wurde
+    // Check if a proof was already submitted today
     const todayStart = new Date(currentDate);
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date(currentDate);
@@ -209,12 +241,12 @@ export function validateProofRules(
   
   return {
     canSubmitProof: false,
-    reason: "Unbekannte Challenge-Cadence"
+    reason: "Unknown challenge cadence"
   };
 }
 
 /**
- * Berechnet Challenge-Statistiken basierend auf Cadence
+ * Calculates challenge statistics based on cadence
  */
 export function calculateChallengeProgress(
   challenge: Pick<Challenge, 'cadence' | 'startAt' | 'endAt'>,
@@ -227,12 +259,12 @@ export function calculateChallengeProgress(
 } {
   
   if (challenge.cadence === "END_OF_CHALLENGE") {
-    // Für END_OF_CHALLENGE: Immer nur 1 möglicher Streak, unabhängig von der Challenge-Dauer
+    // For END_OF_CHALLENGE: Always only 1 possible streak, regardless of challenge duration
     const activeProofs = proofs.filter(p => p.isActive);
     const hasCompletedChallenge = activeProofs.length > 0 && checkins.length > 0;
     
     return {
-      totalDays: 1, // Immer nur 1, egal wie lange die Challenge läuft
+      totalDays: 1, // Always only 1, regardless of how long the challenge runs
       completedDays: hasCompletedChallenge ? 1 : 0,
       progressPercentage: hasCompletedChallenge ? 100 : 0
     };
@@ -243,7 +275,7 @@ export function calculateChallengeProgress(
     const endDate = new Date(challenge.endAt);
     const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     
-    // Für DAILY: Zähle einzigartige Check-in-Tage
+    // For DAILY: Count unique check-in days
     const checkinDays = new Set();
     checkins.forEach(checkin => {
       const checkinDate = new Date(checkin.createdAt);
@@ -271,7 +303,7 @@ export function calculateChallengeProgress(
 }
 
 /**
- * Hilfsfunktion: Überprüft ob Challenge aktuell aktiv ist
+ * Helper function: Checks if challenge is currently active
  */
 export function isChallengeActive(
   challenge: Pick<Challenge, 'startAt' | 'endAt'>,
@@ -285,7 +317,7 @@ export function isChallengeActive(
 }
 
 /**
- * Hilfsfunktion: Überprüft ob Challenge beendet ist
+ * Helper function: Checks if challenge has ended
  */
 export function isChallengeEnded(
   challenge: Pick<Challenge, 'endAt'>,
@@ -298,7 +330,7 @@ export function isChallengeEnded(
 }
 
 /**
- * Validiert Challenge-Erstellung/Bearbeitung
+ * Validates challenge creation/editing
  */
 export function validateChallengeData(data: {
   startAt: Date;
@@ -308,7 +340,7 @@ export function validateChallengeData(data: {
   const startTime = data.startAt.getTime();
   const endTime = data.endAt.getTime();
   
-  // End-Datum muss nach Start-Datum liegen
+  // End date must be after start date
   if (endTime <= startTime) {
     return {
       isValid: false,
@@ -317,13 +349,13 @@ export function validateChallengeData(data: {
     };
   }
   
-  // Für DAILY: Mindestens 1 Tag Dauer
+  // For DAILY: At least 1 day duration
   if (data.cadence === "DAILY") {
     const durationDays = Math.ceil((endTime - startTime) / (1000 * 60 * 60 * 24));
     if (durationDays < 1) {
       return {
         isValid: false,
-        error: "Daily Challenge muss mindestens 1 Tag dauern",
+        error: "Daily challenge must last at least 1 day",
         errorCode: "DAILY_TOO_SHORT"
       };
     }
