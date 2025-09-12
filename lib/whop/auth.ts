@@ -86,6 +86,7 @@ export async function getWhopSession(): Promise<WhopSession | null> {
 
 /**
  * Check if user has active subscription to our products
+ * Updated: Both Basic (Free) and Pro ($29.99) plans grant full admin access
  */
 export async function hasActiveSubscription(session: WhopSession): Promise<{
   hasSubscription: boolean;
@@ -93,8 +94,15 @@ export async function hasActiveSubscription(session: WhopSession): Promise<{
   productId?: string;
 }> {
   try {
-    const basicProductId = 'prod_YByUE3J5oT4Fq';
-    const proProductId = 'prod_Tj4T1U7pVwtgb';
+    // 🎯 UPDATED: Your actual Access Pass IDs
+    const basicProductId = 'prod_YByUE3J5oT4Fq';  // Basic (Free for testing)
+    const proProductId = 'prod_Tj4T1U7pVwtgb';    // Pro ($29.99/month)
+    
+    console.log('🔍 Checking subscriptions against your Access Passes:', {
+      basicProductId,
+      proProductId,
+      userMemberships: session.memberships.length
+    });
     
     // Check for Pro subscription first (higher tier)
     const proSubscription = session.memberships.find(m => 
@@ -102,6 +110,7 @@ export async function hasActiveSubscription(session: WhopSession): Promise<{
     );
     
     if (proSubscription) {
+      console.log('✅ Pro Access Pass found - granting admin access');
       return {
         hasSubscription: true,
         plan: 'pro',
@@ -109,18 +118,23 @@ export async function hasActiveSubscription(session: WhopSession): Promise<{
       };
     }
     
-    // Check for Basic subscription
+    // Check for Basic subscription (Free for testing)
     const basicSubscription = session.memberships.find(m => 
       m.productId === basicProductId && m.valid && m.status === 'active'
     );
     
     if (basicSubscription) {
+      console.log('✅ Basic Access Pass found - granting admin access');
       return {
         hasSubscription: true,
         plan: 'basic',
         productId: basicProductId
       };
     }
+    
+    console.log('❌ No valid Access Pass found. Available memberships:', 
+      session.memberships.map(m => ({ productId: m.productId, status: m.status, valid: m.valid }))
+    );
     
     return {
       hasSubscription: false,
@@ -360,36 +374,37 @@ export async function getUserRole(session: WhopSession): Promise<'ADMIN' | 'USER
       console.log('🔍 User owned companies:', ownedCompanies.map((c: any) => ({ id: c.id, name: c.name })));
     }
 
-    // Check if user has PAID for access (active membership/subscription)
-    const hasActiveSubscription = session.memberships.some(m => 
-      m.valid && m.status === 'active'
-    );
+    // Check if user has your Access Passes (updated logic)
+    const subscriptionStatus = await hasActiveSubscription(session);
     
-    console.log('💰 Subscription check:', {
+    console.log('🎯 Role determination:', {
+      userId: session.userId,
       ownsCompanies,
-      hasActiveSubscription,
-      memberships: session.memberships.length
+      hasActiveSubscription: subscriptionStatus.hasSubscription,
+      subscriptionPlan: subscriptionStatus.plan,
+      productId: subscriptionStatus.productId
     });
 
-    // ADMIN ACCESS: Requires BOTH company ownership AND paid subscription
-    if (ownsCompanies && hasActiveSubscription) {
-      console.log('🔑 Company owner WITH subscription - granting ADMIN access');
+    // 🎯 ADMIN ACCESS: Company owner WITH your Access Pass
+    if (ownsCompanies && subscriptionStatus.hasSubscription) {
+      console.log('� ADMIN ACCESS GRANTED! Company owner with Access Pass');
       return 'ADMIN';
     }
     
-    // USER ACCESS: Has subscription but no companies (regular member)
-    if (hasActiveSubscription) {
-      console.log('🔑 User has paid subscription - granting USER access');
+    // 🔑 USER ACCESS: Has Access Pass but no companies (regular member)
+    if (subscriptionStatus.hasSubscription) {
+      console.log('� USER ACCESS: Has Access Pass but no companies');
       return 'USER';
     }
     
-    // NO ACCESS: Company owner without subscription
-    if (ownsCompanies && !hasActiveSubscription) {
-      console.log('� Company owner needs to purchase access pass for admin rights');
+    // ❌ NO ACCESS: Company owner without Access Pass
+    if (ownsCompanies && !subscriptionStatus.hasSubscription) {
+      console.log('💰 Company owner needs to purchase Access Pass for admin rights');
+      console.log('   Available plans: Basic (prod_YByUE3J5oT4Fq) or Pro (prod_Tj4T1U7pVwtgb)');
       return 'USER';
     }
 
-    console.log('❌ User has no subscription - no access');
+    console.log('❌ No Access Pass found - defaulting to USER');
     return 'USER';
   } catch (error) {
     console.error('Error determining user role:', error);
