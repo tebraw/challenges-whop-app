@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 
+// Helper function to determine challenge status
+function getStatus(startAt: string, endAt: string): string {
+  const now = new Date();
+  const start = new Date(startAt);
+  const end = new Date(endAt);
+  
+  if (now < start) return "Upcoming";
+  if (now > end) return "Ended";
+  return "Live";
+}
+
 // Type definitions for better type safety
 interface EnrollmentWithUserAndProofs {
   id: string;
@@ -35,12 +46,64 @@ export async function GET(
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
   try {
+    const { challengeId } = await params;
+
+    // DEV MODE: Allow challenge access for localhost testing
+    if (process.env.NODE_ENV === 'development') {
+      const headersList = await import('next/headers').then(m => m.headers());
+      const host = (await headersList).get('host');
+      
+      if (host && host.includes('localhost')) {
+        console.log('🔧 DEV MODE: Loading challenge for localhost', challengeId);
+        
+        // Get challenge without tenant restrictions in dev mode
+        const challenge = await prisma.challenge.findUnique({
+          where: { id: challengeId },
+          include: {
+            enrollments: {
+              include: {
+                user: true,
+                proofs: true
+              }
+            },
+            _count: {
+              select: {
+                enrollments: true
+              }
+            }
+          }
+        });
+
+        if (!challenge) {
+          return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
+        }
+
+        // Return simplified challenge data for dev mode
+        return NextResponse.json({
+          id: challenge.id,
+          title: challenge.title,
+          description: challenge.description,
+          startAt: challenge.startAt.toISOString(),
+          endAt: challenge.endAt.toISOString(),
+          proofType: challenge.proofType,
+          cadence: challenge.cadence,
+          policy: 'Dev mode policy',
+          status: getStatus(challenge.startAt.toISOString(), challenge.endAt.toISOString()),
+          participants: challenge._count.enrollments,
+          checkins: 0,
+          averageCompletionRate: 0,
+          imageUrl: challenge.imageUrl,
+          rewards: [],
+          leaderboard: [],
+          revenue: { total: 0, conversions: 0 }
+        });
+      }
+    }
+
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const { challengeId } = await params;
 
     // 🔒 TENANT ISOLATION: Only get challenge from same tenant
     const challenge = await prisma.challenge.findUnique({
