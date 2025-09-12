@@ -239,7 +239,6 @@ export async function POST(request: NextRequest) {
       data: {
         experienceId: experienceId || 'admin_created', // Default experienceId for admin-created challenges
         tenantId: tenant.id,
-        whopCompanyId: tenantId, // Experience ID or Company ID
         title: challengeData.title,
         description: challengeData.description,
         startAt: challengeData.startAt,
