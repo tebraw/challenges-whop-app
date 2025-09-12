@@ -13,8 +13,8 @@ model Tenant {
   name          String
   createdAt     DateTime    @default(now())
   whopCompanyId String?     @unique
-  whopHandle    String?     @unique // e.g., "appmafia"
-  whopProductId String?             // e.g., "prod_eDCd1IVJV9gxZ"
+  whopHandle    String?     @unique
+  whopProductId String?
   challenges    Challenge[]
   users         User[]
 }
@@ -26,7 +26,6 @@ model User {
   role               Role              @default(USER)
   createdAt          DateTime          @default(now())
   tenantId           String
-  experienceId       String?           // 🎯 WHOP RULE #1: Experience-based scoping
   whopUserId         String?           @unique
   whopAffiliateLink  String?
   whopCompanyId      String?
@@ -34,6 +33,7 @@ model User {
   membershipId       String?
   subscriptionStatus String            @default("free")
   tier               String            @default("free")
+  experienceId       String?
   createdChallenges  Challenge[]       @relation("Creator")
   winnings           ChallengeWinner[] @relation("Winners")
   enrollments        Enrollment[]
@@ -47,8 +47,6 @@ model User {
 model Challenge {
   id                String            @id @default(cuid())
   tenantId          String
-  experienceId      String?           // 🎯 WHOP RULE #1: Experience-based scoping
-  whopCompanyId     String?           // 🔒 SECURITY: Company isolation
   title             String
   description       String?
   startAt           DateTime
@@ -70,6 +68,8 @@ model Challenge {
   difficulty        String?           @default("BEGINNER")
   isPublic          Boolean           @default(true)
   featured          Boolean           @default(false)
+  experienceId      String?
+  whopCompanyId     String?
   creator           User?             @relation("Creator", fields: [creatorId], references: [id])
   tenant            Tenant            @relation(fields: [tenantId], references: [id])
   challengeOffers   ChallengeOffer[]

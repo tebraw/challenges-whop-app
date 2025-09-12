@@ -77,13 +77,17 @@ export default async function ExperiencePage({ params }: Props) {
         });
       }
       
+      // 🚨 USE AUTOMATIC COMPANY ID EXTRACTION - NO FALLBACKS!
+      const realCompanyId = `biz_${experienceId.replace('exp_', '')}`;
+      
       user = await prisma.user.create({
         data: {
           whopUserId: userId,
           email: `${userId}@whop.com`,
           role: 'USER',
           tenantId: defaultTenant.id,
-          experienceId: experienceId
+          experienceId: experienceId,
+          whopCompanyId: realCompanyId // 🎯 REAL COMPANY ID FROM EXPERIENCE
         }
       });
     }

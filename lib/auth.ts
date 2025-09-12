@@ -273,7 +273,18 @@ export async function getCurrentUser(): Promise<{
       
       if (!user) {
         // Auto-create user for Experience App
-        const userCompanyId = experienceContext.companyId;
+        let userCompanyId = experienceContext.companyId;
+        
+        // 🚨 AUTOMATIC COMPANY ID EXTRACTION - NO FALLBACKS!
+        if (!userCompanyId && experienceContext.experienceId) {
+          userCompanyId = `biz_${experienceContext.experienceId.replace('exp_', '')}`;
+          console.log(`🎯 Extracted company ID from experience: ${experienceContext.experienceId} → ${userCompanyId}`);
+        }
+        
+        if (!userCompanyId) {
+          console.log('❌ FATAL: Cannot determine company ID - no experience ID or company ID available');
+          throw new Error('Cannot determine company ID for user creation');
+        }
         
         // Get or create tenant for this company
         let tenant = await prisma.tenant.findFirst({
