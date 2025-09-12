@@ -195,7 +195,90 @@ export async function upgradeUserToAdmin(session: WhopSession): Promise<void> {
  */
 async function createOrUpdateAdminUser(session: WhopSession): Promise<void> {
   try {
-    // Get user's owned companies to create tenants
+    console.log(`🔍 Getting real company data for user: ${session.userId}`);
+    
+    // REAL COMPANY DETECTION: Use the actual company ID from environment
+    const realCompanyId = process.env.NEXT_PUBLIC_WHOP_COMPANY_ID || 'biz_YoIIIT73rXwrtK';
+    
+    // STRATEGY: All users belong to the same Whop company, but get separate sub-tenants
+    // This ensures proper isolation while maintaining the real company structure
+    const userSpecificTenantId = `${realCompanyId}_user_${session.userId}`;
+    
+    console.log(`🏢 Real Company: ${realCompanyId}`);
+    console.log(`👤 User Tenant: ${userSpecificTenantId}`);
+    
+    // Smart company name extraction for user-specific tenant
+    let userTenantName = `${session.username || session.email.split('@')[0]}'s Workspace`;
+    
+    // Try to extract better name from email domain
+    if (session.email && session.email.includes('@')) {
+      const domain = session.email.split('@')[1];
+      if (domain && !domain.includes('gmail') && !domain.includes('yahoo') && !domain.includes('hotmail')) {
+        const domainName = domain.split('.')[0];
+        const smartName = domainName
+          .replace(/[-_]/g, ' ')
+          .replace(/\b\w/g, l => l.toUpperCase());
+        userTenantName = `${smartName} - ${session.username || session.email.split('@')[0]}`;
+      }
+    }
+    
+    console.log(`📝 User Tenant Name: ${userTenantName}`);
+    
+    // Get or create user-specific tenant within the real company
+    let tenant = await prisma.tenant.findUnique({
+      where: { whopCompanyId: userSpecificTenantId }
+    });
+    
+    if (!tenant) {
+      tenant = await prisma.tenant.create({
+        data: {
+          name: userTenantName,
+          whopCompanyId: userSpecificTenantId
+        }
+      });
+      console.log(`✅ Created user-specific tenant: ${userTenantName} (${userSpecificTenantId})`);
+    }
+
+    // Determine role based on subscription status
+    const hasActiveSubscription = session.memberships.some(m => 
+      m.valid && m.status === 'active'
+    );
+    
+    const userRole = hasActiveSubscription ? 'ADMIN' : 'USER';
+    console.log(`🔑 Assigning role ${userRole} to user with subscription: ${hasActiveSubscription}`);
+
+    await prisma.user.upsert({
+      where: { 
+        whopUserId: session.userId 
+      },
+      update: {
+        email: session.email,
+        name: session.username || session.email.split('@')[0],
+        role: userRole,
+        isFreeTier: !hasActiveSubscription,
+        tier: hasActiveSubscription ? 'premium' : 'basic',
+        whopCompanyId: userSpecificTenantId
+      },
+      create: {
+        email: session.email,
+        name: session.username || session.email.split('@')[0],
+        role: userRole,
+        tenantId: tenant.id,
+        whopUserId: session.userId,
+        whopCompanyId: userSpecificTenantId,
+        isFreeTier: !hasActiveSubscription,
+        subscriptionStatus: hasActiveSubscription ? 'active' : 'inactive',
+        tier: hasActiveSubscription ? 'premium' : 'basic'
+      }
+    });
+
+    if (hasActiveSubscription) {
+      console.log(`✅ User ${session.email} created as ADMIN with active subscription in isolated tenant`);
+    } else {
+      console.log(`👤 User ${session.email} created as USER in isolated tenant - needs subscription for admin rights`);
+    }
+
+    // Legacy fallback: Check for v5 API companies (but use isolated tenants)
     const userCompaniesResponse = await fetch(`https://api.whop.com/v5/users/${session.userId}/companies`, {
       headers: {
         'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
@@ -209,100 +292,45 @@ async function createOrUpdateAdminUser(session: WhopSession): Promise<void> {
       userCompanies = companiesData.data || [];
     }
 
-    // If user owns companies, create/update tenant for each
+    // Process any additional companies (for completeness, but keep isolation)
     if (userCompanies.length > 0) {
+      console.log(`📊 Found ${userCompanies.length} additional companies for user ${session.userId}`);
+      // Log for debugging but don't create additional tenants to maintain isolation
       for (const company of userCompanies) {
-        console.log('🔍 REAL COMPANY DATA FROM WHOP API:', JSON.stringify(company, null, 2));
-        
-        // Get or create tenant for this company
-        let tenant = await prisma.tenant.findFirst({
-          where: { whopCompanyId: company.id }
-        });
-        
-        if (!tenant) {
-          // Create tenant with basic company data
-          tenant = await prisma.tenant.create({
-            data: {
-              name: company.name || `Company ${company.id}`,
-              whopCompanyId: company.id
-            }
-          });
-          console.log(`🆕 Created tenant:`, {
-            name: tenant.name,
-            whopCompanyId: tenant.whopCompanyId
-          });
-        }
-
-        // Create or update user for this tenant
-        // PAY-TO-CREATE: Company owners start as USER until they purchase subscription
-        if (tenant) {
-          await prisma.user.upsert({
-            where: { 
-              whopUserId: session.userId 
-            },
-            update: {
-              email: session.email,
-              name: session.username || session.email.split('@')[0],
-              role: 'USER', // Start as USER - will become ADMIN after subscription
-              whopCompanyId: company.id,
-              isFreeTier: true, // Until they pay
-              tier: 'basic'
-            },
-            create: {
-              email: session.email,
-              name: session.username || session.email.split('@')[0],
-              role: 'USER', // Start as USER - will become ADMIN after subscription
-              tenantId: tenant.id,
-              whopUserId: session.userId,
-              whopCompanyId: company.id,
-              isFreeTier: true, // Until they pay
-              subscriptionStatus: 'inactive', // Until they pay
-              tier: 'basic'
-            }
-          });
-
-          console.log(`� Company owner ${session.email} created as USER - needs to purchase access pass for admin rights`);
-        }
-      }
-    } else {
-      // Fallback: Create default tenant if no companies found
-      let tenant = await prisma.tenant.findFirst();
-      
-      if (!tenant) {
-        tenant = await prisma.tenant.create({
-          data: {
-            name: 'Default Organization'
-          }
+        console.log('📝 Additional company found:', {
+          id: company.id,
+          name: company.name || 'Unknown Company'
         });
       }
-
-      await prisma.user.upsert({
-        where: { 
-          whopUserId: session.userId 
-        },
-        update: {
-          email: session.email,
-          name: session.username || session.email.split('@')[0],
-          role: 'USER',
-          isFreeTier: true,
-          tier: 'basic'
-        },
-        create: {
-          email: session.email,
-          name: session.username || session.email.split('@')[0],
-          role: 'USER',
-          tenantId: tenant.id,
-          whopUserId: session.userId,
-          isFreeTier: true,
-          subscriptionStatus: 'active',
-          tier: 'basic'
-        }
-      });
     }
 
+    console.log(`✅ User ${session.userId} successfully configured with isolated tenant ${userSpecificTenantId}`);
+
   } catch (error) {
-    console.error('Error creating/updating admin user:', error);
+    console.error('❌ Error in createOrUpdateAdminUser:', error);
+    throw error;
   }
+}
+
+/**
+ * Smart company name extraction from email/username
+ */
+function extractSmartCompanyName(email: string, username?: string): string {
+  let companyName = `${username || email.split('@')[0]}'s Company`;
+  
+  // Try to extract company from email domain
+  if (email && email.includes('@')) {
+    const domain = email.split('@')[1];
+    if (domain && !domain.includes('gmail') && !domain.includes('yahoo') && !domain.includes('hotmail')) {
+      const domainName = domain.split('.')[0];
+      const smartName = domainName
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, (l: string) => l.toUpperCase());
+      companyName = `${smartName} (${username || email.split('@')[0]})`;
+    }
+  }
+  
+  return companyName;
 }
 
 /**
