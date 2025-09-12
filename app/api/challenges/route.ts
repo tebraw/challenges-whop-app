@@ -71,12 +71,51 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/challenges - Create new challenge (EXPERIENCE-SCOPED)
+// POST /api/challenges - Create new challenge (EXPERIENCE-SCOPED OR COMPANY OWNER)
 export async function POST(request: NextRequest) {
   try {
     console.log('🚀 Challenge creation API called');
     
-    // WHOP BEST PRACTICE: Extract userId and experienceId
+    // DEV MODE: Allow challenge creation for localhost testing
+    if (process.env.NODE_ENV === 'development') {
+      const headersList = await headers();
+      const host = headersList.get('host');
+      
+      if (host && host.includes('localhost')) {
+        console.log('🔧 DEV MODE: Processing challenge creation for localhost');
+        
+        const body = await request.json();
+        
+        try {
+          // Create challenge with dev tenant ID
+          const newChallenge = await prisma.challenge.create({
+            data: {
+              title: body.title,
+              description: body.description,
+              proofType: body.proofType,
+              rules: body.rules,
+              startAt: new Date(body.startAt),
+              endAt: new Date(body.endAt),
+              imageUrl: body.imageUrl,
+              tenantId: 'dev-tenant-id'
+            }
+          });
+          
+          return NextResponse.json({
+            message: 'Challenge created successfully (dev mode)',
+            challenge: newChallenge
+          });
+        } catch (error) {
+          console.error('DEV MODE challenge creation error:', error);
+          return NextResponse.json({ 
+            error: 'Failed to create challenge (dev mode)',
+            debug: error instanceof Error ? error.message : 'Unknown error'
+          }, { status: 500 });
+        }
+      }
+    }
+    
+    // WHOP BEST PRACTICE: Extract userId and context
     const headersList = await headers();
     
     let userId: string | null = null;
@@ -93,33 +132,56 @@ export async function POST(request: NextRequest) {
     
     const headerCompanyId = headersList.get('x-whop-company-id');
     
-    if (!experienceId) {
+    // 🎯 CRITICAL: Support both Experience Members AND Company Owners
+    const isCompanyOwner = !experienceId && headerCompanyId;
+    const isExperienceMember = experienceId && !headerCompanyId;
+    
+    console.log('🔍 Challenge creation context:', {
+      userId,
+      experienceId,
+      headerCompanyId,
+      isCompanyOwner,
+      isExperienceMember
+    });
+    
+    if (!experienceId && !headerCompanyId) {
       return NextResponse.json({ 
-        error: 'Experience context required',
-        debug: 'No experienceId found in headers'
+        error: 'Context required',
+        debug: 'Neither experienceId nor companyId found - please access via Whop app'
       }, { status: 400 });
     }
 
-    // WHOP AUTH FLOW: Check admin access
-    try {
-      const experienceAccessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
-        userId,
-        experienceId
-      });
-      
-      if (!experienceAccessResult.hasAccess || experienceAccessResult.accessLevel !== 'admin') {
+    // WHOP AUTH FLOW: Check admin access (different for Company Owner vs Experience Member)
+    let hasAdminAccess = false;
+    
+    if (isCompanyOwner) {
+      // Company Owner gets automatic admin access
+      hasAdminAccess = true;
+      console.log('✅ Company Owner admin access granted');
+    } else {
+      // Experience Member needs to be checked
+      try {
+        const experienceAccessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
+          userId,
+          experienceId: experienceId!
+        });
+        
+        hasAdminAccess = experienceAccessResult.hasAccess && experienceAccessResult.accessLevel === 'admin';
+        
+        if (!hasAdminAccess) {
+          return NextResponse.json({ 
+            error: 'Admin access required',
+            debug: `User ${userId} has accessLevel '${experienceAccessResult.accessLevel}' but needs 'admin'`
+          }, { status: 403 });
+        }
+      } catch (error) {
         return NextResponse.json({ 
-          error: 'Admin access required',
-          debug: `User ${userId} has accessLevel '${experienceAccessResult.accessLevel}' but needs 'admin'`
+          error: 'Experience access verification failed'
         }, { status: 403 });
       }
-    } catch (error) {
-      return NextResponse.json({ 
-        error: 'Experience access verification failed'
-      }, { status: 403 });
     }
 
-    console.log('✅ Admin access verified for user:', userId, 'experience:', experienceId);
+    console.log('✅ Admin access verified for user:', userId, 'context:', experienceId || headerCompanyId);
 
     // Parse request body
     const body = await request.json();
@@ -142,30 +204,31 @@ export async function POST(request: NextRequest) {
     const challengeData = validationResult.data;
     console.log('✅ Validation successful:', challengeData);
 
-    // Get or create experience-scoped tenant
+    // Get or create tenant (experience-scoped OR company-scoped)
+    const tenantId = experienceId || headerCompanyId!;
     const tenant = await prisma.tenant.upsert({
-      where: { whopCompanyId: experienceId },
+      where: { whopCompanyId: tenantId },
       create: {
-        name: `Experience ${experienceId}`,
-        whopCompanyId: experienceId
+        name: isCompanyOwner ? `Company ${headerCompanyId}` : `Experience ${experienceId}`,
+        whopCompanyId: tenantId
       },
       update: {
         // Update timestamp for activity tracking
-        name: `Experience ${experienceId}`
+        name: isCompanyOwner ? `Company ${headerCompanyId}` : `Experience ${experienceId}`
       }
     });
 
-    console.log('🏢 Experience tenant ready:', experienceId);
+    console.log('🏢 Tenant ready:', tenantId, '(Company Owner mode:', isCompanyOwner, ')');
 
     // 🎯 Use NEW clean auto-creation system - NO FALLBACKS!
-    const user = await autoCreateOrUpdateUser(userId, experienceId, headerCompanyId);
+    const user = await autoCreateOrUpdateUser(userId, experienceId || null, headerCompanyId || null);
 
-    // Create EXPERIENCE-SCOPED challenge
+    // Create challenge (EXPERIENCE-SCOPED OR COMPANY-SCOPED)
     const newChallenge = await prisma.challenge.create({
       data: {
         tenantId: tenant.id,
-        experienceId: experienceId, // 🎯 EXPERIENCE SCOPING!
-        whopCompanyId: experienceId, // Store experience as company for consistency
+        experienceId: experienceId, // Will be null for Company Owner
+        whopCompanyId: tenantId, // Experience ID or Company ID
         title: challengeData.title,
         description: challengeData.description,
         startAt: challengeData.startAt,
@@ -196,7 +259,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    console.log('✅ Experience-scoped challenge created:', newChallenge.id, 'for experience:', experienceId);
+    console.log('✅ Challenge created:', newChallenge.id, 'for context:', tenantId, '(Company Owner mode:', isCompanyOwner, ')');
 
     return NextResponse.json({ 
       message: 'Challenge created successfully',
