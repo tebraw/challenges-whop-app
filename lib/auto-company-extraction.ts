@@ -153,16 +153,22 @@ export async function autoCreateOrUpdateUser(
     userRole = 'ADMIN';
     userType = 'Company Owner';
   } else if (experienceId) {
-    // Experience Member: Check Whop access level
+    // Experience Member: Check Whop access level OR use simple rule
     try {
       const experienceAccessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
         userId: whopUserId,
         experienceId
       });
       
-      if (experienceAccessResult.hasAccess && experienceAccessResult.accessLevel === 'admin') {
-        userRole = 'ADMIN';
-        userType = 'Experience Admin';
+      if (experienceAccessResult.hasAccess) {
+        // If user has access to experience AND has a valid company ID, make them admin
+        if (experienceAccessResult.accessLevel === 'admin' || realCompanyId.startsWith('biz_')) {
+          userRole = 'ADMIN';
+          userType = experienceAccessResult.accessLevel === 'admin' ? 'Experience Admin' : 'Experience Owner';
+        } else {
+          userRole = 'USER';
+          userType = 'Experience Member';
+        }
       } else {
         userRole = 'USER';
         userType = 'Experience Member';
@@ -170,9 +176,16 @@ export async function autoCreateOrUpdateUser(
       
       console.log(`🔐 Whop Access Check: ${experienceAccessResult.accessLevel} → Role: ${userRole}`);
     } catch (error) {
-      console.log(`⚠️  Could not check Whop access level, defaulting to USER role`);
-      userRole = 'USER';
-      userType = 'Experience Member';
+      console.log(`⚠️  Could not check Whop access level, using fallback logic`);
+      
+      // Fallback: If user has experience + valid company ID, make them admin
+      if (realCompanyId.startsWith('biz_')) {
+        userRole = 'ADMIN';
+        userType = 'Experience Owner (Fallback)';
+      } else {
+        userRole = 'USER';
+        userType = 'Experience Member (Fallback)';
+      }
     }
   }
   

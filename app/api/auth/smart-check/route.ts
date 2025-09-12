@@ -21,6 +21,19 @@ export async function GET(req: NextRequest) {
     console.log('🎭 Current role:', user.role);
     console.log('🏢 Company ID:', user.whopCompanyId);
     
+    // Check for fallback company ID problem
+    if (user.whopCompanyId === '9nmw5yleoqldrxf7n48c') {
+      console.log('🚨 FALLBACK COMPANY ID detected - user needs re-authentication');
+      return NextResponse.json({
+        hasAccess: false,
+        userRole: 'invalid',
+        hasFallbackCompanyId: true,
+        action: 'reauth',
+        message: 'Invalid company ID - please re-authenticate via Whop app',
+        debug: 'Fallback company ID detected - authentication needs refresh'
+      });
+    }
+    
     // If user is already admin, they're good to go
     if (user.role === 'ADMIN') {
       console.log('✅ User is already admin');
