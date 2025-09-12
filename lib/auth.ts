@@ -18,6 +18,26 @@ export async function getCurrentUser(): Promise<{
   
   console.log('🔍 NEW getCurrentUser() called - NO FALLBACKS ALLOWED');
   
+  // DEV MODE: Return mock admin user for localhost testing
+  if (process.env.NODE_ENV === 'development') {
+    const headersList = await headers();
+    const host = headersList.get('host');
+    
+    if (host && host.includes('localhost')) {
+      console.log('🔧 DEV MODE: Using mock admin user for localhost');
+      return {
+        id: 'dev-user-id',
+        email: 'user_eGf5vVjIuGLSy@whop.com',
+        name: 'Dev Admin User',
+        role: 'ADMIN',
+        createdAt: new Date(),
+        whopCompanyId: 'biz_6VbYXNrtpPosFU',
+        whopUserId: 'user_eGf5vVjIuGLSy',
+        tenantId: 'dev-tenant-id'
+      };
+    }
+  }
+  
   try {
     // Get headers
     const headersList = await headers();

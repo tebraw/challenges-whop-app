@@ -6,22 +6,24 @@ export async function GET(req: NextRequest) {
     // For development, always return a valid admin user
     const devUser = {
       id: 'dev-admin-123',
-      email: 'admin@localhost.com',
+      email: 'user_eGf5vVjIuGLSy@whop.com',
       name: 'Dev Admin',
       role: 'ADMIN',
-      whopUserId: 'user_11HQI5KrNDW1S', // Your actual Whop ID
-      whopCompanyId: 'company_dev_123',
+      whopUserId: 'user_eGf5vVjIuGLSy', // Your actual Whop ID
+      whopCompanyId: 'biz_6VbYXNrtpPosFU', // Your actual Company ID
+      tenantId: 'tenant-123',
+      createdAt: new Date(),
       isFreeTier: false,
       tier: 'enterprise'
     };
 
-    console.log('🔧 Development Auth: Returning dev admin user');
+    console.log('🔧 Development Auth: Returning dev admin user for user_eGf5vVjIuGLSy');
     
     return NextResponse.json({
       user: devUser,
       isAdmin: true,
       hasAccess: true,
-      message: 'Development mode - admin access granted'
+      message: 'Development mode - admin access granted with real user data'
     });
 
   } catch (error) {
