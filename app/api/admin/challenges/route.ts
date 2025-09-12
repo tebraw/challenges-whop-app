@@ -47,6 +47,33 @@ export async function GET(request: NextRequest) {
   try {
     console.log('Admin challenges API called');
     
+    // DEV MODE: Return mock data for localhost testing
+    if (process.env.NODE_ENV === 'development') {
+      const headersList = await headers();
+      const host = headersList.get('host');
+      
+      if (host && host.includes('localhost')) {
+        console.log('🔧 DEV MODE: Using mock admin access for localhost');
+        
+        // Return any challenges from the database for testing
+        try {
+          const challenges = await prisma.challenge.findMany({
+            include: {
+              _count: {
+                select: { enrollments: true }
+              }
+            },
+            orderBy: { createdAt: 'desc' }
+          });
+          
+          return createCorsResponse(challenges);
+        } catch (error) {
+          console.error('DEV MODE database error:', error);
+          return createCorsResponse([]);
+        }
+      }
+    }
+    
     // Step 1: Extract user ID with fallbacks
     const headersList = await headers();
     

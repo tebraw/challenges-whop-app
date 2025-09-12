@@ -16,6 +16,15 @@ export default function AdminGuard({ children }: AdminGuardProps) {
   useEffect(() => {
     async function checkAdminAccess() {
       try {
+        // DEV MODE: Allow admin access for localhost
+        if (typeof window !== 'undefined' && window.location.host.includes('localhost')) {
+          console.log('🔧 DEV MODE: Granting admin access for localhost');
+          setIsAdmin(true);
+          setIsChecking(false);
+          setDebugInfo({ devMode: true, host: window.location.host });
+          return;
+        }
+        
         console.log('Starting Whop admin access check...');
         
         // First check experience context and auth status
