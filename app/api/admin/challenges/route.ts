@@ -131,13 +131,15 @@ export async function GET(request: NextRequest) {
     const companyId = companyIdFromHeaders || companyIdFromContext || undefined;
     
     // 🎯 CRITICAL: Company Owner (App Installer) vs Experience Member detection
-    const isCompanyOwner = !experienceId && companyId;
-    const isExperienceMember = experienceId && !companyId;
+    const isCompanyOwner = !!companyId; // Any valid company ID indicates company owner
+    const isExperienceMember = !!experienceId && !companyId;
     
     console.log('🔍 User context:', {
       userId,
       experienceId,
       companyId,
+      companyIdFromHeaders,
+      companyIdFromContext,
       isCompanyOwner,
       isExperienceMember,
       allCompanyHeaders: {
@@ -147,10 +149,10 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    // Company Owner gets admin access without experienceId
+    // Company Owner gets admin access with company ID (from headers OR context)
     if (isCompanyOwner) {
       console.log('🎯 Company Owner detected - granting admin access');
-    } else if (!experienceId) {
+    } else if (!experienceId && !companyId) {
       return createCorsResponse({ 
         error: 'Context required',
         debug: 'Neither experienceId nor companyId found - please access via Whop app',
