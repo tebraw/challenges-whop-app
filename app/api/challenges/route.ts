@@ -5,6 +5,7 @@ import { autoCreateOrUpdateUser } from '@/lib/auto-company-extraction';
 import { challengeAdminSchema } from '@/lib/adminSchema';
 import { headers } from 'next/headers';
 import { whopSdk } from '@/lib/whop-sdk';
+import { getExperienceContext } from '@/lib/whop-experience';
 
 // Generate simple ID - we'll use the built-in cuid() from Prisma
 function generateId() {
@@ -141,7 +142,21 @@ export async function POST(request: NextRequest) {
                         headersList.get('experience-id') ||
                         headersList.get('x-whop-experience-id');
     
-    const headerCompanyId = headersList.get('x-whop-company-id');
+    // Try to get company ID from multiple sources: headers AND experience context
+    const companyIdFromHeaders = headersList.get('x-whop-company-id') || undefined;
+    
+    // BUSINESS DASHBOARD FIX: Also try to extract from experience context
+    const experienceContext = await getExperienceContext();
+    const companyIdFromContext = experienceContext?.companyId;
+    
+    const headerCompanyId = companyIdFromHeaders || companyIdFromContext || undefined;
+    
+    console.log('🔍 CHALLENGE CREATION DEBUG:', {
+      companyIdFromHeaders,
+      companyIdFromContext,
+      finalCompanyId: headerCompanyId,
+      fullExperienceContext: experienceContext
+    });
     
     // 🎯 CRITICAL: Support both Experience Members AND Company Owners
     const isCompanyOwner = !experienceId && !!headerCompanyId;
