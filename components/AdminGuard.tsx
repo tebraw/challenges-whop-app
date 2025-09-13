@@ -193,7 +193,9 @@ export default function AdminGuard({ children }: AdminGuardProps) {
           headers: {
             'Cache-Control': 'no-cache',
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            // 🎯 CRITICAL: Pass company ID for Business Dashboard access
+            ...(contextData.companyId && { 'x-whop-company-id': contextData.companyId })
           },
           credentials: 'include'
         });

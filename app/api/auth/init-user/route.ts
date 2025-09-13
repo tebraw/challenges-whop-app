@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { whopSdk } from '@/lib/whop-sdk';
 import { autoCreateOrUpdateUser } from '@/lib/auto-company-extraction';
+import { getExperienceContext } from '@/lib/whop-experience';
 
 // GET /api/auth/init-user - Initialize user on first access
 export async function GET(request: NextRequest) {
@@ -25,13 +26,21 @@ export async function GET(request: NextRequest) {
     
     const headerCompanyId = headersList.get('x-whop-company-id');
     
+    // BUSINESS DASHBOARD FIX: Also try to extract from experience context
+    const experienceContext = await getExperienceContext();
+    const companyIdFromContext = experienceContext?.companyId;
+    
+    const companyId = headerCompanyId || companyIdFromContext || undefined;
+    
     console.log('🔍 User init context:', {
       userId,
       experienceId,
-      headerCompanyId
+      headerCompanyId,
+      companyIdFromContext,
+      companyId
     });
     
-    if (!experienceId && !headerCompanyId) {
+    if (!experienceId && !companyId) {
       return NextResponse.json({ 
         error: 'Context required',
         debug: 'Neither experienceId nor companyId found - please access via Whop app'
@@ -39,8 +48,8 @@ export async function GET(request: NextRequest) {
     }
 
     // 🎯 Create/update user with proper context
-    const tenantId = experienceId || headerCompanyId!;
-    const user = await autoCreateOrUpdateUser(userId!, experienceId || tenantId, headerCompanyId || null);
+    const tenantId = experienceId || companyId!;
+    const user = await autoCreateOrUpdateUser(userId!, experienceId || tenantId, companyId || null);
 
     console.log('✅ User initialized:', {
       userId: user.whopUserId,

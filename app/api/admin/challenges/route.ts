@@ -128,6 +128,12 @@ export async function GET(request: NextRequest) {
     const experienceContext = await getExperienceContext();
     const companyIdFromContext = experienceContext?.companyId;
     
+    console.log('🔍 ADMIN CHALLENGES DEBUG:', {
+      companyIdFromHeaders,
+      companyIdFromContext,
+      fullExperienceContext: experienceContext
+    });
+    
     const companyId = companyIdFromHeaders || companyIdFromContext || undefined;
     
     // 🎯 CRITICAL: Company Owner (App Installer) vs Experience Member detection
