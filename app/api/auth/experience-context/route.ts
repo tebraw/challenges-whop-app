@@ -58,7 +58,28 @@ export async function GET(request: NextRequest) {
       // Get Experience context
       const experienceContext = await getExperienceContext();
       
-      if (experienceContext.experienceId) {
+      // 🎯 BUSINESS DASHBOARD SPECIAL CASE: If companyId but no experienceId → Business Dashboard access
+      if (experienceContext.companyId && !experienceContext.experienceId) {
+        console.log('🎯 Business Dashboard detected: Company ID without Experience ID');
+        try {
+          const companyAccessResult = await whopSdk.access.checkIfUserHasAccessToCompany({
+            userId,
+            companyId: experienceContext.companyId
+          });
+          
+          whopRole = companyAccessResult.hasAccess ? companyAccessResult.accessLevel : 'no_access';
+          console.log('🎯 Business Dashboard access result:', whopRole);
+        } catch (error) {
+          console.error('🎯 Business Dashboard access check failed:', error);
+          // Assume admin access for Business Dashboard if API fails but we have valid context
+          if (experienceContext.isEmbedded) {
+            console.log('🎯 Business Dashboard fallback: Assuming admin access');
+            whopRole = 'admin';
+          } else {
+            whopRole = 'no_access';
+          }
+        }
+      } else if (experienceContext.experienceId) {
         // Check experience access
         try {
           const accessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
@@ -108,6 +129,10 @@ export async function GET(request: NextRequest) {
     // 🎯 WHOP RULE #2: Map to app roles
     const appRole = mapWhopRoleToAppRole(whopRole);
     
+    // 🎯 BUSINESS DASHBOARD: Don't return error if we have userId but missing context
+    // This is normal for Business Dashboard access
+    const hasValidContext = userId && (experienceContext.experienceId || experienceContext.companyId);
+    
     return createCorsResponse({
       userId,
       experienceId: experienceContext.experienceId,
@@ -115,7 +140,16 @@ export async function GET(request: NextRequest) {
       userRole: appRole,
       whopRole,
       isAuthenticated: !!userId && whopRole !== 'no_access',
-      isEmbedded: experienceContext.isEmbedded
+      isEmbedded: experienceContext.isEmbedded,
+      // Only show error if we truly have no context at all
+      ...((!hasValidContext && userId) ? { 
+        error: "Context required",
+        debug: `Neither experienceId nor companyId found - please access via Whop app`,
+        headers: {
+          "x-experience-id": experienceContext.experienceId || null,
+          "x-whop-experience-id": experienceContext.experienceId || null
+        }
+      } : {})
     });
 
   } catch (error) {
