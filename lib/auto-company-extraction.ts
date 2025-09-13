@@ -5,20 +5,36 @@ import { prisma } from './prisma';
 import { whopSdk } from './whop-sdk';
 
 /**
- * Extract real company ID from experience ID - NO FALLBACKS!
+ * Extract real company ID from experience ID via Whop SDK - NO FALLBACKS!
  */
-function extractCompanyIdFromExperience(experienceId: string): string | null {
+async function extractCompanyIdFromExperience(experienceId: string): Promise<string | null> {
   if (!experienceId || !experienceId.startsWith('exp_')) {
     return null;
   }
-  const experienceCode = experienceId.replace('exp_', '');
-  return `biz_${experienceCode}`;
+  
+  try {
+    // 🎯 ASK WHOP: Get experience details to find the real company ID
+    const experience = await whopSdk.experiences.getExperience({
+      experienceId
+    });
+    
+    if (experience && experience.company && experience.company.id) {
+      console.log(`✅ Experience ${experienceId} belongs to company: ${experience.company.id}`);
+      return experience.company.id;
+    }
+    
+    console.log(`❌ Could not find company ID for experience: ${experienceId}`);
+    return null;
+  } catch (error) {
+    console.log(`❌ Failed to fetch experience details for ${experienceId}:`, error);
+    return null;
+  }
 }
 
 /**
  * Get real company ID - NO FALLBACKS ALLOWED!
  */
-function getRealCompanyId(experienceId: string | null, headerCompanyId: string | null): string | null {
+async function getRealCompanyId(experienceId: string | null, headerCompanyId: string | null): Promise<string | null> {
   // Company Owner: no experience ID, has company ID from headers
   if (!experienceId && headerCompanyId) {
     return headerCompanyId;
@@ -26,7 +42,7 @@ function getRealCompanyId(experienceId: string | null, headerCompanyId: string |
   
   // Experience Member: extract company ID from experience ID
   if (experienceId) {
-    return extractCompanyIdFromExperience(experienceId);
+    return await extractCompanyIdFromExperience(experienceId);
   }
   
   // Validate company ID format instead of hardcoded check
@@ -80,7 +96,7 @@ export async function autoCreateOrUpdateUser(
   console.log(`   Header Company ID: ${headerCompanyId || 'NONE'}`);
   
   // Extract REAL company ID - NO FALLBACKS!
-  const realCompanyId = getRealCompanyId(experienceId, headerCompanyId);
+  const realCompanyId = await getRealCompanyId(experienceId, headerCompanyId);
   
   if (!realCompanyId) {
     // Special case: Company Owner without Experience context
