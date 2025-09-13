@@ -7,6 +7,38 @@ interface AdminGuardProps {
   children: React.ReactNode;
 }
 
+// 🚀 Global Header Injection for Business Dashboard
+function setupGlobalHeaderInjection(companyId: string) {
+  // Override the global fetch to inject headers for admin API calls
+  const originalFetch = window.fetch;
+  
+  window.fetch = function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    // Convert input to string URL for easier checking
+    const url = typeof input === 'string' ? input : 
+                input instanceof URL ? input.toString() : 
+                input.url;
+    
+    // Only inject headers for our admin API calls
+    if (url.includes('/api/admin/') || url.includes('/api/auth/')) {
+      console.log('🎯 Injecting Company ID header for:', url);
+      
+      // Clone the init object to avoid mutating the original
+      const newInit = { ...init };
+      newInit.headers = {
+        ...newInit.headers,
+        'x-whop-company-id': companyId
+      };
+      
+      return originalFetch(input, newInit);
+    }
+    
+    // For all other requests, use the original fetch
+    return originalFetch(input, init);
+  };
+  
+  console.log('✅ Global header injection set up for Company ID:', companyId);
+}
+
 export default function AdminGuard({ children }: AdminGuardProps) {
   const [isChecking, setIsChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -35,6 +67,9 @@ export default function AdminGuard({ children }: AdminGuardProps) {
           if (match) {
             businessDashboardCompanyId = match[1];
             console.log('🎯 Business Dashboard detected, Company ID:', businessDashboardCompanyId);
+            
+            // 🚀 CRITICAL: Set up global header injection for ALL API calls
+            setupGlobalHeaderInjection(businessDashboardCompanyId);
           }
         }
         
