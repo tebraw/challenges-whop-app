@@ -27,14 +27,32 @@ export default function AdminGuard({ children }: AdminGuardProps) {
         
         console.log('Starting Whop admin access check...');
         
+        // 🎯 Business Dashboard Detection
+        const isBusinessDashboard = window.location.href.includes('whop.com/dashboard/');
+        let businessDashboardCompanyId = null;
+        if (isBusinessDashboard) {
+          const match = window.location.href.match(/whop\.com\/dashboard\/(biz_[^\/]+)/);
+          if (match) {
+            businessDashboardCompanyId = match[1];
+            console.log('🎯 Business Dashboard detected, Company ID:', businessDashboardCompanyId);
+          }
+        }
+        
         // First check experience context and auth status
+        const contextHeaders: any = {
+          'Cache-Control': 'no-cache',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        };
+        
+        // Add Business Dashboard Company ID header if detected
+        if (businessDashboardCompanyId) {
+          contextHeaders['x-whop-company-id'] = businessDashboardCompanyId;
+        }
+        
         const contextResponse = await fetch('/api/auth/experience-context', {
           method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
+          headers: contextHeaders,
           credentials: 'include'
         });
         
@@ -188,15 +206,22 @@ export default function AdminGuard({ children }: AdminGuardProps) {
         }
         
         // User is authenticated and has admin role - now test admin API access
+        const adminHeaders: any = {
+          'Cache-Control': 'no-cache',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        };
+        
+        // 🎯 CRITICAL: Use Business Dashboard Company ID or fallback to context
+        const companyIdForAdmin = businessDashboardCompanyId || contextData.companyId;
+        if (companyIdForAdmin) {
+          adminHeaders['x-whop-company-id'] = companyIdForAdmin;
+          console.log('🎯 Adding Company ID to admin call:', companyIdForAdmin);
+        }
+        
         const adminResponse = await fetch('/api/admin/challenges', {
           method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            // 🎯 CRITICAL: Pass company ID for Business Dashboard access
-            ...(contextData.companyId && { 'x-whop-company-id': contextData.companyId })
-          },
+          headers: adminHeaders,
           credentials: 'include'
         });
         console.log('Admin challenges API response status:', adminResponse.status);
