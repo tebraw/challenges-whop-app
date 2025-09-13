@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
     console.log('Experience context API called');
     console.log('Headers available:', {
       experienceId: headersList.get('x-experience-id'),
+      companyId: headersList.get('x-whop-company-id'),
       authorization: headersList.get('authorization') ? 'present' : 'missing'
     });
     
@@ -57,6 +58,15 @@ export async function GET(request: NextRequest) {
     if (userId) {
       // Get Experience context
       const experienceContext = await getExperienceContext();
+      
+      // 🎯 BUSINESS DASHBOARD: Check if AdminGuard passed Company ID via headers
+      const headerCompanyId = headersList.get('x-whop-company-id') || headersList.get('x-company-id');
+      
+      // Prefer AdminGuard header over experience context if available
+      if (headerCompanyId && headerCompanyId.startsWith('biz_')) {
+        experienceContext.companyId = headerCompanyId;
+        console.log('🎯 Using Company ID from AdminGuard headers:', headerCompanyId);
+      }
       
       // 🎯 BUSINESS DASHBOARD SPECIAL CASE: If companyId but no experienceId → Business Dashboard access
       if (experienceContext.companyId && !experienceContext.experienceId) {
