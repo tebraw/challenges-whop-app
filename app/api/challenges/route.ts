@@ -144,8 +144,8 @@ export async function POST(request: NextRequest) {
     const headerCompanyId = headersList.get('x-whop-company-id');
     
     // 🎯 CRITICAL: Support both Experience Members AND Company Owners
-    const isCompanyOwner = !experienceId && headerCompanyId;
-    const isExperienceMember = experienceId && !headerCompanyId;
+    const isCompanyOwner = !experienceId && !!headerCompanyId;
+    const isExperienceMember = !!experienceId && !headerCompanyId;
     
     console.log('🔍 Challenge creation context:', {
       userId,
