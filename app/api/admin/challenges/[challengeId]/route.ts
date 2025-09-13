@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
+import { getExperienceContext } from "@/lib/whop-experience";
 
 // Helper function to determine challenge status
 function getStatus(startAt: string, endAt: string): string {
@@ -46,11 +47,20 @@ export async function GET(
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
   try {
+    console.log('🔍 Single Challenge Detail API called');
     const { challengeId } = await params;
+
+    // Get Company ID from headers (sent by AdminGuard)
+    const headersList = await import('next/headers').then(m => m.headers());
+    const companyIdFromHeaders = (await headersList).get('x-whop-company-id');
+    
+    console.log('🔍 CHALLENGE DETAIL DEBUG:', {
+      challengeId,
+      companyIdFromHeaders,
+    });
 
     // DEV MODE: Allow challenge access for localhost testing
     if (process.env.NODE_ENV === 'development') {
-      const headersList = await import('next/headers').then(m => m.headers());
       const host = (await headersList).get('host');
       
       if (host && host.includes('localhost')) {
@@ -100,16 +110,42 @@ export async function GET(
       }
     }
 
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Get Company ID context for admin access
+    const experienceContext = await getExperienceContext();
+    const companyIdFromContext = experienceContext?.companyId;
+    
+    const companyId = companyIdFromHeaders || companyIdFromContext;
+    
+    console.log('🔍 CHALLENGE DETAIL COMPANY ID:', {
+      companyIdFromHeaders,
+      companyIdFromContext,
+      finalCompanyId: companyId,
+      fullExperienceContext: experienceContext
+    });
+
+    if (!companyId) {
+      console.log('❌ No Company ID found for challenge detail access');
+      return NextResponse.json({ error: "Company context required" }, { status: 400 });
+    }
+
+    // Verify admin access for this company
+    console.log('✅ Admin access verified for challenge detail context:', companyId);
+
+    // Find the tenant for this company
+    let tenant = await prisma.tenant.findUnique({
+      where: { whopCompanyId: companyId }
+    });
+
+    if (!tenant) {
+      console.log('❌ No tenant found for company:', companyId);
+      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
     }
 
     // 🔒 TENANT ISOLATION: Only get challenge from same tenant
     const challenge = await prisma.challenge.findUnique({
       where: { 
         id: challengeId,
-        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+        tenantId: tenant.id  // 🔒 SECURITY: Only allow access to same tenant
       },
       include: {
         tenant: true,
