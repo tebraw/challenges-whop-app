@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { whopSdk } from '@/lib/whop-sdk';
 import { createCorsResponse } from '@/lib/cors';
+import { getExperienceContext } from '@/lib/whop-experience';
 
 // Helper to extract company context
 async function getCompanyFromExperience() {
@@ -118,9 +119,16 @@ export async function GET(request: NextRequest) {
                         headersList.get('x-whop-experience-id') ||
                         undefined;
     
-    const companyId = headersList.get('x-whop-company-id') || 
-                     headersList.get('x-company-id') || 
-                     undefined;
+    // Try to get company ID from multiple sources: headers AND experience context
+    const companyIdFromHeaders = headersList.get('x-whop-company-id') || 
+                                headersList.get('x-company-id') || 
+                                undefined;
+    
+    // BUSINESS DASHBOARD FIX: Also try to extract from experience context
+    const experienceContext = await getExperienceContext();
+    const companyIdFromContext = experienceContext?.companyId;
+    
+    const companyId = companyIdFromHeaders || companyIdFromContext || undefined;
     
     // 🎯 CRITICAL: Company Owner (App Installer) vs Experience Member detection
     const isCompanyOwner = !experienceId && companyId;
@@ -131,7 +139,12 @@ export async function GET(request: NextRequest) {
       experienceId,
       companyId,
       isCompanyOwner,
-      isExperienceMember
+      isExperienceMember,
+      allCompanyHeaders: {
+        'x-whop-company-id': headersList.get('x-whop-company-id'),
+        'x-company-id': headersList.get('x-company-id'),
+        'company-id': headersList.get('company-id')
+      }
     });
     
     // Company Owner gets admin access without experienceId
