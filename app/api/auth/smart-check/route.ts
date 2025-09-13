@@ -22,15 +22,16 @@ export async function GET(req: NextRequest) {
     console.log('🏢 Company ID:', user.whopCompanyId);
     
     // Check for fallback company ID problem
-    if (user.whopCompanyId === '9nmw5yleoqldrxf7n48c') {
-      console.log('🚨 FALLBACK COMPANY ID detected - user needs re-authentication');
+    // Check for invalid company ID format instead of hardcoded
+    if (!user.whopCompanyId || !user.whopCompanyId.startsWith('biz_') || user.whopCompanyId.length < 10) {
+      console.log('🚨 INVALID COMPANY ID detected - user needs re-authentication');
       return NextResponse.json({
         hasAccess: false,
         userRole: 'invalid',
         hasFallbackCompanyId: true,
         action: 'reauth',
         message: 'Invalid company ID - please re-authenticate via Whop app',
-        debug: 'Fallback company ID detected - authentication needs refresh'
+        debug: 'Invalid company ID format detected - authentication needs refresh'
       });
     }
     

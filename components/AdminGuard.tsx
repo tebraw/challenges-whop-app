@@ -64,11 +64,31 @@ export default function AdminGuard({ children }: AdminGuardProps) {
         // Skip role check if we have userId but role mapping failed
         const shouldSkipRoleCheck = contextData.userId && contextData.userRole === 'guest';
         
-        // Check for fallback company ID problem
-        const hasFallbackCompanyId = contextData.companyId === '9nmw5yleoqldrxf7n48c';
+        // Check for fallback company ID problem - REMOVED hardcoded check
+        // Instead, check if company ID looks suspicious (too short, wrong format, etc.)
+        const hasFallbackCompanyId = !contextData.companyId || 
+                                     contextData.companyId.length < 10 || 
+                                     !contextData.companyId.startsWith('biz_');
         
         if (hasFallbackCompanyId) {
-          console.log('🚨 Fallback Company ID detected - trying to clean up and re-authenticate');
+          console.log('🚨 Fallback Company ID detected - checking if this is Business Dashboard access');
+          
+          // SPECIAL CASE: Business Dashboard access often has fallback company ID
+          // but the user is still a valid company owner. Let's try to extract the real company ID.
+          const currentUrl = window.location.href;
+          
+          // Extract real company ID from Business Dashboard URL pattern
+          const businessDashboardMatch = currentUrl.match(/whop\.com\/dashboard\/(biz_[^\/]+)/);
+          if (businessDashboardMatch) {
+            const realCompanyId = businessDashboardMatch[1];
+            console.log(`🎯 Business Dashboard detected! Real company ID: ${realCompanyId}`);
+            
+            // Update context with real company ID and skip fallback cleanup
+            contextData.companyId = realCompanyId;
+            console.log('🔄 Using real company ID for admin access...');
+            // Allow the normal admin flow to continue
+          } else {
+            console.log('🚨 Genuine fallback Company ID - trying to clean up and re-authenticate');
           
           // First, try to clean up the fallback user
           try {
@@ -118,21 +138,22 @@ export default function AdminGuard({ children }: AdminGuardProps) {
                 }
               }
             }
-          } catch (cleanupError) {
-            console.error('❌ Cleanup failed:', cleanupError);
+            } catch (cleanupError) {
+              console.error('❌ Cleanup failed:', cleanupError);
+            }
+            
+            // If cleanup didn't work, show error
+            setDebugInfo({ 
+              success: false, 
+              error: 'Fallback Company ID detected',
+              debug: 'Please access the app via the Whop experience or app download to get proper authentication',
+              status: 400,
+              experienceContext: contextData,
+              fallbackCompanyId: true,
+              recommendation: 'Access via Whop app or experience to fix authentication'
+            });
+            return;
           }
-          
-          // If cleanup didn't work, show error
-          setDebugInfo({ 
-            success: false, 
-            error: 'Fallback Company ID detected',
-            debug: 'Please access the app via the Whop experience or app download to get proper authentication',
-            status: 400,
-            experienceContext: contextData,
-            fallbackCompanyId: true,
-            recommendation: 'Access via Whop app or experience to fix authentication'
-          });
-          return;
         }
         
         if (!shouldSkipRoleCheck && contextData.userRole !== 'ersteller') {

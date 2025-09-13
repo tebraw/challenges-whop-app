@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
     
-    // Check if user has fallback company ID
-    if (user.whopCompanyId !== '9nmw5yleoqldrxf7n48c') {
+    // Check if user has valid company ID format
+    if (user.whopCompanyId && user.whopCompanyId.startsWith('biz_') && user.whopCompanyId.length >= 10) {
       return NextResponse.json({
         success: true,
         message: 'User has valid company ID',
@@ -129,8 +129,8 @@ export async function GET(request: NextRequest) {
         role: user.role,
         createdAt: user.createdAt
       },
-      hasFallbackCompanyId: user.whopCompanyId === '9nmw5yleoqldrxf7n48c',
-      needsCleanup: user.whopCompanyId === '9nmw5yleoqldrxf7n48c'
+      hasFallbackCompanyId: !user.whopCompanyId || !user.whopCompanyId.startsWith('biz_') || user.whopCompanyId.length < 10,
+      needsCleanup: !user.whopCompanyId || !user.whopCompanyId.startsWith('biz_') || user.whopCompanyId.length < 10
     });
     
   } catch (error) {

@@ -29,9 +29,9 @@ function getRealCompanyId(experienceId: string | null, headerCompanyId: string |
     return extractCompanyIdFromExperience(experienceId);
   }
   
-  // Special case: Check if we have a fallback company ID that we should reject
-  if (headerCompanyId === '9nmw5yleoqldrxf7n48c') {
-    console.log('🚨 BLOCKED: Fallback company ID detected - rejecting!');
+  // Validate company ID format instead of hardcoded check
+  if (headerCompanyId && (!headerCompanyId.startsWith('biz_') || headerCompanyId.length < 10)) {
+    console.log('🚨 BLOCKED: Invalid company ID format detected - rejecting!');
     return null;
   }
   
