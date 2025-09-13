@@ -35,6 +35,12 @@ async function extractCompanyIdFromExperience(experienceId: string): Promise<str
  * Get real company ID - NO FALLBACKS ALLOWED!
  */
 async function getRealCompanyId(experienceId: string | null, headerCompanyId: string | null): Promise<string | null> {
+  // 🎯 BUSINESS DASHBOARD FIX: If both are identical and valid Company ID → Business Dashboard access
+  if (experienceId && headerCompanyId && experienceId === headerCompanyId && experienceId.startsWith('biz_')) {
+    console.log('🎯 Business Dashboard detected: identical Company IDs in experience and header');
+    return headerCompanyId;
+  }
+  
   // Company Owner: no experience ID, has company ID from headers
   if (!experienceId && headerCompanyId) {
     return headerCompanyId;
