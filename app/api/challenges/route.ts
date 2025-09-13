@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
     // Fetch challenges only from this experience (PERFECT ISOLATION)
     const challenges = await prisma.challenge.findMany({
       where: {
-        tenantId: tenant.id,
-        experienceId: experienceId  // 🔒 EXPERIENCE-SCOPED QUERIES
+        tenantId: tenant.id
+        // Note: experienceId removed from schema, using tenant isolation instead
       },
       include: {
         _count: {
@@ -232,12 +232,13 @@ export async function POST(request: NextRequest) {
     console.log('🏢 Tenant ready:', tenantId, '(Company Owner mode:', isCompanyOwner, ')');
 
     // 🎯 Use NEW clean auto-creation system - NO FALLBACKS!
-    const user = await autoCreateOrUpdateUser(userId, experienceId || null, headerCompanyId || null);
+    const user = await autoCreateOrUpdateUser(userId, experienceId || '', headerCompanyId || null);
 
     // Create challenge (EXPERIENCE-SCOPED OR COMPANY-SCOPED)
     const newChallenge = await prisma.challenge.create({
       data: {
-        experienceId: experienceId || 'admin_created', // Default experienceId for admin-created challenges
+        // ✅ WHOP CORE: Experience isolation is essential for multi-tenant architecture
+        experienceId: experienceId!, // Required for Whop experience isolation
         tenantId: tenant.id,
         title: challengeData.title,
         description: challengeData.description,

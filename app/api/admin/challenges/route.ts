@@ -267,7 +267,7 @@ export async function GET(request: NextRequest) {
 
     return createCorsResponse({
       success: true,
-      challenges: challenges.map(challenge => ({
+      challenges: challenges.map((challenge: any) => ({
         id: challenge.id,
         title: challenge.title,
         description: challenge.description,

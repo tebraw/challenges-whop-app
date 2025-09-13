@@ -45,6 +45,7 @@ model User {
 model Challenge {
   id                String            @id @default(cuid())
   tenantId          String
+  experienceId      String            // ✅ WHOP CORE: Experience isolation
   title             String
   description       String?
   startAt           DateTime
@@ -62,11 +63,9 @@ model Challenge {
   monetizationRules Json?
   targetAudience    Json?
   marketingTags     Json?
-  category          String?           @default("general")
   difficulty        String?           @default("BEGINNER")
   isPublic          Boolean           @default(true)
   featured          Boolean           @default(false)
-  experienceId      String
   whopCompanyId     String?
   creator           User?             @relation("Creator", fields: [creatorId], references: [id])
   tenant            Tenant            @relation(fields: [tenantId], references: [id])
@@ -143,8 +142,8 @@ model OfferConversion {
 }
 
 model Enrollment {
-  experienceId String
   id          String    @id @default(cuid())
+  experienceId String   // ✅ WHOP CORE: Experience isolation
   challengeId String
   userId      String
   joinedAt    DateTime  @default(now())
@@ -158,8 +157,8 @@ model Enrollment {
 }
 
 model Proof {
-  experienceId String
   id           String     @id @default(cuid())
+  experienceId String     // ✅ WHOP CORE: Experience isolation
   enrollmentId String
   type         ProofType
   url          String?
