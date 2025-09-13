@@ -322,12 +322,44 @@ export async function PUT(
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    console.log('✏️ Challenge UPDATE API called');
+    const { challengeId } = await params;
+
+    // Get Company ID from headers (sent by AdminGuard)
+    const headersList = await import('next/headers').then(m => m.headers());
+    const companyIdFromHeaders = (await headersList).get('x-whop-company-id');
+    
+    // Get Company ID context for admin access
+    const experienceContext = await getExperienceContext();
+    const companyIdFromContext = experienceContext?.companyId;
+    
+    const companyId = companyIdFromHeaders || companyIdFromContext;
+    
+    console.log('✏️ CHALLENGE UPDATE DEBUG:', {
+      challengeId,
+      companyIdFromHeaders,
+      companyIdFromContext,
+      finalCompanyId: companyId
+    });
+
+    if (!companyId) {
+      console.log('❌ No Company ID found for challenge update access');
+      return NextResponse.json({ error: "Company context required" }, { status: 400 });
     }
 
-    const { challengeId } = await params;
+    // Verify admin access for this company
+    console.log('✅ Admin access verified for challenge update context:', companyId);
+
+    // Find the tenant for this company
+    let tenant = await prisma.tenant.findUnique({
+      where: { whopCompanyId: companyId }
+    });
+
+    if (!tenant) {
+      console.log('❌ No tenant found for company:', companyId);
+      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+    }
+
     const data = await request.json();
 
     // Enhanced handling: Always save in object format to maintain both policy and rewards
@@ -345,7 +377,10 @@ export async function PUT(
     }
 
     const updatedChallenge = await prisma.challenge.update({
-      where: { id: challengeId },
+      where: { 
+        id: challengeId,
+        tenantId: tenant.id  // 🔒 SECURITY: Only allow access to same tenant
+      },
       data: {
         title: data.title,
         description: data.description,
