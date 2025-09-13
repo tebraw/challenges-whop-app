@@ -391,16 +391,50 @@ export async function DELETE(
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    console.log('🗑️ Challenge DELETE API called');
     const { challengeId } = await params;
 
-    // Check if challenge exists and user has permission
+    // Get Company ID from headers (sent by AdminGuard)
+    const headersList = await import('next/headers').then(m => m.headers());
+    const companyIdFromHeaders = (await headersList).get('x-whop-company-id');
+    
+    // Get Company ID context for admin access
+    const experienceContext = await getExperienceContext();
+    const companyIdFromContext = experienceContext?.companyId;
+    
+    const companyId = companyIdFromHeaders || companyIdFromContext;
+    
+    console.log('🗑️ CHALLENGE DELETE DEBUG:', {
+      challengeId,
+      companyIdFromHeaders,
+      companyIdFromContext,
+      finalCompanyId: companyId
+    });
+
+    if (!companyId) {
+      console.log('❌ No Company ID found for challenge delete access');
+      return NextResponse.json({ error: "Company context required" }, { status: 400 });
+    }
+
+    // Verify admin access for this company
+    console.log('✅ Admin access verified for challenge delete context:', companyId);
+
+    // Find the tenant for this company
+    let tenant = await prisma.tenant.findUnique({
+      where: { whopCompanyId: companyId }
+    });
+
+    if (!tenant) {
+      console.log('❌ No tenant found for company:', companyId);
+      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+    }
+
+    // Check if challenge exists and belongs to this tenant
     const challenge = await prisma.challenge.findUnique({
-      where: { id: challengeId },
+      where: { 
+        id: challengeId,
+        tenantId: tenant.id  // 🔒 SECURITY: Only allow access to same tenant
+      },
       include: {
         tenant: true,
       },
@@ -408,17 +442,6 @@ export async function DELETE(
 
     if (!challenge) {
       return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
-    }
-
-    // Check if user has permission to delete this challenge
-    // Only admin users or users from the same tenant can delete challenges
-    const userTenant = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { tenantId: true }
-    });
-    
-    if (user.role !== 'ADMIN' && (!userTenant || challenge.tenantId !== userTenant.tenantId)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Delete in correct order to respect foreign key constraints

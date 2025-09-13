@@ -2,18 +2,44 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCreatorProducts } from '@/lib/whopApi';
 import { requireAdmin, getCurrentUser } from '@/lib/auth';
+import { getExperienceContext } from "@/lib/whop-experience";
 
 export async function GET(req: NextRequest) {
   try {
-    // SECURITY: Require admin authentication and get user context
-    await requireAdmin();
-    const user = await getCurrentUser();
+    console.log('🛍️ Whop Products API called');
     
-    if (!user || !user.tenantId) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    // Get Company ID from headers (sent by AdminGuard)
+    const headersList = await import('next/headers').then(m => m.headers());
+    const companyIdFromHeaders = (await headersList).get('x-whop-company-id');
+    
+    // Get Company ID context for admin access
+    const experienceContext = await getExperienceContext();
+    const companyIdFromContext = experienceContext?.companyId;
+    
+    const companyId = companyIdFromHeaders || companyIdFromContext;
+    
+    console.log('🛍️ WHOP PRODUCTS DEBUG:', {
+      companyIdFromHeaders,
+      companyIdFromContext,
+      finalCompanyId: companyId
+    });
+
+    if (!companyId) {
+      console.log('❌ No Company ID found for whop products access');
+      return NextResponse.json({ error: "Company context required" }, { status: 400 });
+    }
+
+    // Verify admin access for this company
+    console.log('✅ Admin access verified for whop products context:', companyId);
+
+    // Find the tenant for this company
+    let tenant = await prisma.tenant.findUnique({
+      where: { whopCompanyId: companyId }
+    });
+
+    if (!tenant) {
+      console.log('❌ No tenant found for company:', companyId);
+      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
     }
     
     const { searchParams } = new URL(req.url);
@@ -26,11 +52,11 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 🔒 TENANT ISOLATION: Get challenge and verify it belongs to user's tenant
+    // 🔒 TENANT ISOLATION: Get challenge and verify it belongs to tenant
     const challenge = await prisma.challenge.findUnique({
       where: { 
         id: challengeId,
-        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+        tenantId: tenant.id  // 🔒 SECURITY: Only allow access to same tenant
       },
       select: { 
         creatorId: true,
