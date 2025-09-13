@@ -155,6 +155,15 @@ export async function POST(request: NextRequest) {
       isExperienceMember
     });
     
+    console.log('🔍 ALL HEADERS RECEIVED:', {
+      'x-whop-company-id': headersList.get('x-whop-company-id'),
+      'x-experience-id': headersList.get('x-experience-id'),
+      'experience-id': headersList.get('experience-id'),
+      'x-whop-experience-id': headersList.get('x-whop-experience-id'),
+      'authorization': headersList.get('authorization') ? 'Present' : 'Missing',
+      'user-agent': headersList.get('user-agent')
+    });
+    
     if (!experienceId && !headerCompanyId) {
       return NextResponse.json({ 
         error: 'Context required',
@@ -217,6 +226,15 @@ export async function POST(request: NextRequest) {
 
     // Get or create tenant (experience-scoped OR company-scoped)
     const tenantId = experienceId || headerCompanyId!;
+    
+    console.log('🏢 TENANT CREATION DEBUG:', {
+      experienceId,
+      headerCompanyId,
+      finalTenantId: tenantId,
+      isCompanyOwner,
+      willCreateCompanyTenant: isCompanyOwner
+    });
+    
     const tenant = await prisma.tenant.upsert({
       where: { whopCompanyId: tenantId },
       create: {

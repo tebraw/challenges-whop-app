@@ -86,6 +86,32 @@ export default function AdminGuard({ children }: AdminGuardProps) {
             // Update context with real company ID and skip fallback cleanup
             contextData.companyId = realCompanyId;
             console.log('🔄 Using real company ID for admin access...');
+            
+            // 🚀 CRITICAL: Initialize user in database for Business Dashboard access
+            try {
+              console.log('🔄 Initializing user in database...');
+              const initUserResponse = await fetch('/api/auth/init-user', {
+                method: 'GET',
+                headers: {
+                  'Cache-Control': 'no-cache',
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'x-whop-company-id': realCompanyId
+                },
+                credentials: 'include'
+              });
+              
+              if (initUserResponse.ok) {
+                const initData = await initUserResponse.json();
+                console.log('✅ User initialized successfully:', initData.user);
+              } else {
+                const errorData = await initUserResponse.json();
+                console.log('⚠️  User initialization failed:', errorData);
+              }
+            } catch (initError) {
+              console.log('⚠️  User initialization error:', initError);
+            }
+            
             // Allow the normal admin flow to continue
           } else {
             console.log('🚨 Genuine fallback Company ID - trying to clean up and re-authenticate');
