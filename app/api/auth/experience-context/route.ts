@@ -90,6 +90,16 @@ export async function GET(request: NextRequest) {
     // 🎯 FALLBACK: If user is in Whop iframe with company context but API calls failed
     // Assume potential admin access for company owners
     const experienceContext = await getExperienceContext();
+    
+    console.log('🔍 FALLBACK CHECK:', {
+      hasUserId: !!userId,
+      hasCompanyId: !!experienceContext.companyId,
+      companyId: experienceContext.companyId,
+      isEmbedded: experienceContext.isEmbedded,
+      currentWhopRole: whopRole,
+      shouldTriggerFallback: userId && experienceContext.companyId && experienceContext.isEmbedded && whopRole === 'no_access'
+    });
+    
     if (userId && experienceContext.companyId && experienceContext.isEmbedded && whopRole === 'no_access') {
       console.log('🔄 Whop iframe detected with company context - assuming admin access');
       whopRole = 'admin'; // Fallback assumption for company owners in iframe
