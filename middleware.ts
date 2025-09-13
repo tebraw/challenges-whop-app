@@ -30,12 +30,13 @@ export default function middleware(request: NextRequest) {
     console.log('🎯 Company owner detected:', companyId);
     
     // Let them through to main app - auth system will handle subscription check
-    // Only redirect to plans if they specifically try to access admin creation features
-    // The /admin page itself should be accessible to show subscription status
+    // Only redirect to plans if they specifically try to access dashboard creation features
+    // The /dashboard page itself should be accessible to show subscription status
     
-    if (pathname.startsWith('/admin/new') || 
-        pathname.startsWith('/admin/edit') || 
-        pathname.startsWith('/admin/c/')) {
+    if (pathname.startsWith('/dashboard/') && (
+        pathname.includes('/new') || 
+        pathname.includes('/edit') || 
+        pathname.includes('/c/'))) {
       console.log('🔒 Company owner trying to create/edit, checking subscription...');
       
       const url = request.nextUrl.clone();
@@ -49,7 +50,7 @@ export default function middleware(request: NextRequest) {
     }
   }
   
-  // Allow admin routes to be handled by AdminGuard component instead of middleware
+  // Allow dashboard routes to be handled by AdminGuard component instead of middleware
   // The AdminGuard will handle the authentication check properly
   
   // SECURITY: Only allow development auth if explicitly enabled

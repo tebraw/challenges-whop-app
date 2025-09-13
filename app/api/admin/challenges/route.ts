@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
       }, 400);
     }
 
-    console.log(`� Experience-based isolation: ${experienceId}`);
+    console.log('🎭 Experience-based isolation:', experienceId);
 
     // Step 3: WHOP RECOMMENDED AUTH FLOW (skip for Company Owners)
     let hasAdminAccess = false;
@@ -229,13 +229,10 @@ export async function GET(request: NextRequest) {
     // Step 5: CONTEXT-SCOPED CHALLENGE QUERIES
     const whereClause = isCompanyOwner 
       ? {
-          tenantId: tenant.id,
-          // Company Owner sees all challenges in their company
-          whopCompanyId: companyId
+          tenantId: tenant.id
         }
       : {
           tenantId: tenant.id,
-          // Experience Member sees only their experience challenges
           experienceId: experienceId
         };
 
@@ -262,8 +259,8 @@ export async function GET(request: NextRequest) {
         title: challenge.title,
         description: challenge.description,
         imageUrl: challenge.imageUrl,
-        category: challenge.category,
-        difficulty: challenge.difficulty,
+        category: challenge.whopCategoryName || 'general',
+        difficulty: (challenge.rules as any)?.difficulty || 'BEGINNER',
         startDate: challenge.startAt,
         endDate: challenge.endAt,
         enrollmentCount: challenge._count.enrollments,
