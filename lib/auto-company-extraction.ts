@@ -55,9 +55,7 @@ async function getOrCreateTenant(companyId: string, experienceId: string | null)
     tenant = await prisma.tenant.create({
       data: {
         name: tenantName,
-        whopCompanyId: companyId,
-        whopHandle: experienceId ? `exp-${experienceId.replace('exp_', '')}` : `company-${companyId.replace('biz_', '')}`,
-        whopProductId: experienceId ? `prod_${experienceId.replace('exp_', '')}` : null
+        whopCompanyId: companyId
       }
     });
     
@@ -106,8 +104,7 @@ export async function autoCreateOrUpdateUser(
             update: {
               whopCompanyId: headerCompanyId,
               role: 'ADMIN', // Company Owner = Admin
-              tenantId: tenant.id,
-              experienceId: null
+              tenantId: tenant.id
             },
             create: {
               email: `owner_${whopUserId.slice(-6)}@whop.com`,
@@ -115,8 +112,7 @@ export async function autoCreateOrUpdateUser(
               role: 'ADMIN',
               whopCompanyId: headerCompanyId,
               whopUserId: whopUserId,
-              tenantId: tenant.id,
-              experienceId: null
+              tenantId: tenant.id
             },
             select: {
               id: true,
@@ -200,8 +196,7 @@ export async function autoCreateOrUpdateUser(
     update: {
       whopCompanyId: realCompanyId,
       role: userRole,
-      tenantId: tenant.id,
-      experienceId: experienceId || null
+      tenantId: tenant.id
     },
     create: {
       email: `user_${whopUserId.slice(-6)}@whop.com`,
@@ -209,8 +204,7 @@ export async function autoCreateOrUpdateUser(
       role: userRole,
       whopCompanyId: realCompanyId,
       whopUserId: whopUserId,
-      tenantId: tenant.id,
-      experienceId: experienceId || null
+      tenantId: tenant.id
     },
     select: {
       id: true,
