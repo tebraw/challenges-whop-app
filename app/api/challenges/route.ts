@@ -231,14 +231,14 @@ export async function POST(request: NextRequest) {
 
     console.log('🏢 Tenant ready:', tenantId, '(Company Owner mode:', isCompanyOwner, ')');
 
-    // 🎯 Use NEW clean auto-creation system - NO FALLBACKS!
-    const user = await autoCreateOrUpdateUser(userId, experienceId || '', headerCompanyId || null);
+    // 🎯 Use NEW clean auto-creation system - supports both modes!
+    const user = await autoCreateOrUpdateUser(userId, experienceId || tenantId, headerCompanyId || null);
 
     // Create challenge (EXPERIENCE-SCOPED OR COMPANY-SCOPED)
     const newChallenge = await prisma.challenge.create({
       data: {
-        // ✅ WHOP CORE: Experience isolation is essential for multi-tenant architecture
-        experienceId: experienceId!, // Required for Whop experience isolation
+        // ✅ WHOP CORE: Experience isolation - use tenantId as experienceId for company owners
+        experienceId: experienceId || tenantId, // Use actual experienceId or fallback to tenantId
         tenantId: tenant.id,
         title: challengeData.title,
         description: challengeData.description,
