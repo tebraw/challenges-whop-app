@@ -116,35 +116,16 @@ export async function updateTenantWithEnhancedData(
     return;
   }
 
-  // Prüfe welche Daten fehlen
-  const needsProductId = !tenant.whopProductId;
+  // Prüfe welche Daten fehlen - keine Daten mehr nötig
+  console.log('✅ Tenant already has complete data');
+  return;
 
-  if (!needsProductId) {
-    console.log('✅ Tenant already has complete data');
-    return;
-  }
+  // Lade erweiterte Daten (nicht mehr verwendet)
+  // const enhancedData = await loadEnhancedCompanyData(companyId);
 
-  console.log(`📋 Missing data: ${needsProductId ? 'productId' : ''}`);
+  // Bereite Update-Daten vor (nicht mehr verwendet)
+  // const updateData: any = {};
 
-  // Lade erweiterte Daten
-  const enhancedData = await loadEnhancedCompanyData(companyId);
-
-  // Bereite Update-Daten vor
-  const updateData: any = {};
-  
-  if (needsProductId && enhancedData.productId) {
-    updateData.whopProductId = enhancedData.productId;
-  }
-
-  // Update durchführen wenn neue Daten verfügbar
-  if (Object.keys(updateData).length > 0) {
-    await prisma.tenant.update({
-      where: { id: tenantId },
-      data: updateData
-    });
-    
-    console.log('✅ Tenant updated with enhanced data:', updateData);
-  } else {
-    console.log('ℹ️ No new data available to update tenant');
-  }
+  // Update durchführen wenn neue Daten verfügbar (nicht mehr verwendet)
+  console.log('ℹ️ Enhanced data loading disabled - no fields to update');
 }

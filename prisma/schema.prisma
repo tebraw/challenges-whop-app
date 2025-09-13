@@ -13,7 +13,6 @@ model Tenant {
   name          String
   createdAt     DateTime    @default(now())
   whopCompanyId String?     @unique
-  whopProductId String?
   challenges    Challenge[]
   users         User[]
 }
