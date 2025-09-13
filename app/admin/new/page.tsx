@@ -82,9 +82,30 @@ function NewChallengePageContent() {
 
     setSaving(true);
     try {
+      // 🎯 CRITICAL: Extract company ID for Business Dashboard access
+      let companyId: string | null = null;
+      
+      // Check if we're in Business Dashboard context
+      const currentUrl = window.location.href;
+      const businessDashboardMatch = currentUrl.match(/whop\.com\/dashboard\/(biz_[^\/]+)/);
+      if (businessDashboardMatch) {
+        companyId = businessDashboardMatch[1];
+        console.log(`🎯 Business Dashboard context detected! Company ID: ${companyId}`);
+      }
+      
+      // Prepare headers with company ID if available
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json"
+      };
+      
+      if (companyId) {
+        headers["x-whop-company-id"] = companyId;
+        console.log(`📤 Sending x-whop-company-id header: ${companyId}`);
+      }
+
       const response = await fetch("/api/challenges", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(challengeData)
       });
 
