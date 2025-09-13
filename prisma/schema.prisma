@@ -13,7 +13,6 @@ model Tenant {
   name          String
   createdAt     DateTime    @default(now())
   whopCompanyId String?     @unique
-  whopHandle    String?     @unique
   whopProductId String?
   challenges    Challenge[]
   users         User[]
@@ -33,7 +32,6 @@ model User {
   membershipId       String?
   subscriptionStatus String            @default("free")
   tier               String            @default("free")
-  experienceId       String?
   createdChallenges  Challenge[]       @relation("Creator")
   winnings           ChallengeWinner[] @relation("Winners")
   enrollments        Enrollment[]
@@ -41,7 +39,6 @@ model User {
   tenant             Tenant            @relation(fields: [tenantId], references: [id])
   whopProducts       WhopProduct[]     @relation("CreatorProducts")
 
-  @@index([experienceId])
   @@index([whopCompanyId])
   @@index([tenantId])
 }

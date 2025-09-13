@@ -117,25 +117,20 @@ export async function updateTenantWithEnhancedData(
   }
 
   // Prüfe welche Daten fehlen
-  const needsHandle = !tenant.whopHandle;
   const needsProductId = !tenant.whopProductId;
 
-  if (!needsHandle && !needsProductId) {
+  if (!needsProductId) {
     console.log('✅ Tenant already has complete data');
     return;
   }
 
-  console.log(`📋 Missing data: ${needsHandle ? 'handle' : ''} ${needsProductId ? 'productId' : ''}`);
+  console.log(`📋 Missing data: ${needsProductId ? 'productId' : ''}`);
 
   // Lade erweiterte Daten
   const enhancedData = await loadEnhancedCompanyData(companyId);
 
   // Bereite Update-Daten vor
   const updateData: any = {};
-  
-  if (needsHandle && enhancedData.handle) {
-    updateData.whopHandle = enhancedData.handle;
-  }
   
   if (needsProductId && enhancedData.productId) {
     updateData.whopProductId = enhancedData.productId;
