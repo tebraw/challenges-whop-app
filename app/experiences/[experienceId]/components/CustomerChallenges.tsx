@@ -9,6 +9,7 @@ interface CustomerChallengesProps {
   experienceId: string;
   user: any;
   whopUser: any;
+  initialChallenges?: any[];
 }
 
 interface Challenge {
@@ -42,13 +43,21 @@ interface Challenge {
   };
 }
 
-export default function CustomerChallenges({ experienceId, user, whopUser }: CustomerChallengesProps) {
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function CustomerChallenges({ 
+  experienceId, 
+  user, 
+  whopUser, 
+  initialChallenges = [] 
+}: CustomerChallengesProps) {
+  const [challenges, setChallenges] = useState<Challenge[]>(initialChallenges as Challenge[]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchChallenges();
-  }, []);
+    // If no initial challenges provided, fetch them
+    if (initialChallenges.length === 0) {
+      fetchChallenges();
+    }
+  }, [initialChallenges]);
 
   const fetchChallenges = async () => {
     try {

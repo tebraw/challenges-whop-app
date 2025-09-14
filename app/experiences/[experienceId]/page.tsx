@@ -33,6 +33,7 @@ export default async function ExperiencePage({ params }: Props) {
     
     // Verify user access to this experience
     const { userId } = await whopSdk.verifyUserToken(headersList);
+    const whopUser = await whopSdk.users.getUser({ userId }).catch(() => null);
     
     const experienceAccess = await whopSdk.access.checkIfUserHasAccessToExperience({
       userId,
@@ -132,7 +133,8 @@ export default async function ExperiencePage({ params }: Props) {
           <CustomerChallenges 
             experienceId={experienceId}
             user={user}
-            whopUser={null}
+            whopUser={whopUser}
+            initialChallenges={challenges}
           />
         </div>
       </div>
