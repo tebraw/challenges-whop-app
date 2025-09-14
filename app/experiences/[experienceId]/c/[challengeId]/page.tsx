@@ -65,13 +65,12 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
     }
     
     // Load challenge with user participation data
-    console.log(`🔍 Looking for challenge: ${challengeId} in experience: ${experienceId} for tenant: ${user.tenantId}`);
-    
-    const challenge = await prisma.challenge.findFirst({
+    // Try with current experienceId first, then fallback to legacy company ID
+    let challenge = await prisma.challenge.findFirst({
       where: {
         id: challengeId,
-        tenantId: user.tenantId, // Ensure tenant isolation
-        // experienceId: experienceId // Temporarily removed for debugging
+        tenantId: user.tenantId,
+        experienceId: experienceId // Current experience ID (exp_...)
       },
       include: {
         enrollments: {
@@ -89,11 +88,29 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
       }
     });
 
-    console.log(`🎯 Challenge lookup result: ${challenge ? 'FOUND' : 'NOT FOUND'}`);
-    if (challenge) {
-      console.log(`✅ Found challenge: ${challenge.title} (experienceId: ${challenge.experienceId})`);
-    } else {
-      console.log(`❌ No challenge found with ID: ${challengeId} for tenant: ${user.tenantId}`);
+    // Fallback: try with legacy company ID format (biz_...)
+    if (!challenge && user.tenant?.whopCompanyId) {
+      challenge = await prisma.challenge.findFirst({
+        where: {
+          id: challengeId,
+          tenantId: user.tenantId,
+          experienceId: user.tenant.whopCompanyId // Legacy company ID
+        },
+        include: {
+          enrollments: {
+            where: { userId: user.id },
+            include: {
+              proofs: {
+                orderBy: { createdAt: 'desc' }
+              }
+            }
+          },
+          _count: {
+            select: { enrollments: true }
+          },
+          tenant: true
+        }
+      });
     }
 
     if (!challenge) {
