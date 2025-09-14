@@ -65,11 +65,13 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
     }
     
     // Load challenge with user participation data
+    console.log(`🔍 Looking for challenge: ${challengeId} in experience: ${experienceId} for tenant: ${user.tenantId}`);
+    
     const challenge = await prisma.challenge.findFirst({
       where: {
         id: challengeId,
         tenantId: user.tenantId, // Ensure tenant isolation
-        experienceId: experienceId
+        // experienceId: experienceId // Temporarily removed for debugging
       },
       include: {
         enrollments: {
@@ -86,7 +88,14 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
         tenant: true
       }
     });
-    
+
+    console.log(`🎯 Challenge lookup result: ${challenge ? 'FOUND' : 'NOT FOUND'}`);
+    if (challenge) {
+      console.log(`✅ Found challenge: ${challenge.title} (experienceId: ${challenge.experienceId})`);
+    } else {
+      console.log(`❌ No challenge found with ID: ${challengeId} for tenant: ${user.tenantId}`);
+    }
+
     if (!challenge) {
       return (
         <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
