@@ -256,7 +256,7 @@ export default function CustomerChallenges({
                     {/* Customer action buttons */}
                     {challenge.userParticipation && (
                       <div className="flex flex-wrap gap-2 mt-3">
-                        <Link href={`/c/${challenge.id}`}>
+                        <Link href={`/experiences/${experienceId}/c/${challenge.id}`}>
                           <button 
                             className="border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500 text-xs px-3 py-1 rounded-lg transition-colors"
                           >
@@ -267,7 +267,7 @@ export default function CustomerChallenges({
                         {challenge.userParticipation.isParticipating && 
                          challenge.userParticipation.stats?.canCheckInToday && 
                          !challenge.userParticipation.stats?.hasCheckedInToday && (
-                          <Link href={`/c/${challenge.id}#checkin`}>
+                          <Link href={`/experiences/${experienceId}/c/${challenge.id}#checkin`}>
                             <button 
                               className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded-lg transition-colors"
                             >
