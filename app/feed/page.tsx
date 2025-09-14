@@ -56,7 +56,7 @@ export default async function FeedPage() {
                   <div className="flex gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
-                        <Link href={experienceId ? `/experiences/${experienceId}/c/${challenge.id}` : `/c/${challenge.id}`}>
+                        <Link href={`/discover/c/${challenge.id}`}>
                           <h3 className="text-lg font-semibold text-foreground hover:text-brand transition-colors truncate">
                             {challenge.title}
                           </h3>

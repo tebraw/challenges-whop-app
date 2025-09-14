@@ -126,21 +126,23 @@ export default function PublicChallengePage() {
         } else if (accessData.isParticipant && hasCommunityAccess) {
           // Participant → Challenge Page (same as Feed)
           console.log('🎯 Participant detected - redirecting to challenge page');
+          const experienceId = challenge.tenant?.whopCompanyId;
           try {
-            router.push(`/c/${challengeId}`);
+            router.push(`/experiences/${experienceId}/c/${challengeId}`);
           } catch (error) {
             console.error('Router error, using window.location:', error);
-            window.location.href = `/c/${challengeId}`;
+            window.location.href = `/experiences/${experienceId}/c/${challengeId}`;
           }
           return;
         } else if (hasCommunityAccess && !accessData.isParticipant) {
           // Community Member (not yet participant) → Join Page
           console.log('💡 Community member detected - redirecting to join page');
+          const experienceId = challenge.tenant?.whopCompanyId;
           try {
-            router.push(`/c/${challengeId}`);
+            router.push(`/experiences/${experienceId}/c/${challengeId}`);
           } catch (error) {
             console.error('Router error, using window.location:', error);
-            window.location.href = `/c/${challengeId}`;
+            window.location.href = `/experiences/${experienceId}/c/${challengeId}`;
           }
           return;
         } else {
