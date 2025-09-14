@@ -52,10 +52,13 @@ export default function CustomerChallenges({ experienceId, user, whopUser }: Cus
 
   const fetchChallenges = async () => {
     try {
-      const response = await fetch(`/api/experience/${experienceId}/challenges/customer`);
+      // Use the main challenges API which supports tenant-based filtering
+      const response = await fetch('/api/challenges');
       if (response.ok) {
         const data = await response.json();
         let challengesWithStatus = data.challenges || [];
+
+        console.log('🎯 Loaded challenges from main API:', challengesWithStatus.length);
 
         // Load enhanced participation status for each challenge
         const challengesWithParticipation = await Promise.all(

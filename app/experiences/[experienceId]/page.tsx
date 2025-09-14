@@ -92,6 +92,9 @@ export default async function ExperiencePage({ params }: Props) {
       }
     });
     
+    // Calculate user statistics
+    const joinedChallengesCount = challenges.filter((c: any) => c.enrollments && c.enrollments.length > 0).length;
+    
     return (
       <div className="min-h-screen bg-gray-900">
         <div className="max-w-6xl mx-auto px-6 py-8">
@@ -109,7 +112,7 @@ export default async function ExperiencePage({ params }: Props) {
           <div className="grid md:grid-cols-3 gap-6 mb-8">
             <div className="bg-gray-800 rounded-xl p-6 text-center">
               <div className="text-3xl font-bold text-blue-400 mb-2">
-                {challenges.filter(c => c.enrollments.length > 0).length}
+                {joinedChallengesCount}
               </div>
               <div className="text-gray-400">Joined Challenges</div>
             </div>
