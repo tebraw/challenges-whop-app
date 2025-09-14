@@ -82,12 +82,17 @@ export default function PublicChallengePage() {
       if (!challenge) return;
       
       try {
+        // First, get the user's current experience context
+        const experienceContextResponse = await fetch('/api/auth/experience-context');
+        const experienceContext = await experienceContextResponse.json();
+        
         const response = await fetch(`/api/auth/access-level?challengeId=${challengeId}`);
         const data = await response.json();
         const accessData = data.accessLevel || data;
         
         console.log('🔍 Discover Access check result:', { 
           accessData, 
+          experienceContext,
           challenge: challenge?.tenant,
           challengeId,
           userType: accessData.userType,
@@ -126,7 +131,9 @@ export default function PublicChallengePage() {
         } else if (accessData.isParticipant && hasCommunityAccess) {
           // Participant → Challenge Page (same as Feed)
           console.log('🎯 Participant detected - redirecting to challenge page');
-          const experienceId = challenge.tenant?.whopCompanyId;
+          // Try to get experience ID from current context, fallback to company ID
+          const experienceId = experienceContext.experienceId || experienceContext.companyId || challenge.tenant?.whopCompanyId;
+          console.log('🔗 Redirecting to experience:', { experienceId, challengeId, source: 'participant' });
           try {
             router.push(`/experiences/${experienceId}/c/${challengeId}`);
           } catch (error) {
@@ -137,7 +144,9 @@ export default function PublicChallengePage() {
         } else if (hasCommunityAccess && !accessData.isParticipant) {
           // Community Member (not yet participant) → Join Page
           console.log('💡 Community member detected - redirecting to join page');
-          const experienceId = challenge.tenant?.whopCompanyId;
+          // Try to get experience ID from current context, fallback to company ID
+          const experienceId = experienceContext.experienceId || experienceContext.companyId || challenge.tenant?.whopCompanyId;
+          console.log('🔗 Redirecting to join page:', { experienceId, challengeId, source: 'member' });
           try {
             router.push(`/experiences/${experienceId}/c/${challengeId}`);
           } catch (error) {

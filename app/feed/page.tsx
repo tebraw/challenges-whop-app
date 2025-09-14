@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/Card";
 import Link from "next/link";
 import { Calendar, Users } from "lucide-react";
 import Button from "@/components/ui/Button";
+import { prisma } from "@/lib/prisma";
 
 type Challenge = {
   id: string;
@@ -30,7 +31,44 @@ export default async function FeedPage() {
     }
 
     const experienceId = user.whopCompanyId;
-    const challenges: Challenge[] = [];
+    
+    // Fetch challenges for this user's experience from database
+    let challenges: Challenge[] = [];
+    try {
+      if (experienceId) {
+        const challengeData = await prisma.challenge.findMany({
+          where: {
+            tenant: {
+              whopCompanyId: experienceId
+            }
+          },
+          include: {
+            _count: {
+              select: {
+                enrollments: true
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        });
+        
+        challenges = challengeData.map((challenge: any) => ({
+          id: challenge.id,
+          title: challenge.title,
+          description: challenge.description || undefined,
+          startAt: challenge.startAt.toISOString(),
+          endAt: challenge.endAt.toISOString(),
+          imageUrl: challenge.image || undefined,
+          _count: challenge._count
+        }));
+        
+        console.log('📱 Feed loaded challenges:', challenges.length);
+      }
+    } catch (error) {
+      console.error('Error fetching challenges for feed:', error);
+    }
 
     return (
       <div className="min-h-screen bg-gray-900 text-white">
@@ -61,6 +99,28 @@ export default async function FeedPage() {
                             {challenge.title}
                           </h3>
                         </Link>
+                      </div>
+                      
+                      {challenge.description && (
+                        <p className="text-gray-400 text-sm mb-3 line-clamp-2">
+                          {challenge.description}
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          <span>
+                            {new Date(challenge.startAt).toLocaleDateString()} - {new Date(challenge.endAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        
+                        {challenge._count && (
+                          <div className="flex items-center gap-1">
+                            <Users className="w-4 h-4" />
+                            <span>{challenge._count.enrollments} participants</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
