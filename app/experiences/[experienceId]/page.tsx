@@ -60,36 +60,10 @@ export default async function ExperiencePage({ params }: Props) {
     if (!user) {
       console.log('👤 Creating new user for experience:', userId);
       
-      // For experience users, we need to find or create a default tenant
-      // This is a temporary solution - ideally we'd map experience to specific tenant
-      let defaultTenant = await prisma.tenant.findFirst({
-        where: {
-          name: 'Experience Users'
-        }
-      });
-      
-      if (!defaultTenant) {
-        defaultTenant = await prisma.tenant.create({
-          data: {
-            name: 'Experience Users',
-            whopCompanyId: `experience_${experienceId}`
-          }
-        });
-      }
-      
       // 🚨 USE AUTOMATIC COMPANY ID EXTRACTION - NO FALLBACKS!
-      const realCompanyId = `biz_${experienceId.replace('exp_', '')}`;
-      
-      user = await prisma.user.create({
-        data: {
-          whopUserId: userId,
-          email: `${userId}@whop.com`,
-          role: 'USER',
-          tenantId: defaultTenant.id,
-          experienceId: experienceId,
-          whopCompanyId: realCompanyId // 🎯 REAL COMPANY ID FROM EXPERIENCE
-        }
-      });
+      // Get or create user in our system with auto-extracted company ID
+      const { autoCreateOrUpdateUser } = await import('@/lib/auto-company-extraction');
+      user = await autoCreateOrUpdateUser(userId, experienceId, null);
     }
     
     // Find the company/creator associated with this experience

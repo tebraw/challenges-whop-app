@@ -54,9 +54,15 @@ export async function getExperienceContext(): Promise<ExperienceContext> {
     if (appConfigCookie) {
       try {
         const appConfig = JSON.parse(atob(appConfigCookie.split('.')[1]));
-        const extractedCompanyId = appConfig.did || '';
+        let extractedCompanyId = appConfig.did || '';
         
-        // 🚨 CRITICAL: Validate company ID format before accepting
+        // 🎯 NORMALIZE: Convert Whop internal company ID to standard format
+        if (extractedCompanyId && !extractedCompanyId.startsWith('biz_')) {
+          extractedCompanyId = `biz_${extractedCompanyId}`;
+          console.log('🔄 Normalized company ID format:', extractedCompanyId);
+        }
+        
+        // 🚨 CRITICAL: Validate company ID format after normalization
         if (extractedCompanyId && extractedCompanyId.startsWith('biz_') && extractedCompanyId.length > 10) {
           companyId = extractedCompanyId;
           console.log('✅ Valid company ID extracted from app config:', companyId);
