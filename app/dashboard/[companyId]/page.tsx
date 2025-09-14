@@ -24,48 +24,20 @@ type Challenge = {
   streakCount?: number;
 };
 
-function fmt(d: string) {
+function formatDate(dateString: string) {
   try {
-    if (!d) return "No date";
-    
-    // Handle various date formats
-    const date = new Date(d);
-    
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      console.log("Invalid date format:", d);
-      return "Invalid date";
-    }
-    
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "2-digit", 
+      day: "2-digit",
     });
-  } catch (error) {
-    console.log("Date formatting error:", error, "for date:", d);
-    return "Format error";
+  } catch {
+    return dateString;
   }
 }
 
 // Safe date range display component
 function DateRange({ startAt, endAt }: { startAt: string; endAt: string }) {
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return "TBD";
-    
-    try {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return "Invalid";
-      
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric'
-      });
-    } catch {
-      return "Error";
-    }
-  };
-
   return (
     <span>
       📅 {formatDate(startAt)} - {formatDate(endAt)}
@@ -95,18 +67,6 @@ function DashboardContent() {
       if (!res.ok) throw new Error(await res.text());
       const j = await res.json();
       const arr = Array.isArray(j?.challenges) ? (j.challenges as Challenge[]) : [];
-      
-      // Debug: Log first challenge's dates
-      if (arr.length > 0) {
-        console.log("Challenge date debugging:", {
-          title: arr[0].title,
-          startAt: arr[0].startAt,
-          endAt: arr[0].endAt,
-          startAtType: typeof arr[0].startAt,
-          endAtType: typeof arr[0].endAt
-        });
-      }
-      
       setItems(arr);
     } catch (e: any) {
       setError(e?.message || "Loading error");
