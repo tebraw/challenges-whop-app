@@ -15,8 +15,8 @@ type Challenge = {
   id: string;
   title: string;
   description?: string | null;
-  startAt: string;
-  endAt: string;
+  startDate: string;    // Changed from startAt to startDate
+  endDate: string;      // Changed from endAt to endDate
   proofType: "TEXT" | "PHOTO" | "LINK";
   rules?: any;
   createdAt: string;
@@ -37,10 +37,10 @@ function formatDate(dateString: string) {
 }
 
 // Safe date range display component
-function DateRange({ startAt, endAt }: { startAt: string; endAt: string }) {
+function DateRange({ startDate, endDate }: { startDate: string; endDate: string }) {
   return (
     <span>
-      📅 {formatDate(startAt)} - {formatDate(endAt)}
+      📅 {formatDate(startDate)} - {formatDate(endDate)}
     </span>
   );
 }
@@ -210,8 +210,8 @@ function DashboardContent() {
               const max = rules.maxParticipants as number | undefined;
               const count = c._count?.enrollments ?? 0;
               const streakCount = c.streakCount ?? 0;
-              const isActive = new Date(c.startAt) <= new Date() && new Date() <= new Date(c.endAt);
-              const status = new Date(c.startAt) > new Date() ? "Scheduled" : isActive ? "Live" : "Completed";
+              const isActive = new Date(c.startDate) <= new Date() && new Date() <= new Date(c.endDate);
+              const status = new Date(c.startDate) > new Date() ? "Scheduled" : isActive ? "Live" : "Completed";
               
               // Extract marketing data from rules
               const marketingRules = (c.rules ?? {}) as any;
@@ -253,7 +253,7 @@ function DashboardContent() {
                         
                         <div className="flex items-center gap-6 text-sm text-gray-400">
                           <div className="flex items-center">
-                            <DateRange startAt={c.startAt} endAt={c.endAt} />
+                            <DateRange startDate={c.startDate} endDate={c.endDate} />
                           </div>
                           <div className="flex items-center">
                             👥 {count}{max ? `/${max}` : ""} participants
@@ -268,7 +268,7 @@ function DashboardContent() {
                     {/* Actions */}
                     <div className="flex gap-2">
                       {/* Winners button - nur für beendete Challenges */}
-                      {new Date() > new Date(c.endAt) && (
+                      {new Date() > new Date(c.endDate) && (
                         <Link href={`/dashboard/${companyId}/winners/${c.id}`}>
                           <button className="bg-yellow-600 hover:bg-yellow-700 text-white p-2 rounded-lg transition-colors" title="Select Winners">
                             <Trophy className="h-4 w-4" />
