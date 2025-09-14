@@ -273,7 +273,7 @@ export default function CustomerChallenges({
 
                       {/* Open Button - Rechts */}
                       <div className="flex-shrink-0">
-                        <button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-2xl transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 flex items-center gap-2 pointer-events-none">
+                        <button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-2xl transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 flex items-center gap-2">
                           <span>🚀</span>
                           <span>Open Challenge</span>
                         </button>

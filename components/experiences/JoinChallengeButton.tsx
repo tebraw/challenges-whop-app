@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 
 export default function JoinChallengeButton({
   challengeId,
+  experienceId,
   isEnrolled,
   className = "",
 }: { 
   challengeId: string; 
+  experienceId: string;
   isEnrolled: boolean;
   className?: string;
 }) {
@@ -40,7 +42,7 @@ export default function JoinChallengeButton({
       
       // Wait a moment to show success, then redirect to full challenge view
       setTimeout(() => {
-        router.push(`/c/${challengeId}`);
+        router.push(`/experiences/${experienceId}/c/${challengeId}`);
       }, 1500);
       
     } catch (e: any) {
@@ -79,7 +81,7 @@ export default function JoinChallengeButton({
   if (isEnrolled) {
     return (
       <button 
-        onClick={() => router.push(`/c/${challengeId}`)}
+        onClick={() => router.push(`/experiences/${experienceId}/c/${challengeId}`)}
         className={`bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-8 py-4 rounded-2xl transition-all duration-300 font-semibold text-lg shadow-lg hover:shadow-blue-500/25 transform hover:scale-105 flex items-center gap-3 ${className}`}
       >
         <span className="text-2xl">📊</span>

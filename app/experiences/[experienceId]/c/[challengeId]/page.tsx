@@ -245,6 +245,7 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
                 <div className="flex gap-4">
                   <JoinChallengeButton 
                     challengeId={challengeId}
+                    experienceId={experienceId}
                     isEnrolled={isParticipating}
                   />
                   
