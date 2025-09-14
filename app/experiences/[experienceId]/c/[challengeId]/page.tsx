@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { whopSdk } from '@/lib/whop-sdk';
 import Link from 'next/link';
 import { ArrowLeft, Users, CheckCircle, Award } from 'lucide-react';
+import JoinChallengeButton from '@/components/experiences/JoinChallengeButton';
 
 interface PageProps {
   params: Promise<{ experienceId: string; challengeId: string }>;
@@ -242,19 +243,10 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
                 
                 {/* Join Button - prominent wie im Screenshot */}
                 <div className="flex gap-4">
-                  {!isParticipating ? (
-                    <button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-8 py-4 rounded-2xl transition-all duration-300 font-semibold text-lg shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 flex items-center gap-3">
-                      <span className="text-2xl">🚀</span>
-                      <span>Join Challenge</span>
-                    </button>
-                  ) : (
-                    <Link href={`/c/${challengeId}`}>
-                      <button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-8 py-4 rounded-2xl transition-all duration-300 font-semibold text-lg shadow-lg hover:shadow-blue-500/25 transform hover:scale-105 flex items-center gap-3">
-                        <span className="text-2xl">📊</span>
-                        <span>View Full Challenge</span>
-                      </button>
-                    </Link>
-                  )}
+                  <JoinChallengeButton 
+                    challengeId={challengeId}
+                    isEnrolled={isParticipating}
+                  />
                   
                   {userStats?.canCheckInToday && (
                     <Link href={`/c/${challengeId}#checkin`}>
