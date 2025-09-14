@@ -157,9 +157,10 @@ export default function CustomerChallenges({
             </Link>
           </div>
         ) : (
-          <div className="grid gap-6">
+          <div className="grid gap-4">
             {challenges.map((challenge) => (
-              <div key={challenge.id} className="group bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-gray-700/50 rounded-3xl p-6 hover:border-purple-500/30 transition-all duration-300 backdrop-blur-sm">
+              <Link href={`/experiences/${experienceId}/c/${challenge.id}`} key={challenge.id} className="block">
+                <div className="group bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-gray-700/50 rounded-2xl p-4 hover:border-purple-500/30 transition-all duration-300 backdrop-blur-sm cursor-pointer hover:bg-gray-800/90">
                 <div className="flex gap-6">
                   {/* Challenge Image */}
                   {challenge.imageUrl ? (
@@ -191,28 +192,28 @@ export default function CustomerChallenges({
                         )}
 
                         {/* Info Row with Emojis */}
-                        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300 mb-3">
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400 mb-3">
                           {/* Participants */}
                           {challenge._count?.enrollments !== undefined && (
-                            <div className="flex items-center gap-2 bg-blue-500/20 rounded-full px-3 py-1 border border-blue-500/30">
-                              <span className="text-lg">👥</span>
-                              <span className="text-blue-300 font-medium">{challenge._count.enrollments} participants</span>
+                            <div className="flex items-center gap-1">
+                              <span>👥</span>
+                              <span>{challenge._count.enrollments} participants</span>
                             </div>
                           )}
                           
                           {/* Date */}
-                          <div className="flex items-center gap-2 bg-green-500/20 rounded-full px-3 py-1 border border-green-500/30">
-                            <span className="text-lg">📅</span>
-                            <span className="text-green-300 font-medium">
+                          <div className="flex items-center gap-1">
+                            <span>📅</span>
+                            <span>
                               {new Date(challenge.startAt).toLocaleDateString()} - {new Date(challenge.endAt).toLocaleDateString()}
                             </span>
                           </div>
                           
                           {/* Rewards */}
                           {challenge.rules?.rewards && (
-                            <div className="flex items-center gap-2 bg-amber-500/20 rounded-full px-3 py-1 border border-amber-500/30">
-                              <span className="text-lg">🏆</span>
-                              <span className="text-amber-300 font-medium">Rewards available</span>
+                            <div className="flex items-center gap-1">
+                              <span>🏆</span>
+                              <span>Rewards available</span>
                             </div>
                           )}
                         </div>
@@ -272,12 +273,10 @@ export default function CustomerChallenges({
 
                       {/* Open Button - Rechts */}
                       <div className="flex-shrink-0">
-                        <Link href={`/experiences/${experienceId}/c/${challenge.id}`}>
-                          <button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-2xl transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 flex items-center gap-2">
-                            <span>🚀</span>
-                            <span>{challenge.userParticipation?.isParticipating ? 'Open Challenge' : 'Join Challenge'}</span>
-                          </button>
-                        </Link>
+                        <button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-2xl transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 flex items-center gap-2 pointer-events-none">
+                          <span>🚀</span>
+                          <span>Open Challenge</span>
+                        </button>
                         
                         {/* Quick Check-in button if applicable */}
                         {challenge.userParticipation?.isParticipating && 
@@ -294,7 +293,8 @@ export default function CustomerChallenges({
                     </div>
                   </div>
                 </div>
-              </div>
+                </div>
+              </Link>
             ))}
           </div>
         )}
