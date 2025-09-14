@@ -139,8 +139,8 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
       const allProofs = userEnrollment.proofs;
       
       // Calculate max possible check-ins based on challenge duration and cadence
-      const startDate = new Date(challenge.startAt);
-      const endDate = new Date(challenge.endAt);
+      const startDate = challenge.startAt ? new Date(challenge.startAt) : new Date();
+      const endDate = challenge.endAt ? new Date(challenge.endAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now as fallback
       const today = new Date();
       
       const maxCheckIns = Math.floor((Math.min(today.getTime(), endDate.getTime()) - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -150,7 +150,7 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
       // Check if user can check in today
       const todayString = today.toISOString().split('T')[0];
       const hasCheckedInToday = allProofs.some((proof: any) => 
-        proof.createdAt.toISOString().split('T')[0] === todayString
+        proof.createdAt && new Date(proof.createdAt).toISOString().split('T')[0] === todayString
       );
       const canCheckInToday = today >= startDate && today <= endDate && !hasCheckedInToday;
       
@@ -160,8 +160,8 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
         completionRate,
         canCheckInToday,
         hasCheckedInToday,
-        joinedAt: userEnrollment.createdAt.toISOString(),
-        lastCheckin: allProofs[0]?.createdAt.toISOString()
+        joinedAt: userEnrollment.createdAt ? new Date(userEnrollment.createdAt).toISOString() : new Date().toISOString(),
+        lastCheckin: allProofs[0]?.createdAt ? new Date(allProofs[0].createdAt).toISOString() : undefined
       };
     }
     
