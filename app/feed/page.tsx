@@ -43,6 +43,7 @@ export default function FeedPage() {
   const [userAccess, setUserAccess] = useState<AccessControlResult | null>(null);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
+  const [experienceId, setExperienceId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -50,6 +51,11 @@ export default function FeedPage() {
         // Check user access
         const access = await getUserAccessLevel();
         setUserAccess(access);
+        
+        // Store experience ID for routing
+        if (access.companyId) {
+          setExperienceId(access.companyId);
+        }
 
         // If user can't view feed, don't load challenges
         if (!access.canViewMyFeed) {
@@ -184,7 +190,7 @@ export default function FeedPage() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
-                      <Link href={`/c/${challenge.id}`}>
+                      <Link href={experienceId ? `/experiences/${experienceId}/c/${challenge.id}` : `/c/${challenge.id}`}>
                         <h3 className="text-lg font-semibold text-foreground hover:text-brand transition-colors truncate">
                           {challenge.title}
                         </h3>
@@ -268,7 +274,7 @@ export default function FeedPage() {
                     {/* Customer action buttons */}
                     {userAccess?.userType === 'customer' && challenge.userParticipation && (
                       <div className="flex flex-wrap gap-2 mt-3">
-                        <Link href={`/c/${challenge.id}`}>
+                        <Link href={experienceId ? `/experiences/${experienceId}/c/${challenge.id}` : `/c/${challenge.id}`}>
                           <Button 
                             variant="outline" 
                             className="text-xs px-3 py-1"
@@ -280,7 +286,7 @@ export default function FeedPage() {
                         {challenge.userParticipation.isParticipating && 
                          challenge.userParticipation.stats?.canCheckInToday && 
                          !challenge.userParticipation.stats?.hasCheckedInToday && (
-                          <Link href={`/c/${challenge.id}#checkin`}>
+                          <Link href={experienceId ? `/experiences/${experienceId}/c/${challenge.id}#checkin` : `/c/${challenge.id}#checkin`}>
                             <Button 
                               className="bg-brand text-brand-foreground hover:bg-brand/90 text-xs px-3 py-1"
                             >
