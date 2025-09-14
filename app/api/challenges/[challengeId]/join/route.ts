@@ -1,15 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/auth';
+import { whopSdk } from '@/lib/whop-sdk';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
   try {
-    const user = await getCurrentUser();
+    // Get headers for Whop authentication (same as Experience pages)
+    const headersList = await headers();
+    const whopUserToken = headersList.get('x-whop-user-token');
+    
+    if (!whopUserToken) {
+      return NextResponse.json({ error: 'Unauthorized - No Whop token' }, { status: 401 });
+    }
+
+    // Verify user with Whop SDK (same method as Experience pages)
+    const { userId } = await whopSdk.verifyUserToken(headersList);
+    
+    // Find user in our database
+    const user = await prisma.user.findUnique({
+      where: { whopUserId: userId },
+      include: { tenant: true }
+    });
+
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
     }
 
     const { challengeId } = await params;
