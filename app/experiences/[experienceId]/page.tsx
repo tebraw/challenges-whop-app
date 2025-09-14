@@ -99,33 +99,37 @@ export default async function ExperiencePage({ params }: Props) {
     return (
       <div className="min-h-screen bg-gray-900">
         <div className="max-w-6xl mx-auto px-6 py-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">
-              🎯 Community Challenges
-            </h1>
-            <p className="text-gray-400">
-              Join challenges and track your progress with the community
+          {/* Beautiful Header */}
+          <div className="mb-10 text-center">
+            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-full px-6 py-3 mb-6">
+              <span className="text-3xl">🎯</span>
+              <h1 className="text-2xl font-bold text-white">Community Challenges</h1>
+            </div>
+            <p className="text-gray-300 text-lg max-w-2xl mx-auto">
+              Transform your habits, achieve your goals, and connect with an amazing community! 🚀
             </p>
           </div>
           
-          {/* User Dashboard */}
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gray-800 rounded-xl p-6 text-center">
+          {/* Beautiful Stats Dashboard */}
+          <div className="grid md:grid-cols-3 gap-6 mb-10">
+            <div className="group bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-2xl p-6 text-center hover:border-blue-400/40 transition-all duration-300">
+              <div className="text-4xl mb-3">💪</div>
               <div className="text-3xl font-bold text-blue-400 mb-2">
                 {joinedChallengesCount}
               </div>
-              <div className="text-gray-400">Joined Challenges</div>
+              <div className="text-gray-300 font-medium">Active Challenges</div>
             </div>
-            <div className="bg-gray-800 rounded-xl p-6 text-center">
+            <div className="group bg-gradient-to-br from-green-500/10 to-green-600/10 border border-green-500/20 rounded-2xl p-6 text-center hover:border-green-400/40 transition-all duration-300">
+              <div className="text-4xl mb-3">🏆</div>
               <div className="text-3xl font-bold text-green-400 mb-2">
                 0
               </div>
-              <div className="text-gray-400">Completed</div>
+              <div className="text-gray-300 font-medium">Completed</div>
             </div>
-            <div className="bg-gray-800 rounded-xl p-6 text-center">
+            <div className="group bg-gradient-to-br from-purple-500/10 to-purple-600/10 border border-purple-500/20 rounded-2xl p-6 text-center hover:border-purple-400/40 transition-all duration-300">
+              <div className="text-4xl mb-3">🔥</div>
               <div className="text-3xl font-bold text-purple-400 mb-2">0</div>
-              <div className="text-gray-400">Current Streak</div>
+              <div className="text-gray-300 font-medium">Current Streak</div>
             </div>
           </div>
           
