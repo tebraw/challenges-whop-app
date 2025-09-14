@@ -172,7 +172,7 @@ export default function CustomerChallenges({
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
-                      <Link href={`/c/${challenge.id}`}>
+                      <Link href={`/experiences/${experienceId}/c/${challenge.id}`}>
                         <h3 className="text-lg font-semibold text-white hover:text-blue-400 transition-colors truncate">
                           {challenge.title}
                         </h3>
