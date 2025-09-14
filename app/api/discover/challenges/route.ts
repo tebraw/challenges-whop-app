@@ -27,6 +27,34 @@ export async function GET(request: Request) {
               enrollments: true
             }
           }
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          startAt: true,
+          endAt: true,
+          proofType: true,
+          cadence: true,
+          image: true,
+          category: true,
+          difficulty: true,
+          isPublic: true,
+          rules: true, // Include rules for rewards
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              whopCompanyId: true,
+              whopHandle: true,
+              whopProductId: true
+            }
+          },
+          _count: {
+            select: {
+              enrollments: true
+            }
+          }
         }
       });
 
@@ -93,6 +121,36 @@ export async function GET(request: Request) {
         where,
         include: {
           tenant: true,
+          _count: {
+            select: {
+              enrollments: true
+            }
+          }
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          startAt: true,
+          endAt: true,
+          proofType: true,
+          cadence: true,
+          image: true,
+          category: true,
+          difficulty: true,
+          isPublic: true,
+          rules: true, // Include rules for rewards
+          featured: true,
+          createdAt: true,
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              whopCompanyId: true,
+              whopHandle: true,
+              whopProductId: true
+            }
+          },
           _count: {
             select: {
               enrollments: true

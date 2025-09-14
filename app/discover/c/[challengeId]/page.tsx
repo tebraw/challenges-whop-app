@@ -16,6 +16,13 @@ interface Challenge {
   image?: string;
   category: string;
   difficulty: string;
+  rules?: {
+    rewards?: Array<{
+      place: number;
+      title: string;
+      desc?: string;
+    }>;
+  };
   tenant: {
     id: string;
     name: string;
@@ -305,6 +312,35 @@ export default function PublicChallengePage() {
     );
   }
 
+  const getRewardCardStyling = (place: number) => {
+    switch (place) {
+      case 1:
+        return {
+          background: 'bg-gradient-to-br from-yellow-600 to-yellow-800',
+          badge: 'bg-yellow-500 text-yellow-900',
+          text: 'text-yellow-100'
+        };
+      case 2:
+        return {
+          background: 'bg-gradient-to-br from-gray-600 to-gray-800',
+          badge: 'bg-gray-500 text-gray-900',
+          text: 'text-gray-200'
+        };
+      case 3:
+        return {
+          background: 'bg-gradient-to-br from-orange-600 to-orange-800',
+          badge: 'bg-orange-500 text-orange-900',
+          text: 'text-orange-100'
+        };
+      default:
+        return {
+          background: 'bg-gradient-to-br from-blue-600 to-blue-800',
+          badge: 'bg-blue-500 text-blue-900',
+          text: 'text-blue-100'
+        };
+    }
+  };
+
   const getJoinButtonText = () => {
     console.log('🔍 Button Text Debug:', {
       joining,
@@ -340,112 +376,183 @@ export default function PublicChallengePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <div className="min-h-screen bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-8">
         {/* Back Button */}
         <button
           onClick={() => router.back()}
-          className="mb-6 flex items-center text-gray-400 hover:text-white transition-colors"
+          className="mb-8 flex items-center text-gray-400 hover:text-white transition-colors"
         >
           <span className="mr-2">←</span>
-          Back to Marketplace
+          Back to Experience
         </button>
 
-        <div className="max-w-4xl mx-auto">
-          {/* Challenge Header */}
-          <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden mb-8">
-            {challenge.image && (
-              <div className="relative h-64 md:h-80">
-                <Image
-                  src={challenge.image}
-                  alt={challenge.title}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            )}
-            
-            <div className="p-6">
-              {/* Challenge Meta */}
-              <div className="flex flex-wrap items-center gap-3 mb-4">
-                <span className="flex items-center px-3 py-1 bg-gray-700 rounded-full text-sm">
-                  {getCategoryIcon(challenge.category)}
-                  <span className="ml-2 capitalize">{challenge.category}</span>
-                </span>
-                <span className={`px-3 py-1 rounded-full text-white text-sm ${getDifficultyColor(challenge.difficulty)}`}>
-                  {challenge.difficulty}
-                </span>
-                <span className="px-3 py-1 bg-blue-600 rounded-full text-white text-sm">
-                  {challenge._count.enrollments} Teilnehmer
-                </span>
-              </div>
-
-              {/* Title and Company */}
-              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
-                {challenge.title}
-              </h1>
-              <p className="text-lg text-gray-300 mb-6">
-                by <span className="font-semibold text-blue-400">{challenge.tenant.name}</span>
-              </p>
-
-              {/* Description */}
-              <div className="prose prose-lg prose-invert max-w-none mb-8">
-                <p className="text-gray-300 leading-relaxed">
-                  {challenge.description}
-                </p>
-              </div>
-
-              {/* Challenge Details */}
-              <div className="grid md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <h3 className="font-semibold text-white mb-2">🗓️ Duration</h3>
-                  <p className="text-gray-300 text-sm">
-                    {new Date(challenge.startAt).toLocaleDateString('en-US')} - {' '}
-                    {new Date(challenge.endAt).toLocaleDateString('en-US')}
-                  </p>
+        <div className="max-w-6xl mx-auto">
+          {/* Challenge Hero Section */}
+          <div className="bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 rounded-2xl p-8 mb-8 relative overflow-hidden">
+            <div className="flex flex-col lg:flex-row gap-8 items-start">
+              {/* Challenge Image */}
+              {challenge.image && (
+                <div className="w-full lg:w-80 h-64 lg:h-80 rounded-xl overflow-hidden bg-gradient-to-br from-purple-500 to-blue-600 flex-shrink-0">
+                  <Image
+                    src={challenge.image}
+                    alt={challenge.title}
+                    width={320}
+                    height={320}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <h3 className="font-semibold text-white mb-2">🔄 Frequency</h3>
-                  <p className="text-gray-300 text-sm capitalize">
-                    {challenge.cadence.toLowerCase()}
-                  </p>
-                </div>
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <h3 className="font-semibold text-white mb-2">📋 Proof Type</h3>
-                  <p className="text-gray-300 text-sm">
-                    {challenge.proofType === 'IMAGE' ? 'Image' : 
-                     challenge.proofType === 'TEXT' ? 'Text' : 'Video'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Join Button */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={handleJoinChallenge}
-                  disabled={joining}
-                  className={`flex-1 ${getJoinButtonStyle()} disabled:opacity-50 text-white font-semibold py-4 px-8 rounded-lg transition-colors text-lg`}
-                >
-                  {getJoinButtonText()}
-                </button>
+              )}
+              
+              {/* Challenge Content */}
+              <div className="flex-1 min-w-0">
+                <h1 className="text-4xl lg:text-5xl font-bold mb-4 text-white">
+                  {challenge.title}
+                </h1>
                 
-                {/* Info box for non-community members (including Default Tenant) */}
-                {!userAccess?.canAccessChallenge && (
-                  <div className="flex-1 bg-gray-700 rounded-lg p-4">
-                    <div className="text-center">
-                      <h4 className="text-white font-semibold mb-2">🔒 Community Access Required</h4>
-                      <p className="text-gray-300 text-sm mb-2">
-                        This <strong>free challenge</strong> is exclusive to community members.
-                      </p>
-                      <p className="text-gray-400 text-xs">
-                        💰 Get community access to join challenges
-                      </p>
-                    </div>
+                <div className="flex items-center gap-2 mb-6">
+                  <span className="text-xl">🔥</span>
+                  <p className="text-xl text-gray-200 leading-relaxed">
+                    <strong>ENTER</strong> the Challenge and send daily proof to <strong>WIN</strong> amazing prizes
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-lg">🔥</span>
+                </div>
+                
+                {/* Challenge Meta Info */}
+                <div className="flex items-center gap-6 text-gray-300">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📅</span>
+                    <span>{new Date(challenge.startAt).toLocaleDateString()} – {new Date(challenge.endAt).toLocaleDateString()}</span>
                   </div>
-                )}
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">⚡</span>
+                    <span className="capitalize">{challenge.cadence.toLowerCase()} commitment</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Rewards & Prizes Section */}
+          {challenge.rules?.rewards && challenge.rules.rewards.length > 0 && (
+            <div className="mb-8">
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
+                  <span className="text-2xl">🏆</span>
+                  <span>Rewards & Prizes</span>
+                </h2>
+              </div>
+              
+              {/* Dynamic Reward Cards */}
+              <div className={`grid gap-6 mb-8 ${
+                challenge.rules.rewards.length === 1 ? 'md:grid-cols-1 max-w-md mx-auto' :
+                challenge.rules.rewards.length === 2 ? 'md:grid-cols-2 max-w-4xl mx-auto' :
+                'md:grid-cols-3'
+              }`}>
+                {challenge.rules.rewards
+                  .sort((a, b) => a.place - b.place)
+                  .map((reward, index) => {
+                    const styling = getRewardCardStyling(reward.place);
+                    return (
+                      <div 
+                        key={`reward-${reward.place}-${index}`}
+                        className={`${styling.background} rounded-2xl p-6 text-center relative`}
+                      >
+                        <div className={`absolute top-4 left-4 ${styling.badge} px-3 py-1 rounded-full text-sm font-bold`}>
+                          #{reward.place}
+                        </div>
+                        <h3 className="text-xl font-bold mb-2 mt-4 text-white">
+                          {reward.title}
+                        </h3>
+                        {reward.desc && (
+                          <p className={styling.text}>
+                            {reward.desc}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Challenge Info & Join Section */}
+          <div className="bg-gray-800 rounded-2xl p-6 mb-8">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                  <span className="text-2xl">ℹ️</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">
+                    Challenge starts on {new Date(challenge.startAt).toLocaleDateString()}
+                  </h3>
+                  <p className="text-gray-400">
+                    {Math.ceil((new Date(challenge.endAt).getTime() - new Date(challenge.startAt).getTime()) / (1000 * 60 * 60 * 24))} days • {challenge._count.enrollments} participants
+                  </p>
+                </div>
+              </div>
+              
+              {/* Join Button */}
+              <button
+                onClick={handleJoinChallenge}
+                disabled={joining}
+                className={`${getJoinButtonStyle()} disabled:opacity-50 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 text-lg flex items-center gap-2 hover:shadow-lg`}
+              >
+                <span className="text-xl">🚀</span>
+                {getJoinButtonText()}
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom Info Sections */}
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Challenge Yourself */}
+            <div className="bg-gray-800 rounded-2xl p-8">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
+                  <span className="text-2xl">🎯</span>
+                </div>
+                <h3 className="text-2xl font-bold text-white">Challenge Yourself</h3>
+              </div>
+              <p className="text-gray-300 leading-relaxed">
+                Join a community of motivated individuals working towards their goals. 
+                Track your progress and stay accountable with daily check-ins.
+              </p>
+            </div>
+
+            {/* Earn Recognition */}
+            <div className="bg-gray-800 rounded-2xl p-8">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-yellow-600 rounded-full flex items-center justify-center">
+                  <span className="text-2xl">🏆</span>
+                </div>
+                <h3 className="text-2xl font-bold text-white">Earn Recognition</h3>
+              </div>
+              <p className="text-gray-300 leading-relaxed">
+                Complete the challenge to earn your spot on the leaderboard 
+                and gain recognition for your dedication and consistency.
+              </p>
+            </div>
+          </div>
+
+          {/* Access Info for Non-Members */}
+          {!userAccess?.canAccessChallenge && (
+            <div className="mt-8 bg-gray-800 border border-gray-700 rounded-2xl p-6">
+              <div className="text-center">
+                <h4 className="text-white font-semibold mb-2 text-xl">🔒 Community Access Required</h4>
+                <p className="text-gray-300 mb-2">
+                  This <strong>challenge</strong> is exclusive to community members.
+                </p>
+                <p className="text-gray-400 text-sm">
+                  💰 Get community access to join challenges and compete for prizes
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
