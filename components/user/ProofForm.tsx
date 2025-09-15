@@ -103,12 +103,12 @@ export default function ProofForm({
       }
       const payload =
           tab === "TEXT"
-            ? { type: "TEXT", text: text.trim() }
+            ? { text: text.trim() }
             : tab === "LINK"
-            ? { type: "LINK", url: link.trim() }
-            : { type: "FILE", mediaUrl };
+            ? { linkUrl: link.trim() }
+            : { imageUrl: mediaUrl };
 
-      const res = await fetch(`/api/c/${challengeId}/proof`, {
+      const res = await fetch(`/api/challenges/${challengeId}/checkin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

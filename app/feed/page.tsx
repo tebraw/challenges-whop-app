@@ -5,6 +5,9 @@ import { Calendar, Users, Trophy, Gift } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { prisma } from "@/lib/prisma";
 
+// Mark this page as dynamic since it requires authentication
+export const dynamic = 'force-dynamic';
+
 type Challenge = {
   id: string;
   title: string;

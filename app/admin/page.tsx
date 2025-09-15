@@ -20,6 +20,7 @@ type Challenge = {
   rules?: any;
   createdAt: string;
   _count?: { enrollments: number };
+  enrollmentCount?: number;
   streakCount?: number;
 };
 
@@ -126,7 +127,7 @@ function AdminListContent() {
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-white">
-                    {items.reduce((sum, c) => sum + (c._count?.enrollments ?? 0), 0)}
+                    {items.reduce((sum, c) => sum + (c.enrollmentCount ?? c._count?.enrollments ?? 0), 0)}
                   </div>
                   <div className="text-sm text-gray-400">Total Participants</div>
                 </div>
@@ -191,7 +192,7 @@ function AdminListContent() {
               const rules = (c.rules ?? {}) as any;
               const img: string | undefined = rules.imageUrl || c.imageUrl;
               const max = rules.maxParticipants as number | undefined;
-              const count = c._count?.enrollments ?? 0;
+              const count = c.enrollmentCount ?? c._count?.enrollments ?? 0;
               const streakCount = c.streakCount ?? 0;
               const isActive = new Date(c.startAt) <= new Date() && new Date() <= new Date(c.endAt);
               const status = new Date(c.startAt) > new Date() ? "Scheduled" : isActive ? "Live" : "Completed";
