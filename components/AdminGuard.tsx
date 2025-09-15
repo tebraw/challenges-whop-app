@@ -217,9 +217,9 @@ export default function AdminGuard({ children }: AdminGuardProps) {
                 }
               }
             }
-            } catch (cleanupError) {
-              console.error('❌ Cleanup failed:', cleanupError);
-            }
+          } catch (cleanupError) {
+            console.error('❌ Cleanup failed:', cleanupError);
+          }
             
             // If cleanup didn't work, show error
             setDebugInfo({ 

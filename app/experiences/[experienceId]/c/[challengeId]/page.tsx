@@ -4,6 +4,7 @@ import { whopSdk } from '@/lib/whop-sdk';
 import Link from 'next/link';
 import { ArrowLeft, Users, CheckCircle, Award } from 'lucide-react';
 import JoinChallengeButton from '@/components/experiences/JoinChallengeButton';
+import ProofForm from '@/components/user/ProofForm';
 
 interface PageProps {
   params: Promise<{ experienceId: string; challengeId: string }>;
@@ -250,12 +251,12 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
                   />
                   
                   {userStats?.canCheckInToday && (
-                    <Link href={`/c/${challengeId}#checkin`}>
+                    <a href="#checkin" className="scroll-smooth">
                       <button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-6 py-4 rounded-2xl transition-all duration-300 font-semibold shadow-lg hover:shadow-green-500/25 transform hover:scale-105 flex items-center gap-2">
                         <span className="text-xl">⚡</span>
                         <span>Check in Today</span>
                       </button>
-                    </Link>
+                    </a>
                   )}
                 </div>
               </div>
@@ -355,12 +356,7 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
               </div>
               
               {!isParticipating && (
-                <Link href={`/c/${challengeId}`}>
-                  <button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-6 py-3 rounded-2xl transition-all duration-300 font-semibold shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 flex items-center gap-2">
-                    <span>🚀</span>
-                    <span>Join Challenge</span>
-                  </button>
-                </Link>
+                <JoinChallengeButton challengeId={challengeId} experienceId={experienceId} isEnrolled={false} />
               )}
             </div>
           </div>
@@ -399,11 +395,7 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
                     <div className="text-center">
                       <div className="text-6xl mb-4">✅</div>
                       <h3 className="text-2xl font-bold text-green-400 mb-4">Ready to Check In!</h3>
-                      <Link href={`/c/${challengeId}#checkin`}>
-                        <button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-8 py-4 rounded-2xl transition-all duration-300 font-semibold text-lg shadow-lg hover:shadow-green-500/25 transform hover:scale-105">
-                          ✨ Check in Today
-                        </button>
-                      </Link>
+                      <p className="text-gray-300">Scroll down to submit your proof</p>
                     </div>
                   ) : userStats.hasCheckedInToday ? (
                     <div className="text-center">
@@ -419,6 +411,31 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Check-in/Proof Upload Section */}
+          {isParticipating && userStats?.canCheckInToday && (
+            <div id="checkin" className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-3xl p-8 mt-8">
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold mb-4 flex items-center justify-center gap-3">
+                  <span className="text-4xl">⚡</span>
+                  Daily Check-in
+                </h2>
+                <p className="text-gray-300 text-lg">Submit your proof for today's progress!</p>
+              </div>
+              
+              <div className="max-w-2xl mx-auto">
+                <ProofForm 
+                  challengeId={challengeId} 
+                  enrolled={true}
+                  challenge={{
+                    cadence: challenge.cadence || 'daily',
+                    existingProofToday: userStats?.hasCheckedInToday || false,
+                    proofType: challenge.proofType || 'FILE'
+                  }}
+                />
               </div>
             </div>
           )}
