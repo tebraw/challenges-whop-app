@@ -99,7 +99,6 @@ export default function ProofForm({
       let mediaUrl: string | null = null;
         if (tab === "FILE") {
           mediaUrl = await uploadFileToServer(file!);
-          router.refresh();
       }
       const payload =
           tab === "TEXT"
@@ -132,7 +131,8 @@ export default function ProofForm({
         alert(data?.message || "Proof saved ✅");
       }
 
-      window.location.reload();
+      // Use router.refresh() instead of window.location.reload() to avoid double requests
+      router.refresh();
     } catch (e: any) {
       alert(e?.message || "Could not save proof.");
     } finally {
