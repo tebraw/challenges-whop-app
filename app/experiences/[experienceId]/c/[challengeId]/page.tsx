@@ -161,7 +161,7 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
         completionRate,
         canCheckInToday,
         hasCheckedInToday,
-        joinedAt: userEnrollment.createdAt ? new Date(userEnrollment.createdAt).toISOString() : new Date().toISOString(),
+        joinedAt: userEnrollment.joinedAt ? new Date(userEnrollment.joinedAt).toISOString() : new Date().toISOString(),
         lastCheckin: allProofs[0]?.createdAt ? new Date(allProofs[0].createdAt).toISOString() : undefined
       };
     }
@@ -275,8 +275,13 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
             
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Dynamische Rewards aus Admin-Daten */}
-              {challenge.rules?.rewards && Array.isArray(challenge.rules.rewards) && challenge.rules.rewards.length > 0 ? (
-                challenge.rules.rewards.map((reward: any, index: number) => (
+              {challenge.rules && 
+               typeof challenge.rules === 'object' && 
+               challenge.rules !== null &&
+               'rewards' in challenge.rules && 
+               Array.isArray((challenge.rules as any).rewards) && 
+               (challenge.rules as any).rewards.length > 0 ? (
+                (challenge.rules as any).rewards.map((reward: any, index: number) => (
                   <div key={index} className="bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border border-yellow-500/30 rounded-2xl p-6 text-center hover:border-yellow-400/50 transition-all duration-300 group">
                     <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">
                       {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🎁'}

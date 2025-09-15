@@ -55,7 +55,8 @@ export default async function ExperiencePage({ params }: Props) {
     
     // Get or create user in our system
     let user = await prisma.user.findUnique({
-      where: { whopUserId: userId }
+      where: { whopUserId: userId },
+      include: { tenant: true }
     });
     
     if (!user) {
@@ -64,7 +65,17 @@ export default async function ExperiencePage({ params }: Props) {
       // 🚨 USE AUTOMATIC COMPANY ID EXTRACTION - NO FALLBACKS!
       // Get or create user in our system with auto-extracted company ID
       const { autoCreateOrUpdateUser } = await import('@/lib/auto-company-extraction');
-      user = await autoCreateOrUpdateUser(userId, experienceId, null);
+      const createdUser = await autoCreateOrUpdateUser(userId, experienceId, null);
+      
+      // Fetch the complete user with relations
+      user = await prisma.user.findUnique({
+        where: { whopUserId: userId },
+        include: { tenant: true }
+      });
+      
+      if (!user) {
+        throw new Error('Failed to create or find user');
+      }
     }
     
     // Find the company/creator associated with this experience
