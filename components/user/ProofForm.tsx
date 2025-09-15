@@ -7,11 +7,18 @@ type ProofType = "FILE" | "TEXT" | "LINK";
 export default function ProofForm({
   challengeId,
   enrolled,
-  challenge
+  challenge,
+  whopHeaders
 }: { 
   challengeId: string; 
   enrolled: boolean;
   challenge?: { cadence: string; existingProofToday?: boolean; proofType?: string };
+  whopHeaders?: {
+    userToken?: string;
+    userId?: string;
+    experienceId?: string;
+    companyId?: string;
+  };
 }) {
   const router = useRouter();
   const [tab, setTab] = React.useState<ProofType>("FILE");
@@ -109,7 +116,13 @@ export default function ProofForm({
 
       const res = await fetch(`/api/challenges/${challengeId}/checkin`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(whopHeaders?.userToken && { "x-whop-user-token": whopHeaders.userToken }),
+          ...(whopHeaders?.userId && { "x-whop-user-id": whopHeaders.userId }),
+          ...(whopHeaders?.experienceId && { "x-whop-experience-id": whopHeaders.experienceId }),
+          ...(whopHeaders?.companyId && { "x-whop-company-id": whopHeaders.companyId })
+        },
         body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => null);

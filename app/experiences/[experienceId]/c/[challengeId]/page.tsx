@@ -17,6 +17,16 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
     // Get headers for authentication
     const headersList = await headers();
     const whopUserToken = headersList.get('x-whop-user-token');
+    const whopUserId = headersList.get('x-whop-user-id') || headersList.get('x-user-id');
+    const whopCompanyId = headersList.get('x-whop-company-id');
+    
+    // Prepare Whop headers for client components
+    const whopHeaders = {
+      userToken: whopUserToken || undefined,
+      userId: whopUserId || undefined,
+      experienceId: experienceId,
+      companyId: whopCompanyId || undefined
+    };
     
     if (!whopUserToken) {
       return (
@@ -440,6 +450,7 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
                     existingProofToday: userStats?.hasCheckedInToday || false,
                     proofType: challenge.proofType || 'FILE'
                   }}
+                  whopHeaders={whopHeaders}
                 />
               </div>
             </div>
