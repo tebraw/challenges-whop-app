@@ -50,6 +50,9 @@ model Challenge {
   description       String?
   startAt           DateTime
   endAt             DateTime
+  status            String            @default("ACTIVE") // ACTIVE, COMPLETED, PAUSED
+  companyId         String?           // For tenant isolation
+  requiredProofTypes Json?            // Array of required proof types
   proofType         ProofType         @default(NONE)
   cadence           Cadence           @default(DAILY)
   rules             Json?

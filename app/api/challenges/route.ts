@@ -275,12 +275,16 @@ export async function POST(request: NextRequest) {
         tenantId: tenant.id,
         title: challengeData.title,
         description: challengeData.description,
-        startAt: challengeData.startAt,
-        endAt: challengeData.endAt,
+        
+        // 🔥 FIX: Ensure dates are properly set
+        startAt: challengeData.startAt || new Date(),
+        endAt: challengeData.endAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days default
+        
         proofType: challengeData.proofType,
         cadence: challengeData.cadence,
         imageUrl: challengeData.imageUrl,
         creatorId: user.id,
+        
         // Store as JSON fields that exist in schema
         rules: {
           maxParticipants: challengeData.maxParticipants,
