@@ -72,7 +72,8 @@ export default function SelectWinnersPage({
       setLoading(true);
       
       // Load eligible participants specifically for winners selection (FIXED: Use all-participants API)
-      const response = await fetch(`/api/admin/challenges/${id}/all-participants`, {
+      const timestamp = Date.now();
+      const response = await fetch(`/api/admin/challenges/${id}/all-participants?t=${timestamp}`, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache',

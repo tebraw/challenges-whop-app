@@ -53,13 +53,26 @@ export async function GET(
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
   try {
-    await requireAdmin();
+    // Check for company owner OR admin access
     const user = await getCurrentUser();
 
     if (!user || !user.tenantId) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
+      );
+    }
+
+    // For all-participants API, company owners should have access
+    const headers = Object.fromEntries(request.headers.entries());
+    const companyId = headers['x-whop-company-id'];
+    
+    // Check if user is company owner OR admin
+    const isCompanyOwner = companyId && user.whopUserId;
+    if (!isCompanyOwner && user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Company owner or admin access required' },
+        { status: 403 }
       );
     }
 
