@@ -114,7 +114,7 @@ function NewChallengePageContent() {
       if (response.ok) {
         const data = await response.json();
         console.log("Challenge created successfully:", data);
-        router.push(`/admin/c/${data.id}`);
+        router.replace(`/admin/c/${data.id}`); // Use replace to avoid back-navigation issues
       } else {
         let errorData;
         try {

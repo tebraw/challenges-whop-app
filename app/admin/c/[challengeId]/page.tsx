@@ -293,7 +293,7 @@ export default function AdminChallengeDetailPage({
       <div className="min-h-screen bg-gray-900 text-white">
         <div className="max-w-6xl mx-auto p-6">
           <Button
-            onClick={() => router.back()}
+            onClick={() => router.push('/admin')}
             variant="outline"
             className="mb-6"
           >
@@ -322,7 +322,7 @@ export default function AdminChallengeDetailPage({
       <div className="min-h-screen bg-gray-900 text-white">
         <div className="max-w-6xl mx-auto p-6">
           <Button
-            onClick={() => router.back()}
+            onClick={() => router.push('/admin')}
             variant="outline"
             className="mb-6"
           >
@@ -351,7 +351,7 @@ export default function AdminChallengeDetailPage({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <Button
-            onClick={() => router.back()}
+            onClick={() => router.push('/admin')}
             variant="outline"
             className="border-gray-600 text-gray-300 hover:bg-gray-800"
           >
