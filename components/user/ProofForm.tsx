@@ -8,7 +8,8 @@ export default function ProofForm({
   challengeId,
   enrolled,
   challenge,
-  whopHeaders
+  whopHeaders,
+  todayProof
 }: { 
   challengeId: string; 
   enrolled: boolean;
@@ -19,6 +20,13 @@ export default function ProofForm({
     experienceId?: string;
     companyId?: string;
   };
+  todayProof?: {
+    id: string;
+    type: string;
+    text?: string | null;
+    url?: string | null;
+    createdAt: Date;
+  } | null;
 }) {
   const router = useRouter();
   const [tab, setTab] = React.useState<ProofType>("FILE");
@@ -26,6 +34,27 @@ export default function ProofForm({
   const [link, setLink] = React.useState("");
   const [file, setFile] = React.useState<File | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [isEditMode, setIsEditMode] = React.useState(false);
+  const [showReplaceWarning, setShowReplaceWarning] = React.useState(false);
+
+  // Initialize form with existing proof data if editing
+  React.useEffect(() => {
+    if (todayProof) {
+      setIsEditMode(true);
+      
+      // Set the correct tab based on proof type
+      if (todayProof.type === 'TEXT' && todayProof.text) {
+        setTab('TEXT');
+        setText(todayProof.text);
+      } else if (todayProof.type === 'LINK' && todayProof.url) {
+        setTab('LINK');
+        setLink(todayProof.url);
+      } else if (todayProof.type === 'FILE') {
+        setTab('FILE');
+        // Note: We can't set the file since it's a File object and we only have URL
+      }
+    }
+  }, [todayProof]);
 
   // Show proof type requirement info
   const getProofTypeInfo = () => {
@@ -63,15 +92,12 @@ export default function ProofForm({
     );
   };
 
-  // Show warning message based on challenge type
+  // Show warning message based on challenge type and edit mode
   const getWarningMessage = () => {
-    if (!challenge?.existingProofToday) return null;
+    if (!isEditMode) return null;
     
-    if (challenge.cadence === "DAILY") {
-      return "⚠️ You have already uploaded a file today. A new upload will replace today's file.";
-    }
-    if (challenge.cadence === "END_OF_CHALLENGE") {
-      return "⚠️ You have already uploaded a file. A new upload will replace the previous file. Only the last file counts.";
+    if (challenge?.proofType === 'PHOTO' && tab === 'FILE') {
+      return "⚠️ You have already uploaded a photo today. Uploading a new photo will replace your current one.";
     }
     return null;
   };
@@ -101,21 +127,29 @@ export default function ProofForm({
       return alert("Please enter a link.");
     }
     
+    // Show confirmation for photo replacement
+    if (isEditMode && challenge?.proofType === 'PHOTO' && tab === 'FILE') {
+      const confirmed = window.confirm(
+        "You have already uploaded a photo today. This new photo will replace your current one. Continue?"
+      );
+      if (!confirmed) return;
+    }
+    
     try {
       setBusy(true);
       let mediaUrl: string | null = null;
         if (tab === "FILE") {
           mediaUrl = await uploadFileToServer(file!);
       }
-      const payload =
-          tab === "TEXT"
-            ? { text: text.trim() }
-            : tab === "LINK"
-            ? { linkUrl: link.trim() }
-            : { imageUrl: mediaUrl };
+      const payload = {
+        ...(tab === "TEXT" && { text: text.trim() }),
+        ...(tab === "LINK" && { linkUrl: link.trim() }),
+        ...(tab === "FILE" && { imageUrl: mediaUrl }),
+        ...(isEditMode && todayProof && { proofId: todayProof.id })
+      };
 
       const res = await fetch(`/api/challenges/${challengeId}/checkin`, {
-        method: "POST",
+        method: isEditMode ? "PUT" : "POST",
         headers: { 
           "Content-Type": "application/json",
           ...(whopHeaders?.userToken && { "x-whop-user-token": whopHeaders.userToken }),
@@ -137,9 +171,9 @@ export default function ProofForm({
       setLink(""); 
       setFile(null);
 
-      // Show specific success message based on API response
-      if (data?.wasReplaced) {
-        alert(data?.message || "File successfully replaced ✅");
+      // Show specific success message based on operation type
+      if (isEditMode) {
+        alert(data?.message || "Proof updated successfully ✅");
       } else {
         alert(data?.message || "Proof saved ✅");
       }
@@ -185,8 +219,14 @@ export default function ProofForm({
   {tab === "FILE" && (
         <div className="space-y-1">
           <label className="block text-xs font-medium text-[var(--muted)] mb-1">
-            Select file to upload
+            {isEditMode ? 'Replace file' : 'Select file to upload'}
           </label>
+          {isEditMode && todayProof?.url && (
+            <div className="mb-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <div className="text-xs text-blue-200 mb-1">Current file:</div>
+              <div className="text-xs text-gray-300 truncate">{todayProof.url}</div>
+            </div>
+          )}
           <input
             type="file"
             accept="image/*,application/pdf,video/*"
@@ -233,10 +273,10 @@ export default function ProofForm({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Saving...
+              {isEditMode ? 'Updating...' : 'Saving...'}
             </span>
           ) : (
-            "Submit Proof"
+            isEditMode ? 'Update Proof' : 'Submit Proof'
           )}
         </button>
       </div>

@@ -155,23 +155,67 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
       const endDate = challenge.endAt ? new Date(challenge.endAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now as fallback
       const today = new Date();
       
-      const maxCheckIns = Math.floor((Math.min(today.getTime(), endDate.getTime()) - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      const completedCheckIns = allProofs.length;
+      // For daily challenges: since only 1 proof per day is possible, 
+      // allProofs.length = number of days with proofs
+      // maxCheckIns = total challenge duration in days
+      // For END_OF_CHALLENGE: only 1 proof total required, anytime during challenge
+      let completedCheckIns, maxCheckIns;
+      
+      if (challenge.cadence === 'DAILY') {
+        // Total challenge duration in days
+        const totalChallengeDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        
+        completedCheckIns = allProofs.length; // = days with proofs (since 1 proof/day max)
+        maxCheckIns = totalChallengeDays;
+      } else if (challenge.cadence === 'END_OF_CHALLENGE') {
+        // Only 1 proof required total, regardless of challenge duration
+        completedCheckIns = allProofs.length > 0 ? 1 : 0; // Either 0 or 1
+        maxCheckIns = 1;
+      } else {
+        // For weekly or other cadences, use elapsed time approach
+        const elapsedDays = Math.floor((Math.min(today.getTime(), endDate.getTime()) - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        completedCheckIns = allProofs.length;
+        maxCheckIns = elapsedDays;
+      }
+      
       const completionRate = maxCheckIns > 0 ? (completedCheckIns / maxCheckIns) * 100 : 0;
       
-      // Check if user can check in today
+      // Check if user can check in - different logic for different cadences
       const todayString = today.toISOString().split('T')[0];
       const hasCheckedInToday = allProofs.some((proof: any) => 
         proof.createdAt && new Date(proof.createdAt).toISOString().split('T')[0] === todayString
       );
-      const canCheckInToday = today >= startDate && today <= endDate && !hasCheckedInToday;
+      
+      let canCheckInToday, hasExistingProof;
+      if (challenge.cadence === 'END_OF_CHALLENGE') {
+        // For END_OF_CHALLENGE: can always submit/replace proof during active challenge
+        canCheckInToday = today >= startDate && today <= endDate;
+        hasExistingProof = allProofs.length > 0;
+      } else {
+        // For DAILY: can only submit once per day
+        canCheckInToday = today >= startDate && today <= endDate && !hasCheckedInToday;
+        hasExistingProof = hasCheckedInToday;
+      }
+      
+      // Get existing proof - different logic for different cadences
+      let todayProof;
+      if (challenge.cadence === 'END_OF_CHALLENGE') {
+        // For END_OF_CHALLENGE: get the latest proof (there should be max 1)
+        todayProof = allProofs.length > 0 ? allProofs[0] : null;
+      } else {
+        // For DAILY: get today's proof specifically
+        todayProof = allProofs.find((proof: any) => 
+          proof.createdAt && new Date(proof.createdAt).toISOString().split('T')[0] === todayString
+        );
+      }
       
       userStats = {
         completedCheckIns,
         maxCheckIns,
         completionRate,
         canCheckInToday,
-        hasCheckedInToday,
+        hasCheckedInToday: hasExistingProof,
+        todayProof,
         joinedAt: userEnrollment.joinedAt ? new Date(userEnrollment.joinedAt).toISOString() : new Date().toISOString(),
         lastCheckin: allProofs[0]?.createdAt ? new Date(allProofs[0].createdAt).toISOString() : undefined
       };
@@ -432,14 +476,28 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
           )}
 
           {/* Check-in/Proof Upload Section */}
-          {isParticipating && userStats?.canCheckInToday && (
+          {isParticipating && (userStats?.canCheckInToday || userStats?.hasCheckedInToday) && (
             <div id="checkin" className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-3xl p-8 mt-8">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold mb-4 flex items-center justify-center gap-3">
                   <span className="text-4xl">⚡</span>
-                  Daily Check-in
+                  {userStats?.hasCheckedInToday 
+                    ? (challenge.cadence === 'END_OF_CHALLENGE' ? 'Edit Your Proof' : 'Edit Today\'s Check-in')
+                    : (challenge.cadence === 'END_OF_CHALLENGE' ? 'Submit Your Proof' : 'Daily Check-in')
+                  }
                 </h2>
-                <p className="text-gray-300 text-lg">Submit your proof for today's progress!</p>
+                <p className="text-gray-300 text-lg">
+                  {userStats?.hasCheckedInToday 
+                    ? (challenge.cadence === 'END_OF_CHALLENGE' 
+                       ? 'You can edit or replace your proof anytime during the challenge!' 
+                       : 'You can edit or replace your proof for today!'
+                      )
+                    : (challenge.cadence === 'END_OF_CHALLENGE'
+                       ? 'Submit your proof for this challenge!'
+                       : 'Submit your proof for today\'s progress!'
+                      )
+                  }
+                </p>
               </div>
               
               <div className="max-w-2xl mx-auto">
@@ -452,6 +510,7 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
                     proofType: challenge.proofType || 'FILE'
                   }}
                   whopHeaders={whopHeaders}
+                  todayProof={userStats?.todayProof || null}
                 />
               </div>
             </div>

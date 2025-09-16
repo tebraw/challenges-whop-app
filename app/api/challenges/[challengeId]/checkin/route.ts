@@ -206,6 +206,120 @@ export async function POST(
   }
 }
 
+// PUT handler for updating existing proofs
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ challengeId: string }> }
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { challengeId } = await params;
+    const body = await req.json();
+    const { text, imageUrl, linkUrl, proofId } = body;
+
+    if (!proofId) {
+      return NextResponse.json({ error: 'Proof ID is required for updates' }, { status: 400 });
+    }
+
+    // Find the existing proof and verify ownership
+    const existingProof = await prisma.proof.findFirst({
+      where: {
+        id: proofId,
+        enrollment: {
+          challengeId: challengeId,
+          userId: user.id
+        }
+      },
+      include: {
+        enrollment: {
+          include: {
+            challenge: {
+              select: {
+                id: true,
+                title: true,
+                proofType: true,
+                cadence: true,
+                startAt: true,
+                endAt: true,
+                experienceId: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!existingProof) {
+      return NextResponse.json({ error: 'Proof not found or access denied' }, { status: 404 });
+    }
+
+    // Check if we can still edit this proof (only same day for DAILY challenges)
+    if (existingProof.enrollment.challenge.cadence === 'DAILY') {
+      const proofDate = new Date(existingProof.createdAt);
+      const today = new Date();
+      const isSameDay = proofDate.toDateString() === today.toDateString();
+      
+      if (!isSameDay) {
+        return NextResponse.json({ 
+          error: 'Cannot edit proofs from previous days' 
+        }, { status: 400 });
+      }
+    }
+
+    // Validate proof type
+    const { proofType } = existingProof.enrollment.challenge;
+    if (proofType === 'TEXT' && !text) {
+      return NextResponse.json({ error: 'Text proof is required' }, { status: 400 });
+    }
+    if (proofType === 'PHOTO' && !imageUrl) {
+      return NextResponse.json({ error: 'Photo proof is required' }, { status: 400 });
+    }
+    if (proofType === 'LINK' && !linkUrl) {
+      return NextResponse.json({ error: 'Link proof is required' }, { status: 400 });
+    }
+
+    // Update the proof
+    const updatedProof = await prisma.proof.update({
+      where: { id: proofId },
+      data: {
+        type: proofType,
+        text: text || null,
+        url: imageUrl || linkUrl || null,
+        updatedAt: new Date(),
+        version: existingProof.version + 1
+      }
+    });
+
+    console.log('Proof updated via PUT:', updatedProof.id);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Proof updated successfully!',
+      checkin: {
+        id: updatedProof.id,
+        createdAt: updatedProof.createdAt,
+        updatedAt: updatedProof.updatedAt,
+        text: updatedProof.text,
+        imageUrl: updatedProof.url,
+        linkUrl: updatedProof.url,
+        isUpdate: true,
+        version: updatedProof.version
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating proof:', error);
+    return NextResponse.json(
+      { error: 'Failed to update proof' },
+      { status: 500 }
+    );
+  }
+}
+
 // Helper function to calculate max possible check-ins based on cadence
 function calculateMaxCheckIns(challenge: any): number {
   if (challenge.cadence === 'END_OF_CHALLENGE') {

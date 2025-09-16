@@ -187,20 +187,37 @@ export async function GET(
     // Helper function to calculate max check-ins
     function calculateMaxCheckIns(challenge: any): number {
       if (challenge.cadence === 'DAILY') {
-        const startDate = new Date(challenge.startDate);
-        const endDate = new Date(challenge.endDate);
+        const startDate = new Date(challenge.startAt);
+        const endDate = new Date(challenge.endAt);
         const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
         return Math.max(1, daysDiff + 1);
+      } else if (challenge.cadence === 'END_OF_CHALLENGE') {
+        // Only 1 proof required total, regardless of challenge duration
+        return 1;
       } else {
-        return 1; // END_OF_CHALLENGE
+        return 1; // Default for other cadences
       }
     }
 
     const maxCheckIns = calculateMaxCheckIns(challenge);
 
+    // Helper function to calculate completed check-ins for different cadences
+    function calculateCompletedCheckIns(proofs: any[], cadence: string): number {
+      if (cadence === 'DAILY') {
+        // Since only 1 proof per day is possible, proofs.length = days with proofs
+        return proofs.length;
+      } else if (cadence === 'END_OF_CHALLENGE') {
+        // Only 1 proof total - either 0 or 1
+        return proofs.length > 0 ? 1 : 0;
+      } else {
+        // For other cadences, use total proof count
+        return proofs.length;
+      }
+    }
+
     // Generate leaderboard from the challenge enrollments (already includes proofs)
     const leaderboardData: LeaderboardEntry[] = challenge.enrollments.map((enrollment: EnrollmentWithUserAndProofs) => {
-      const completedCheckIns = enrollment.proofs.length;
+      const completedCheckIns = calculateCompletedCheckIns(enrollment.proofs, challenge.cadence);
       const completionRate = maxCheckIns > 0 ? completedCheckIns / maxCheckIns : 0;
       return {
         id: enrollment.user.id,
@@ -225,7 +242,7 @@ export async function GET(
     // Calculate average completion rate
     let avgCompletionRate = 0;
     challenge.enrollments.forEach((enrollment: EnrollmentWithUserAndProofs) => {
-      const completedCheckIns = enrollment.proofs.length;
+      const completedCheckIns = calculateCompletedCheckIns(enrollment.proofs, challenge.cadence);
       const completionRate = maxCheckIns > 0 ? completedCheckIns / maxCheckIns : 0;
       avgCompletionRate += completionRate;
     });
