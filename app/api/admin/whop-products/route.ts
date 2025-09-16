@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getCreatorProducts } from '@/lib/whopApi';
-import { requireAdmin, getCurrentUser } from '@/lib/auth';
+import { whopSdk } from '@/lib/whop-sdk';
 import { getExperienceContext } from "@/lib/whop-experience";
 
 export async function GET(req: NextRequest) {
@@ -96,6 +95,67 @@ export async function GET(req: NextRequest) {
     const creatorWhopId = companyId; // Company Owner's Company ID
 
     console.log('🛍️ Using Company ID for products with User Token:', creatorWhopId);
+
+    // 🎯 WHOP SERVER SDK IMPLEMENTATION
+    // Dashboard Apps should use Server SDK with App API Key
+    try {
+      console.log('🔧 Attempting Whop Server SDK with Company Context:', companyId);
+      
+      // Use the properly configured SDK with company context
+      const companySDK = whopSdk.withCompany(companyId);
+      
+      console.log('📦 Fetching receipts/products for company:', companyId);
+      
+      // Fetch company's receipts which contain product information
+      const receiptsResponse = await companySDK.payments.listReceiptsForCompany({
+        companyId: companyId,
+        first: 100 // Get up to 100 products
+      });
+      
+      if (receiptsResponse?.receipts?.nodes) {
+        console.log('✅ Got receipts from SDK:', receiptsResponse.receipts.nodes.length);
+        
+        // Extract unique products from receipts
+        const products = receiptsResponse.receipts.nodes
+          .map((receipt: any) => receipt?.product)
+          .filter((product: any, index: number, self: any[]) => 
+            product && self.findIndex((p: any) => p?.id === product?.id) === index
+          );
+        
+        console.log('🎯 Extracted unique products:', products.length);
+        
+        if (products.length > 0) {
+          const formattedProducts = products.map((product: any) => ({
+            id: product.id,
+            title: product.title,
+            price: product.price?.amount || 0,
+            currency: product.price?.currency || 'USD',
+            type: product.visibility || 'public',
+            status: 'active'
+          }));
+          
+          console.log('✅ SDK SUCCESS - Returning real products:', formattedProducts.length);
+          
+          return NextResponse.json({
+            products: formattedProducts,
+            success: true,
+            source: 'whop-server-sdk',
+            companyId: companyId
+          });
+        }
+      }
+      
+      console.log('⚠️ No products found via SDK, falling back to mock');
+      
+    } catch (sdkError: any) {
+      console.error('❌ Whop Server SDK Error:', {
+        error: sdkError.message,
+        status: sdkError.status,
+        details: sdkError
+      });
+      
+      console.log('🔄 SDK failed, falling back to mock products');
+    }
 
     // 🎯 DASHBOARD MODE: Enable mock products for immediate functionality
     const isDevelopment = process.env.NODE_ENV === 'development';
