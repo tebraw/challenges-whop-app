@@ -74,53 +74,81 @@ export async function GET(req: NextRequest) {
 
     console.log('Challenge found:', challenge);
 
-    // 🔥 FORCE CACHE BREAK: This proves the new code is deployed (timestamp: 21:30)
-    console.log('🔥🔥🔥 DEPLOYMENT CACHE BREAK - NEW CODE IS LIVE! 🔥🔥🔥');
+    // 🎯 WHOP-NATIVE SOLUTION: Use User Token instead of Server API Key
+    // Company Owner is already authenticated via Whop Dashboard and has User Token
+    const userToken = (await headersList).get('x-whop-user-token');
+    
+    console.log('� WHOP USER TOKEN AUTH:', {
+      hasUserToken: !!userToken,
+      companyId: companyId,
+      authentication: 'company-owner-user-token'
+    });
 
-    // 🎯 FIX: Use Company ID from context instead of challenge creator
-    // The products belong to the COMPANY, not the individual challenge creator
-    const creatorWhopId = companyId; // Use the company ID directly
+    if (!userToken) {
+      console.error('❌ No User Token - Company Owner must access via Whop Dashboard');
+      return NextResponse.json(
+        { error: 'User authentication required - access via Whop Dashboard' },
+        { status: 401 }
+      );
+    }
 
-    console.log('🛍️ Using Company ID for products:', creatorWhopId);
+    // 🎯 FIX: Use Company ID (already verified) for products lookup
+    const creatorWhopId = companyId; // Company Owner's Company ID
+
+    console.log('🛍️ Using Company ID for products with User Token:', creatorWhopId);
 
     // 🎯 DEVELOPMENT MODE: Check if we should use mock data
     const isDevelopment = process.env.NODE_ENV === 'development';
     const enableMockProducts = process.env.ENABLE_MOCK_PRODUCTS === 'true' || isDevelopment;
 
     try {
-      // Try to load real creator products from Whop API
-      console.log(`Attempting to fetch Whop products for creator: ${creatorWhopId}`);
+      // 🎯 WHOP-NATIVE: Use User Token to fetch Company Owner's own products  
+      console.log(`🔐 Fetching Company Owner's products with User Token: ${creatorWhopId}`);
       
-      if (creatorWhopId) {
-        const whopProducts = await getCreatorProducts(creatorWhopId);
+      if (creatorWhopId && userToken) {
+        // Direct API call with User Token - Company Owner accessing his own products
+        const whopApiResponse = await fetch(`https://api.whop.com/api/v2/me/plans?per=50&expand=product`, {
+          headers: {
+            'Authorization': `Bearer ${userToken}`,  // 🔐 USER TOKEN (not server API key)
+            'Content-Type': 'application/json'
+          }
+        });
 
-        console.log(`Fetched ${whopProducts.length} products from Whop API`);
+        if (whopApiResponse.ok) {
+          const data = await whopApiResponse.json();
+          const plans = data.data || [];
+          
+          console.log(`✅ Fetched ${plans.length} plans from Company Owner's account`);
 
-        if (whopProducts && whopProducts.length > 0) {
-          const products = whopProducts.map((product) => ({
-            id: product.id,
-            name: product.title,
-            description: product.description,
-            price: product.price,
-            currency: product.currency || 'USD',
-            type: product.product_type || 'digital',
-            imageUrl: product.image_url,
-            checkoutUrl: product.checkout_url || `https://whop.com/checkout/${product.id}`,
-            isActive: product.is_active,
-            affiliateEnabled: true, // 💰 Ready for affiliate features
-            revenueShare: 10, // 💰 10% revenue share for app
-          }));
+          if (plans.length > 0) {
+            const products = plans.map((plan: any) => ({
+              id: plan.id,
+              name: plan.product?.title || plan.title || 'Unnamed Product',
+              description: plan.product?.description || plan.description || '',
+              price: plan.price || 0,
+              currency: plan.currency || 'USD',
+              type: 'subscription',
+              imageUrl: plan.product?.image_url || null,
+              checkoutUrl: `https://whop.com/checkout/${plan.id}`,
+              isActive: plan.stock > 0,
+              affiliateEnabled: true,
+              revenueShare: 10
+            }));
 
-          return NextResponse.json({
-            products,
-            source: 'whop_api',
-            message: `Loaded ${products.length} products from your Whop account`,
-            debug: {
-              challengeId,
-              creatorWhopId,
-              whopApiKey: process.env.WHOP_API_KEY ? 'configured' : 'missing'
-            }
-          });
+            return NextResponse.json({ 
+              products,
+              source: 'whop-user-token-api',
+              message: `Found ${products.length} products from Company Owner account`,
+              debug: {
+                challengeId,
+                creatorWhopId,
+                authentication: 'user-token'
+              }
+            });
+          }
+        } else {
+          const errorText = await whopApiResponse.text();
+          console.error(`❌ User Token API error: ${whopApiResponse.status} - ${errorText}`);
         }
       }
     } catch (whopError) {
