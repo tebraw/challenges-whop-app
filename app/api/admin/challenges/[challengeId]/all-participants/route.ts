@@ -53,10 +53,14 @@ export async function GET(
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
   try {
+    console.log('🚀 All-Participants API called');
+    
     // Check for company owner OR admin access
     const user = await getCurrentUser();
+    console.log('👤 Current user:', user?.id, user?.whopUserId, user?.role);
 
     if (!user || !user.tenantId) {
+      console.log('❌ No user or tenant found');
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -66,15 +70,21 @@ export async function GET(
     // For all-participants API, company owners should have access
     const headers = Object.fromEntries(request.headers.entries());
     const companyId = headers['x-whop-company-id'];
+    console.log('🏢 Company ID from headers:', companyId);
     
     // Check if user is company owner OR admin
     const isCompanyOwner = companyId && user.whopUserId;
+    console.log('🔑 Is company owner:', isCompanyOwner, 'User role:', user.role);
+    
     if (!isCompanyOwner && user.role !== 'ADMIN') {
+      console.log('🚫 Access denied - not company owner or admin');
       return NextResponse.json(
         { error: 'Company owner or admin access required' },
         { status: 403 }
       );
     }
+
+    console.log('✅ Access granted - proceeding with API');
 
     const { challengeId } = await params;
 

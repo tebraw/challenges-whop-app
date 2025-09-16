@@ -73,11 +73,13 @@ export default function SelectWinnersPage({
       
       // Load eligible participants specifically for winners selection (FIXED: Use all-participants API)
       const timestamp = Date.now();
-      const response = await fetch(`/api/admin/challenges/${id}/all-participants?t=${timestamp}`, {
+      const random = Math.random().toString(36).substr(2, 9);
+      const response = await fetch(`/api/admin/challenges/${id}/all-participants?cache=${timestamp}&v=${random}`, {
         cache: 'no-store',
         headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
       
