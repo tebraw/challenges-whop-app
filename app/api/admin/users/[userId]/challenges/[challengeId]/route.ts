@@ -7,23 +7,46 @@ export async function GET(
   context: { params: Promise<{ userId: string; challengeId: string }> }
 ) {
   try {
-    console.log("=== API Route Called ===");
+    console.log("=== User Proofs API Route Called ===");
     console.log("Request URL:", request.url);
-    console.log("Request method:", request.method);
-    console.log("Request headers:", Object.fromEntries(request.headers.entries()));
     
-    // Require admin access
-    console.log("Checking admin access...");
-    await requireAdmin();
-    console.log("Admin access granted");
+    // Check for company owner access first (same fix as all-participants API)
+    const headers = Object.fromEntries(request.headers.entries());
+    const companyId = headers['x-whop-company-id'];
+    console.log("🏢 Company ID from headers:", companyId);
     
-    const currentUser = await getCurrentUser();
-    console.log("Current user:", currentUser?.id, currentUser?.email, currentUser?.role);
+    let targetTenantId = null;
+    
+    if (companyId) {
+      console.log("✅ Company owner access detected");
+      // Find tenant by company ID for company owners
+      const tenant = await prisma.tenant.findFirst({
+        where: { whopCompanyId: companyId }
+      });
+      targetTenantId = tenant?.id;
+      console.log("🏢 Found tenant for company:", targetTenantId);
+    } else {
+      // Fallback to admin check
+      console.log("Checking admin access...");
+      await requireAdmin();
+      console.log("Admin access granted");
+      
+      const currentUser = await getCurrentUser();
+      console.log("Current user:", currentUser?.id, currentUser?.email, currentUser?.role);
 
-    if (!currentUser || !currentUser.tenantId) {
+      if (!currentUser || !currentUser.tenantId) {
+        return NextResponse.json(
+          { error: 'Authentication required' },
+          { status: 401 }
+        );
+      }
+      targetTenantId = currentUser.tenantId;
+    }
+
+    if (!targetTenantId) {
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
+        { error: 'Tenant not found' },
+        { status: 404 }
       );
     }
     
@@ -35,7 +58,7 @@ export async function GET(
     const challengeCheck = await prisma.challenge.findUnique({
       where: { 
         id: challengeId,
-        tenantId: currentUser.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+        tenantId: targetTenantId  // 🔒 SECURITY: Only allow access to same tenant
       },
       select: { id: true }
     });
@@ -51,7 +74,7 @@ export async function GET(
     let user = await prisma.user.findUnique({
       where: { 
         id: userId,
-        tenantId: currentUser.tenantId  // 🔒 SECURITY: Only allow access to same tenant users
+        tenantId: targetTenantId  // 🔒 SECURITY: Only allow access to same tenant users
       },
       select: {
         id: true,
@@ -70,7 +93,7 @@ export async function GET(
           challengeId: challengeId,
           userId: userId,
           challenge: {
-            tenantId: currentUser.tenantId  // 🔒 SECURITY: Challenge must be in admin's tenant
+            tenantId: targetTenantId  // 🔒 SECURITY: Challenge must be in admin's tenant
           }
         },
         include: {
@@ -107,7 +130,7 @@ export async function GET(
         challengeId: challengeId,
         userId: userId,
         challenge: {
-          tenantId: currentUser.tenantId  // 🔒 SECURITY: Double-check challenge tenant
+          tenantId: targetTenantId  // 🔒 SECURITY: Double-check challenge tenant
         }
       },
       include: {
