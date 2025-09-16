@@ -20,13 +20,6 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
     const whopUserId = headersList.get('x-whop-user-id') || headersList.get('x-user-id');
     const whopCompanyId = headersList.get('x-whop-company-id');
     
-    // Prepare Whop headers for client components
-    const whopHeaders = {
-      userToken: whopUserToken || undefined,
-      userId: whopUserId || undefined,
-      experienceId: experienceId,
-      companyId: whopCompanyId || undefined
-    };
     
     if (!whopUserToken) {
       return (
@@ -75,6 +68,14 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
         </div>
       );
     }
+
+    // Prepare Whop headers for client components (use actual userId from SDK)
+    const whopHeaders = {
+      userToken: whopUserToken || undefined,
+      userId: userId, // Use the verified userId from SDK
+      experienceId: experienceId,
+      companyId: whopCompanyId || undefined
+    };
     
     // Load challenge with user participation data
     // Try with current experienceId first, then fallback to legacy company ID
