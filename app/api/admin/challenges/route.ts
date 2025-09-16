@@ -264,6 +264,11 @@ export async function GET(request: NextRequest) {
           select: {
             enrollments: true
           }
+        },
+        enrollments: {
+          include: {
+            checkins: true  // 🔥 ADD: Include checkins for fire emoji counting
+          }
         }
       },
       orderBy: {
@@ -275,19 +280,27 @@ export async function GET(request: NextRequest) {
 
     return createCorsResponse({
       success: true,
-      challenges: challenges.map((challenge: any) => ({
-        id: challenge.id,
-        title: challenge.title,
-        description: challenge.description,
-        imageUrl: challenge.imageUrl,
-        category: challenge.whopCategoryName || 'general',
-        difficulty: (challenge.rules as any)?.difficulty || 'BEGINNER',
-        startDate: challenge.startAt,
-        endDate: challenge.endAt,
-        enrollmentCount: challenge._count.enrollments,
-        isActive: new Date() >= challenge.startAt && new Date() <= challenge.endAt,
-        createdAt: challenge.createdAt
-      })),
+      challenges: challenges.map((challenge: any) => {
+        // 🔥 CALCULATE FIRE EMOJI COUNT: Total checkins across all enrollments
+        const totalCheckins = challenge.enrollments.reduce((sum: number, enrollment: any) => {
+          return sum + (enrollment.checkins?.length || 0);
+        }, 0);
+
+        return {
+          id: challenge.id,
+          title: challenge.title,
+          description: challenge.description,
+          imageUrl: challenge.imageUrl,
+          category: challenge.whopCategoryName || 'general',
+          difficulty: (challenge.rules as any)?.difficulty || 'BEGINNER',
+          startDate: challenge.startAt,
+          endDate: challenge.endAt,
+          enrollmentCount: challenge._count.enrollments,
+          streakCount: totalCheckins, // 🔥 FIRE EMOJI: Show total activity (checkins)
+          isActive: new Date() >= challenge.startAt && new Date() <= challenge.endAt,
+          createdAt: challenge.createdAt
+        };
+      }),
       context: {
         experienceId,
         companyId,

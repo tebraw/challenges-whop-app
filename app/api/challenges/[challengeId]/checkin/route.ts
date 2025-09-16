@@ -151,6 +151,23 @@ export async function POST(
       console.log('New proof created:', proof.id);
     }
 
+    // 🆕 ALSO CREATE CHECKIN: Every proof should also count as a check-in
+    if (!isUpdate) {
+      // Only create new CheckIn for new proofs, not updates
+      try {
+        const checkIn = await prisma.checkin.create({
+          data: {
+            enrollmentId: enrollment.id,
+            createdAt: new Date()
+          }
+        });
+        console.log('CheckIn created alongside proof:', checkIn.id);
+      } catch (error: any) {
+        console.log('CheckIn creation failed (might already exist for today):', error.message);
+        // Continue even if CheckIn creation fails (e.g., unique constraint for DAILY)
+      }
+    }
+
     // Calculate new stats for check-ins
     const allProofs = await prisma.proof.findMany({
       where: { 

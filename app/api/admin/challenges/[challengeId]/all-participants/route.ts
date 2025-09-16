@@ -18,6 +18,10 @@ interface EnrollmentWithUserAndProofs {
     url?: string | null;
     createdAt: Date;
   }>;
+  checkins: Array<{
+    id: string;
+    createdAt: Date;
+  }>;
 }
 
 interface ParticipantData {
@@ -75,6 +79,11 @@ export async function GET(
               orderBy: {
                 createdAt: 'desc'
               }
+            },
+            checkins: {
+              orderBy: {
+                createdAt: 'desc'
+              }
             }
           },
         },
@@ -101,10 +110,12 @@ export async function GET(
 
     // Process all participants and determine eligibility
     const allParticipants: ParticipantData[] = challenge.enrollments.map((enrollment: EnrollmentWithUserAndProofs) => {
+      // CLEAN LOGIC: Only count proofs for eligibility (quality control)
+      // CheckIns are used separately for activity tracking (fire emojis)
       const completedCheckIns = enrollment.proofs.length;
       const completionRate = requiredCheckIns > 0 ? Math.round((completedCheckIns / requiredCheckIns) * 100) : 0;
       
-      // Check if participant has required number of check-ins
+      // Check if participant has required number of proofs
       const hasRequiredCheckIns = completedCheckIns >= requiredCheckIns;
       
       // Check if proofs match required format
@@ -112,10 +123,10 @@ export async function GET(
       let formatIssue = '';
       
       if (challenge.proofType === 'PHOTO') {
-        const hasNonImageProof = enrollment.proofs.some(proof => proof.type !== 'IMAGE' || !proof.url);
+        const hasNonImageProof = enrollment.proofs.some(proof => proof.type !== 'PHOTO' || !proof.url);
         if (hasNonImageProof) {
           hasCorrectProofFormat = false;
-          formatIssue = 'Contains non-image proofs';
+          formatIssue = 'Contains non-photo proofs';
         }
       } else if (challenge.proofType === 'TEXT') {
         const hasNonTextProof = enrollment.proofs.some(proof => proof.type !== 'TEXT' || !proof.text);
@@ -137,9 +148,9 @@ export async function GET(
       
       if (!isEligible) {
         if (!hasRequiredCheckIns && !hasCorrectProofFormat) {
-          ineligibilityReason = `Insufficient check-ins (${completedCheckIns}/${requiredCheckIns}) and ${formatIssue.toLowerCase()}`;
+          ineligibilityReason = `Insufficient proofs (${completedCheckIns}/${requiredCheckIns}) and ${formatIssue.toLowerCase()}`;
         } else if (!hasRequiredCheckIns) {
-          ineligibilityReason = `Insufficient check-ins (${completedCheckIns}/${requiredCheckIns})`;
+          ineligibilityReason = `Insufficient proofs (${completedCheckIns}/${requiredCheckIns})`;
         } else if (!hasCorrectProofFormat) {
           ineligibilityReason = formatIssue;
         }
