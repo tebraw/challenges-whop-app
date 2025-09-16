@@ -14,6 +14,9 @@ interface Participant {
   completedCheckIns: number;
   requiredCheckIns: number;
   isEligible: boolean;
+  hasRequiredCheckIns?: boolean;
+  hasCorrectProofFormat?: boolean;
+  ineligibilityReason?: string;
   points: number;
   totalScore?: number;
   rank?: number;
@@ -71,8 +74,8 @@ export default function SelectWinnersPage({
     try {
       setLoading(true);
       
-      // Load eligible participants specifically for winners selection
-      const response = await fetch(`/api/admin/challenges/${id}/eligible-participants`, {
+      // Load all participants for winners selection
+      const response = await fetch(`/api/admin/challenges/${id}/all-participants`, {
         cache: 'no-store'
       });
       
@@ -80,28 +83,43 @@ export default function SelectWinnersPage({
         const data = await response.json();
         setChallenge(data.challenge);
         
-        // Set top participants from eligible participants
-        if (data.eligibleParticipants && data.eligibleParticipants.length > 0) {
-          setTopParticipants(data.eligibleParticipants);
+        // Set all participants (both eligible and ineligible)
+        if (data.allParticipants && data.allParticipants.length > 0) {
+          setTopParticipants(data.allParticipants);
           
-          // Auto-assign top 3 to winner slots
+          // Auto-assign top 3 eligible participants to winner slots
+          const eligibleParticipants = data.allParticipants.filter((p: any) => p.isEligible);
           const autoWinners = winners.map((winner, index) => ({
             ...winner,
-            participant: data.eligibleParticipants[index] || null
+            participant: eligibleParticipants[index] || null
           }));
           setWinners(autoWinners);
+        } else {
+          setTopParticipants([]);
         }
       } else {
-        console.error('Failed to load eligible participants:', response.statusText);
+        console.error('Failed to load participants:', response.statusText);
+        setTopParticipants([]);
       }
     } catch (error) {
       console.error('Error loading challenge data:', error);
+      setTopParticipants([]);
     } finally {
       setLoading(false);
     }
   };
 
   const selectWinner = (rank: number, participant: Participant | null) => {
+    // Check if participant is eligible (only warn, don't prevent selection for admin override)
+    if (participant && !participant.isEligible) {
+      const confirmSelection = window.confirm(
+        `⚠️ This participant is not eligible (${participant.ineligibilityReason || 'does not meet requirements'}).\n\nDo you want to select them as a winner anyway? This will override the eligibility requirements.`
+      );
+      if (!confirmSelection) {
+        return;
+      }
+    }
+
     setWinners(prev => prev.map(winner => {
       if (winner.rank === rank) {
         return { ...winner, participant };
@@ -618,9 +636,9 @@ export default function SelectWinnersPage({
           <div className="flex items-center gap-3 mb-6">
             <Users className="h-6 w-6 text-blue-400" />
             <h2 className="text-xl font-bold text-white">
-              Eligible Participants 
+              All Participants 
               <span className="text-sm text-gray-400 ml-2">
-                ({topParticipants.length} qualified)
+                ({topParticipants.filter(p => p.isEligible).length} eligible, {topParticipants.length} total)
               </span>
             </h2>
           </div>
@@ -633,17 +651,10 @@ export default function SelectWinnersPage({
           ) : topParticipants.length === 0 ? (
             <div className="text-center py-8">
               <Users className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-300 mb-2">No Eligible Participants</h3>
+              <h3 className="text-lg font-semibold text-gray-300 mb-2">No Participants</h3>
               <p className="text-gray-400">
-                No participants have completed all required check-ins with the correct proof format.
+                No one has joined this challenge yet.
               </p>
-              {challenge && (
-                <div className="mt-4 p-4 bg-gray-700 rounded-lg text-sm">
-                  <p className="text-gray-300">
-                    <strong>Requirements:</strong> {challenge.requiredCheckIns} check-ins with {challenge.proofType.toLowerCase()} proof
-                  </p>
-                </div>
-              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -652,18 +663,41 @@ export default function SelectWinnersPage({
                 const assignedRank = winners.find(w => w.participant?.id === participant.id)?.rank;
                 
                 return (
-                  <div key={participant.id} className="bg-gray-700 rounded-lg p-4 border border-gray-600 hover:border-gray-500 transition-colors">
+                  <div 
+                    key={participant.id} 
+                    className={`rounded-lg p-4 border transition-colors ${
+                      participant.isEligible 
+                        ? 'bg-gray-700 border-gray-600 hover:border-gray-500' 
+                        : 'bg-gray-800 border-gray-700 opacity-75'
+                    }`}
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
+                          participant.isEligible ? 'bg-blue-600 text-white' : 'bg-gray-600 text-gray-300'
+                        }`}>
                           {participant.avatar}
                         </div>
                         <div>
-                          <h3 className="font-semibold text-white">{participant.name}</h3>
-                          <p className="text-sm text-gray-400">{participant.email}</p>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className={`font-semibold ${participant.isEligible ? 'text-white' : 'text-gray-300'}`}>
+                              {participant.name}
+                            </h3>
+                            {participant.isEligible ? (
+                              <span className="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-medium">
+                                ✓ Eligible
+                              </span>
+                            ) : (
+                              <span className="bg-red-600 text-white px-2 py-0.5 rounded-full text-xs font-medium">
+                                ✗ Ineligible
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-400 mb-1">{participant.email}</p>
+                          
                           <div className="flex items-center gap-4 mt-1 text-xs">
-                            <span className="text-green-400">
-                              ✓ {participant.completedCheckIns}/{participant.requiredCheckIns} check-ins
+                            <span className={participant.hasRequiredCheckIns ? 'text-green-400' : 'text-red-400'}>
+                              {participant.hasRequiredCheckIns ? '✓' : '✗'} {participant.completedCheckIns}/{participant.requiredCheckIns} check-ins
                             </span>
                             <span className="text-blue-400">
                               {participant.completionRate}% completion
@@ -672,6 +706,12 @@ export default function SelectWinnersPage({
                               {participant.points} points
                             </span>
                           </div>
+                          
+                          {!participant.isEligible && participant.ineligibilityReason && (
+                            <p className="text-xs text-red-400 mt-1 italic">
+                              {participant.ineligibilityReason}
+                            </p>
+                          )}
                         </div>
                       </div>
                       
@@ -692,22 +732,34 @@ export default function SelectWinnersPage({
                           <div className="flex gap-1">
                             <button
                               onClick={() => selectWinner(1, participant)}
-                              className="bg-yellow-600 hover:bg-yellow-700 text-black px-2 py-1 rounded text-xs font-bold transition-colors"
-                              title="Assign to 1st Place"
+                              className={`px-2 py-1 rounded text-xs font-bold transition-colors ${
+                                participant.isEligible 
+                                  ? 'bg-yellow-600 hover:bg-yellow-700 text-black' 
+                                  : 'bg-yellow-700 hover:bg-yellow-600 text-gray-200 border border-yellow-500'
+                              }`}
+                              title={participant.isEligible ? "Assign to 1st Place" : "⚠️ Not eligible - click to override"}
                             >
                               🥇 1st
                             </button>
                             <button
                               onClick={() => selectWinner(2, participant)}
-                              className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded text-xs font-bold transition-colors"
-                              title="Assign to 2nd Place"
+                              className={`px-2 py-1 rounded text-xs font-bold transition-colors ${
+                                participant.isEligible 
+                                  ? 'bg-gray-600 hover:bg-gray-700 text-white' 
+                                  : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-500'
+                              }`}
+                              title={participant.isEligible ? "Assign to 2nd Place" : "⚠️ Not eligible - click to override"}
                             >
                               🥈 2nd
                             </button>
                             <button
                               onClick={() => selectWinner(3, participant)}
-                              className="bg-orange-600 hover:bg-orange-700 text-white px-2 py-1 rounded text-xs font-bold transition-colors"
-                              title="Assign to 3rd Place"
+                              className={`px-2 py-1 rounded text-xs font-bold transition-colors ${
+                                participant.isEligible 
+                                  ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                                  : 'bg-orange-700 hover:bg-orange-600 text-gray-200 border border-orange-500'
+                              }`}
+                              title={participant.isEligible ? "Assign to 3rd Place" : "⚠️ Not eligible - click to override"}
                             >
                               🥉 3rd
                             </button>
