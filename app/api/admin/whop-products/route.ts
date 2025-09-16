@@ -74,11 +74,11 @@ export async function GET(req: NextRequest) {
 
     console.log('Challenge found:', challenge);
 
-    // 🎯 WHOP-NATIVE SOLUTION: Use User Token instead of Server API Key
-    // Company Owner is already authenticated via Whop Dashboard and has User Token
+    // 🎯 WHOP-NATIVE SOLUTION: Use User Token with proper headers
+    // Company Owner is accessing via Whop Dashboard with authenticated session
     const userToken = (await headersList).get('x-whop-user-token');
     
-    console.log('� WHOP USER TOKEN AUTH:', {
+    console.log('🔐 WHOP USER TOKEN AUTH:', {
       hasUserToken: !!userToken,
       companyId: companyId,
       authentication: 'company-owner-user-token'
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 🎯 FIX: Use Company ID (already verified) for products lookup
+    // 🎯 Company ID for products lookup
     const creatorWhopId = companyId; // Company Owner's Company ID
 
     console.log('🛍️ Using Company ID for products with User Token:', creatorWhopId);
@@ -102,58 +102,24 @@ export async function GET(req: NextRequest) {
     const enableMockProducts = process.env.ENABLE_MOCK_PRODUCTS === 'true' || isDevelopment;
 
     try {
-      // 🎯 WHOP-NATIVE: Use User Token to fetch Company Owner's own products  
-      console.log(`🔐 Fetching Company Owner's products with User Token: ${creatorWhopId}`);
+      // 🎯 WHOP USER TOKEN: Use v5 API with proper headers (like lib/whop/auth.ts)
+      console.log(`🔐 Fetching Company Owner's products via User Token: ${creatorWhopId}`);
       
       if (creatorWhopId && userToken) {
-        // 🔧 TEST MULTIPLE TOKEN FORMATS: Try different ways to use the user token
-        console.log('🔧 Testing token formats for v2 API...');
-        
-        let whopApiResponse;
-        let lastError = '';
-        
-        // Format 1: Bearer + token
-        console.log('🔧 Trying: Bearer ${userToken}');
-        whopApiResponse = await fetch(`https://api.whop.com/api/v2/me/plans?per=50&expand=product`, {
+        // Use v5 API with X-Whop-App-Id header (same pattern as lib/whop/auth.ts)
+        const whopApiResponse = await fetch(`https://api.whop.com/v5/companies/${creatorWhopId}/plans?per=50&expand=product`, {
           headers: {
             'Authorization': `Bearer ${userToken}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-Whop-App-Id': process.env.NEXT_PUBLIC_WHOP_APP_ID!
           }
         });
         
-        if (!whopApiResponse.ok) {
-          lastError = await whopApiResponse.text();
-          console.log('❌ Bearer format failed:', whopApiResponse.status, lastError);
-          
-          // Format 2: Direct token (no Bearer)
-          console.log('🔧 Trying: Direct token without Bearer');
-          whopApiResponse = await fetch(`https://api.whop.com/api/v2/me/plans?per=50&expand=product`, {
-            headers: {
-              'Authorization': userToken,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          if (!whopApiResponse.ok) {
-            lastError = await whopApiResponse.text();
-            console.log('❌ Direct token failed:', whopApiResponse.status, lastError);
-            
-            // Format 3: Token as x-whop-user-token header
-            console.log('🔧 Trying: x-whop-user-token header');
-            whopApiResponse = await fetch(`https://api.whop.com/api/v2/me/plans?per=50&expand=product`, {
-              headers: {
-                'x-whop-user-token': userToken,
-                'Content-Type': 'application/json'
-              }
-            });
-          }
-        }
-        
-        console.log('📡 Final API Response Status:', whopApiResponse.status);
+        console.log('📡 Whop v5 API Response Status:', whopApiResponse.status);
 
         if (whopApiResponse.ok) {
           const data = await whopApiResponse.json();
-          const plans = data.data || [];
+          const plans = data.data || data.plans || [];
           
           console.log(`✅ Fetched ${plans.length} plans from Company Owner's account`);
 
@@ -174,18 +140,35 @@ export async function GET(req: NextRequest) {
 
             return NextResponse.json({ 
               products,
-              source: 'whop-user-token-api',
+              source: 'whop-v5-user-token',
               message: `Found ${products.length} products from Company Owner account`,
               debug: {
                 challengeId,
                 creatorWhopId,
-                authentication: 'user-token'
+                authentication: 'user-token-v5'
               }
             });
           }
         } else {
           const errorText = await whopApiResponse.text();
-          console.error(`❌ User Token API error: ${whopApiResponse.status} - ${errorText}`);
+          console.error(`❌ User Token v5 API error: ${whopApiResponse.status} - ${errorText}`);
+          
+          // Fallback to Server API if User Token fails
+          console.log('🔄 Falling back to Server API...');
+          const products = await getCreatorProducts(creatorWhopId);
+          
+          if (products.length > 0) {
+            return NextResponse.json({ 
+              products,
+              source: 'whop-server-api-fallback',
+              message: `Found ${products.length} products via Server API fallback`,
+              debug: {
+                challengeId,
+                creatorWhopId,
+                authentication: 'server-api-fallback'
+              }
+            });
+          }
         }
       }
     } catch (whopError) {
