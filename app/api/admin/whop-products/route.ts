@@ -74,6 +74,9 @@ export async function GET(req: NextRequest) {
 
     console.log('Challenge found:', challenge);
 
+    // 🔥 FORCE CACHE BREAK: This proves the new code is deployed (timestamp: 21:30)
+    console.log('🔥🔥🔥 DEPLOYMENT CACHE BREAK - NEW CODE IS LIVE! 🔥🔥🔥');
+
     // 🎯 FIX: Use Company ID from context instead of challenge creator
     // The products belong to the COMPANY, not the individual challenge creator
     const creatorWhopId = companyId; // Use the company ID directly
