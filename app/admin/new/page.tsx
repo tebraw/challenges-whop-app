@@ -8,7 +8,7 @@ import Input from "@/components/ui/Input";
 import Textarea from "@/components/ui/Textarea";
 import Select from "@/components/ui/Select";
 import ImagePicker from "@/components/ui/ImagePicker";
-import { ArrowLeft, ArrowRight, Check, X, Award } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, X, Award, Info } from "lucide-react";
 import { challengeAdminSchema, type ChallengeAdminInput } from "@/lib/adminSchema";
 import { DEFAULT_POLICY_TEXT, POLICY_PLACEHOLDER } from "@/lib/defaultTexts";
 
@@ -39,6 +39,7 @@ function NewChallengePageContent() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [showCadenceInfo, setShowCadenceInfo] = useState(false);
 
   const [form, setForm] = useState<ChallengeInput>({
     title: "",
@@ -271,7 +272,36 @@ function NewChallengePageContent() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Challenge Cadence</label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <label className="block text-sm font-medium">Challenge Cadence</label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowCadenceInfo(!showCadenceInfo)}
+                        className="text-gray-400 hover:text-gray-300 transition-colors"
+                      >
+                        <Info className="h-4 w-4" />
+                      </button>
+                      {showCadenceInfo && (
+                        <div className="absolute left-0 top-6 z-10 w-96 p-4 bg-gray-800 border border-gray-700 rounded-lg shadow-lg text-sm">
+                          <div className="space-y-3">
+                            <div>
+                              <h4 className="font-semibold text-blue-400">DAILY Cadence</h4>
+                              <p className="text-gray-300">Participants need to submit one proof per day during the challenge period. Completion shows "days completed / total challenge days"</p>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-green-400">END_OF_CHALLENGE Cadence</h4>
+                              <p className="text-gray-300">Participants need to submit only one proof total during the entire challenge period, which can be submitted or replaced anytime before the challenge ends. Completion shows "0/1" (no proof) or "1/1" (proof submitted).</p>
+                            </div>
+                            <div className="pt-2 border-t border-gray-700">
+                              <p className="text-yellow-400 font-medium">Key difference:</p>
+                              <p className="text-gray-300">DAILY counts unique days with proofs, END_OF_CHALLENGE only requires one proof total with unlimited replacement capability.</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <Select
                     value={form.cadence}
                     onChange={(e) => setForm({ ...form, cadence: e.target.value })}
