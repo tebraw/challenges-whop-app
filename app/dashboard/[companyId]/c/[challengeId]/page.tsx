@@ -168,28 +168,30 @@ export default function AdminChallengeDetailPage({
   async function loadWhopProducts(challengeId: string) {
     try {
       setLoadingProducts(true);
-      console.log(`Loading Whop products for challenge: ${challengeId}`);
+      console.log(`🛍️ Loading Whop products for challenge: ${challengeId}`);
       
       const response = await fetch(`/api/admin/whop-products?challengeId=${challengeId}`);
       const data = await response.json();
       
-      console.log('Whop products API response:', data);
+      console.log('🛍️ Whop products API response:', data);
       
       if (response.ok) {
-        setWhopProducts(data.products || []);
+        const products = data.products || [];
+        setWhopProducts(products);
         
         // Show debug information in console for troubleshooting
         if (data.debug) {
-          console.log('Debug information:', data.debug);
+          console.log('🛍️ Debug information:', data.debug);
         }
         
         // Show user-friendly messages
-        if (data.products && data.products.length > 0) {
-          console.log(`✅ Successfully loaded ${data.products.length} products from Whop`);
+        if (products.length > 0) {
+          console.log(`✅ Successfully loaded ${products.length} products:`, products.map((p: any) => p.name));
         } else {
           console.warn('⚠️ No products found:', data.message);
-          if (data.debug) {
-            console.log('Debug details:', data.debug);
+          // Try to get mock products in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔧 Development mode - trying to enable mock products...');
           }
         }
       } else {
@@ -579,6 +581,21 @@ export default function AdminChallengeDetailPage({
 
           {/* Marketing Offers */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Debug Info */}
+            <div className="lg:col-span-2 mb-4">
+              <div className="bg-blue-900/50 border border-blue-600 rounded-lg p-4">
+                <h4 className="text-blue-200 font-medium mb-2">🔧 Debug Info:</h4>
+                <div className="text-sm text-blue-100 space-y-1">
+                  <div>Loading Products: {loadingProducts ? 'Yes' : 'No'}</div>
+                  <div>Products Found: {whopProducts.length}</div>
+                  <div>Challenge ID: {challengeId}</div>
+                  {whopProducts.length > 0 && (
+                    <div>Products: {whopProducts.map(p => p.name).join(', ')}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Challenge Completion Offer */}
             <Card className="p-6 bg-gray-800 border-gray-700">
               <div className="flex items-center gap-2 mb-4">
@@ -595,24 +612,33 @@ export default function AdminChallengeDetailPage({
                       Loading products...
                     </div>
                   ) : (
-                    <select 
-                      id="completion-product"
-                      className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500"
-                      disabled={whopProducts.length === 0}
-                    >
-                      {whopProducts.length === 0 ? (
-                        <option>No products available - Connect your Whop account</option>
-                      ) : (
-                        <>
-                          <option value="">Select product...</option>
-                          {whopProducts.map((product) => (
-                            <option key={product.id} value={product.id}>
-                              {product.name} {product.price && product.currency ? `(${product.currency} ${product.price})` : ''}
-                            </option>
-                          ))}
-                        </>
-                      )}
-                    </select>
+                    <div className="relative">
+                      <select 
+                        id="completion-product"
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:bg-gray-600 transition-colors cursor-pointer relative z-10"
+                        disabled={whopProducts.length === 0}
+                        style={{ 
+                          appearance: 'none',
+                          backgroundImage: 'url("data:image/svg+xml;utf8,<svg fill=\'white\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/></svg>")',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'right 12px center',
+                          backgroundSize: '16px'
+                        }}
+                      >
+                        {whopProducts.length === 0 ? (
+                          <option>No products available - Connect your Whop account</option>
+                        ) : (
+                          <>
+                            <option value="">Select product...</option>
+                            {whopProducts.map((product) => (
+                              <option key={product.id} value={product.id}>
+                                {product.name} {product.price && product.currency ? `(${product.currency} ${product.price})` : ''}
+                              </option>
+                            ))}
+                          </>
+                        )}
+                      </select>
+                    </div>
                   )}
                 </div>
                 
@@ -664,24 +690,33 @@ export default function AdminChallengeDetailPage({
                       Loading products...
                     </div>
                   ) : (
-                    <select 
-                      id="boost-product"
-                      className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500"
-                      disabled={whopProducts.length === 0}
-                    >
-                      {whopProducts.length === 0 ? (
-                        <option>No products available - Connect your Whop account</option>
-                      ) : (
-                        <>
-                          <option value="">Select product...</option>
-                          {whopProducts.map((product) => (
-                            <option key={product.id} value={product.id}>
-                              {product.name} {product.price && product.currency ? `(${product.currency} ${product.price})` : ''}
-                            </option>
-                          ))}
-                        </>
-                      )}
-                    </select>
+                    <div className="relative">
+                      <select 
+                        id="boost-product"
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:bg-gray-600 transition-colors cursor-pointer relative z-10"
+                        disabled={whopProducts.length === 0}
+                        style={{ 
+                          appearance: 'none',
+                          backgroundImage: 'url("data:image/svg+xml;utf8,<svg fill=\'white\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/></svg>")',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'right 12px center',
+                          backgroundSize: '16px'
+                        }}
+                      >
+                        {whopProducts.length === 0 ? (
+                          <option>No products available - Connect your Whop account</option>
+                        ) : (
+                          <>
+                            <option value="">Select product...</option>
+                            {whopProducts.map((product) => (
+                              <option key={product.id} value={product.id}>
+                                {product.name} {product.price && product.currency ? `(${product.currency} ${product.price})` : ''}
+                              </option>
+                            ))}
+                          </>
+                        )}
+                      </select>
+                    </div>
                   )}
                 </div>
                 
