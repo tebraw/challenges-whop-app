@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -37,6 +37,8 @@ export default function NewChallengePage() {
 
 function NewChallengePageContent() {
   const router = useRouter();
+  const params = useParams();
+  const companyId = (params?.companyId as string) || 'unknown';
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [showCadenceInfo, setShowCadenceInfo] = useState(false);
@@ -115,7 +117,7 @@ function NewChallengePageContent() {
       if (response.ok) {
         const data = await response.json();
         console.log("Challenge created successfully:", data);
-        router.push(`/admin/c/${data.id}`);
+        router.push(`/dashboard/${companyId}/c/${data.id}`);
       } else {
         let errorData;
         try {

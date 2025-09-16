@@ -80,6 +80,29 @@ function DashboardContent() {
     load();
   }, []);
 
+  // 🔧 FIX: Reload data when user returns to this page
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log("🔄 Page became visible, reloading challenges...");
+        load();
+      }
+    };
+
+    const handleFocus = () => {
+      console.log("🔄 Page focused, reloading challenges...");
+      load();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
   async function onDelete(id: string) {
     if (!confirm("Really delete challenge?")) return;
     try {
