@@ -20,7 +20,7 @@ type Challenge = {
   proofType: "TEXT" | "PHOTO" | "LINK";
   rules?: any;
   createdAt: string;
-  _count?: { enrollments: number };
+  enrollmentCount?: number;  // Updated to match API response
   streakCount?: number;
 };
 
@@ -192,7 +192,7 @@ function DashboardContent() {
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-white">
-                    {items.reduce((sum, c) => sum + (c._count?.enrollments ?? 0), 0)}
+                    {items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0)}
                   </div>
                   <div className="text-sm text-gray-400">Total Participants</div>
                 </div>
@@ -220,7 +220,7 @@ function DashboardContent() {
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-white">
-                    {Math.round(items.reduce((sum, c) => sum + (c._count?.enrollments ?? 0), 0) * 0.12)}
+                    {Math.round(items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0) * 0.12)}
                   </div>
                   <div className="text-sm text-gray-400">Conversion Potential</div>
                 </div>
@@ -257,7 +257,7 @@ function DashboardContent() {
               const rules = (c.rules ?? {}) as any;
               const img: string | undefined = rules.imageUrl || c.imageUrl;
               const max = rules.maxParticipants as number | undefined;
-              const count = c._count?.enrollments ?? 0;
+              const count = c.enrollmentCount ?? 0;  // 🔧 FIX: Use enrollmentCount from API
               const streakCount = c.streakCount ?? 0;
               
               // Safe status calculation with fallback
