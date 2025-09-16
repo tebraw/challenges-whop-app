@@ -204,7 +204,7 @@ export async function GET(req: NextRequest) {
         message: `Error loading products from Whop: ${whopError instanceof Error ? whopError.message : 'Unknown error'}. Please configure API scopes.`,
         debug: {
           challengeId,
-          creatorWhopId: challenge.whopCreatorId || challenge.creatorId,
+          creatorWhopId,
           whopApiKey: process.env.WHOP_API_KEY ? 'configured' : 'missing',
           error: whopError instanceof Error ? whopError.message : String(whopError),
           requiredScopes: [
@@ -240,7 +240,7 @@ export async function GET(req: NextRequest) {
         message: 'Using mock products for development. Connect your Whop account for real products.',
         debug: {
           challengeId,
-          creatorWhopId: challenge.whopCreatorId || challenge.creatorId,
+          creatorWhopId,
           whopApiKey: process.env.WHOP_API_KEY ? 'configured' : 'missing'
         }
       });
@@ -253,7 +253,7 @@ export async function GET(req: NextRequest) {
       message: 'No products available. Please configure Whop API scopes: plan:create, plan:stats:read, affiliate:create, payment:basic:read',
       debug: {
         challengeId,
-        creatorWhopId: challenge.whopCreatorId || challenge.creatorId,
+        creatorWhopId,
         whopApiKey: process.env.WHOP_API_KEY ? 'configured' : 'missing',
         requiredScopes: [
           'plan:create', 'plan:delete', 'plan:stats:read', 'plan:update', 
