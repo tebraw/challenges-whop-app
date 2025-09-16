@@ -98,29 +98,34 @@ function DashboardContent() {
     if (refreshParam) {
       console.log("🔄 Detected refresh parameter, reloading challenges...");
       load();
+      // Clean up the URL parameter after refresh
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('refresh');
+        window.history.replaceState({}, '', url.toString());
+      }
     }
   }, [searchParams]);
 
-  // 🔧 FIX: Reload data when user returns to this page
+  // 🔧 FIX: Reload data when user returns to this page (but not on every focus)
   useEffect(() => {
+    let lastVisibilityChange = 0;
+    
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        console.log("🔄 Page became visible, reloading challenges...");
+      const now = Date.now();
+      // Only reload if page was hidden for more than 1 second (prevents click interference)
+      if (!document.hidden && (now - lastVisibilityChange) > 1000) {
+        console.log("🔄 Page became visible after being away, reloading challenges...");
         load();
       }
+      lastVisibilityChange = now;
     };
 
-    const handleFocus = () => {
-      console.log("🔄 Page focused, reloading challenges...");
-      load();
-    };
-
+    // Remove focus listener entirely - it was too aggressive
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 
