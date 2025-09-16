@@ -74,8 +74,11 @@ export async function GET(req: NextRequest) {
 
     console.log('Challenge found:', challenge);
 
-    // Get creator Whop ID for later use
-    const creatorWhopId = challenge.whopCreatorId || challenge.creatorId;
+    // 🎯 FIX: Use Company ID from context instead of challenge creator
+    // The products belong to the COMPANY, not the individual challenge creator
+    const creatorWhopId = companyId; // Use the company ID directly
+
+    console.log('🛍️ Using Company ID for products:', creatorWhopId);
 
     // 🎯 DEVELOPMENT MODE: Check if we should use mock data
     const isDevelopment = process.env.NODE_ENV === 'development';
