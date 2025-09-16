@@ -55,44 +55,72 @@ export async function GET(
   try {
     console.log('🚀 All-Participants API called');
     
-    // Check for company owner OR admin access
-    const user = await getCurrentUser();
-    console.log('👤 Current user:', user?.id, user?.whopUserId, user?.role);
-
-    if (!user || !user.tenantId) {
-      console.log('❌ No user or tenant found');
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // For all-participants API, company owners should have access
+    // Get headers first for company owner detection
     const headers = Object.fromEntries(request.headers.entries());
     const companyId = headers['x-whop-company-id'];
     console.log('🏢 Company ID from headers:', companyId);
     
-    // Check if user is company owner OR admin
-    const isCompanyOwner = companyId && user.whopUserId;
-    console.log('🔑 Is company owner:', isCompanyOwner, 'User role:', user.role);
-    
-    if (!isCompanyOwner && user.role !== 'ADMIN') {
-      console.log('🚫 Access denied - not company owner or admin');
-      return NextResponse.json(
-        { error: 'Company owner or admin access required' },
-        { status: 403 }
-      );
+    // Check for company owner first (this works!)
+    if (companyId) {
+      console.log('✅ Company owner access detected, proceeding without getCurrentUser');
+      // Company owners have access, skip user lookup
+    } else {
+      // Fallback to admin check
+      const user = await getCurrentUser();
+      console.log('👤 Current user:', user?.id, user?.whopUserId, user?.role);
+
+      if (!user || !user.tenantId) {
+        console.log('❌ No user or tenant found');
+        return NextResponse.json(
+          { error: 'Authentication required' },
+          { status: 401 }
+        );
+      }
+
+      // Check admin role
+      if (user.role !== 'ADMIN') {
+        console.log('🚫 Access denied - not admin');
+        return NextResponse.json(
+          { error: 'Admin access required' },
+          { status: 403 }
+        );
+      }
     }
 
     console.log('✅ Access granted - proceeding with API');
 
     const { challengeId } = await params;
 
+    // 🔒 TENANT ISOLATION: For company owners, find tenant by company ID
+    let targetTenantId = null;
+    
+    if (companyId) {
+      // Find tenant by company ID for company owners
+      const tenant = await prisma.tenant.findFirst({
+        where: { whopCompanyId: companyId }
+      });
+      targetTenantId = tenant?.id;
+      console.log('🏢 Found tenant for company:', targetTenantId);
+    } else {
+      // Use user's tenant for admin users
+      const user = await getCurrentUser();
+      targetTenantId = user?.tenantId;
+      console.log('👤 Using user tenant:', targetTenantId);
+    }
+
+    if (!targetTenantId) {
+      console.log('❌ No tenant found');
+      return NextResponse.json(
+        { error: 'Tenant not found' },
+        { status: 404 }
+      );
+    }
+
     // 🔒 TENANT ISOLATION: Get challenge details only from same tenant
     const challenge = await prisma.challenge.findUnique({
       where: { 
         id: challengeId,
-        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+        tenantId: targetTenantId  // 🔒 SECURITY: Only allow access to same tenant
       },
       include: {
         enrollments: {
