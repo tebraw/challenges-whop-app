@@ -71,8 +71,8 @@ export default function SelectWinnersPage({
     try {
       setLoading(true);
       
-      // Load eligible participants specifically for winners selection
-      const response = await fetch(`/api/admin/challenges/${id}/eligible-participants`, {
+      // Load eligible participants specifically for winners selection (FIXED: Use all-participants API)
+      const response = await fetch(`/api/admin/challenges/${id}/all-participants`, {
         cache: 'no-store'
       });
       
@@ -80,19 +80,20 @@ export default function SelectWinnersPage({
         const data = await response.json();
         setChallenge(data.challenge);
         
-        // Set top participants from eligible participants
-        if (data.eligibleParticipants && data.eligibleParticipants.length > 0) {
-          setTopParticipants(data.eligibleParticipants);
+        // Set top participants from all participants (both eligible and ineligible)
+        if (data.allParticipants && data.allParticipants.length > 0) {
+          setTopParticipants(data.allParticipants);
           
-          // Auto-assign top 3 to winner slots
+          // Auto-assign top 3 eligible participants to winner slots
+          const eligibleParticipants = data.allParticipants.filter((p: any) => p.isEligible);
           const autoWinners = winners.map((winner, index) => ({
             ...winner,
-            participant: data.eligibleParticipants[index] || null
+            participant: eligibleParticipants[index] || null
           }));
           setWinners(autoWinners);
         }
       } else {
-        console.error('Failed to load eligible participants:', response.statusText);
+        console.error('Failed to load participants:', response.statusText);
       }
     } catch (error) {
       console.error('Error loading challenge data:', error);
