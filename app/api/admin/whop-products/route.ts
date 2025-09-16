@@ -106,13 +106,50 @@ export async function GET(req: NextRequest) {
       console.log(`🔐 Fetching Company Owner's products with User Token: ${creatorWhopId}`);
       
       if (creatorWhopId && userToken) {
-        // Direct API call with User Token - Company Owner accessing his own products
-        const whopApiResponse = await fetch(`https://api.whop.com/api/v2/me/plans?per=50&expand=product`, {
+        // 🔧 TEST MULTIPLE TOKEN FORMATS: Try different ways to use the user token
+        console.log('🔧 Testing token formats for v2 API...');
+        
+        let whopApiResponse;
+        let lastError = '';
+        
+        // Format 1: Bearer + token
+        console.log('🔧 Trying: Bearer ${userToken}');
+        whopApiResponse = await fetch(`https://api.whop.com/api/v2/me/plans?per=50&expand=product`, {
           headers: {
-            'Authorization': `Bearer ${userToken}`,  // 🔐 USER TOKEN (not server API key)
+            'Authorization': `Bearer ${userToken}`,
             'Content-Type': 'application/json'
           }
         });
+        
+        if (!whopApiResponse.ok) {
+          lastError = await whopApiResponse.text();
+          console.log('❌ Bearer format failed:', whopApiResponse.status, lastError);
+          
+          // Format 2: Direct token (no Bearer)
+          console.log('🔧 Trying: Direct token without Bearer');
+          whopApiResponse = await fetch(`https://api.whop.com/api/v2/me/plans?per=50&expand=product`, {
+            headers: {
+              'Authorization': userToken,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (!whopApiResponse.ok) {
+            lastError = await whopApiResponse.text();
+            console.log('❌ Direct token failed:', whopApiResponse.status, lastError);
+            
+            // Format 3: Token as x-whop-user-token header
+            console.log('🔧 Trying: x-whop-user-token header');
+            whopApiResponse = await fetch(`https://api.whop.com/api/v2/me/plans?per=50&expand=product`, {
+              headers: {
+                'x-whop-user-token': userToken,
+                'Content-Type': 'application/json'
+              }
+            });
+          }
+        }
+        
+        console.log('📡 Final API Response Status:', whopApiResponse.status);
 
         if (whopApiResponse.ok) {
           const data = await whopApiResponse.json();
