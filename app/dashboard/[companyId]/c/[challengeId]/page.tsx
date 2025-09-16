@@ -84,7 +84,7 @@ function getChallengeStatus(startAt: string, endAt: string) {
 export default function AdminChallengeDetailPage({
   params,
 }: {
-  params: Promise<{ challengeId: string }>;
+  params: Promise<{ challengeId: string; companyId: string }>;
 }) {
   const router = useRouter();
   const [challenge, setChallenge] = useState<ChallengeDetailData | null>(null);
@@ -92,6 +92,7 @@ export default function AdminChallengeDetailPage({
   const [error, setError] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [challengeId, setChallengeId] = useState<string>("");
+  const [companyId, setCompanyId] = useState<string>("");
   const [whopProducts, setWhopProducts] = useState<Array<{
     id: string;
     name: string;
@@ -109,6 +110,7 @@ export default function AdminChallengeDetailPage({
       try {
         const resolvedParams = await params;
         setChallengeId(resolvedParams.challengeId);
+        setCompanyId(resolvedParams.companyId);
         
         const response = await fetch(`/api/admin/challenges/${resolvedParams.challengeId}`);
         if (!response.ok) {
@@ -351,7 +353,7 @@ export default function AdminChallengeDetailPage({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <Button
-            onClick={() => router.back()}
+            onClick={() => router.push(`/dashboard/${companyId}`)}
             variant="outline"
             className="border-gray-600 text-gray-300 hover:bg-gray-800"
           >

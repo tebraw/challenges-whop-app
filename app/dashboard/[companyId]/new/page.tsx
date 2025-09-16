@@ -117,7 +117,9 @@ function NewChallengePageContent() {
       if (response.ok) {
         const data = await response.json();
         console.log("Challenge created successfully:", data);
-        router.push(`/dashboard/${companyId}/c/${data.id}`);
+        // 🔧 FIX: Navigate directly to dashboard with force refresh instead of detail page
+        // This prevents the navigation confusion and ensures fresh data
+        router.push(`/dashboard/${companyId}?refresh=${Date.now()}`);
       } else {
         let errorData;
         try {

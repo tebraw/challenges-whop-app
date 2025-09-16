@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -26,13 +26,16 @@ type Challenge = {
 
 function formatDate(dateString: string) {
   try {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    if (!dateString) return "No date";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Invalid date";
+    return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "2-digit", 
       day: "2-digit",
     });
   } catch {
-    return dateString;
+    return "Invalid date";
   }
 }
 
@@ -51,6 +54,7 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const companyId = (params?.companyId as string) || 'unknown';
   
   const [items, setItems] = useState<Challenge[]>([]);
@@ -67,6 +71,14 @@ function DashboardContent() {
       if (!res.ok) throw new Error(await res.text());
       const j = await res.json();
       const arr = Array.isArray(j?.challenges) ? (j.challenges as Challenge[]) : [];
+      console.log('🔍 DEBUG: API Response challenges:', arr.map(c => ({ 
+        id: c.id, 
+        title: c.title, 
+        startDate: c.startDate, 
+        endDate: c.endDate,
+        startDateType: typeof c.startDate,
+        endDateType: typeof c.endDate
+      })));
       setItems(arr);
     } catch (e: any) {
       setError(e?.message || "Loading error");
@@ -79,6 +91,15 @@ function DashboardContent() {
   useEffect(() => {
     load();
   }, []);
+
+  // 🔧 FIX: Force reload when returning from challenge creation (refresh URL param)
+  useEffect(() => {
+    const refreshParam = searchParams?.get('refresh');
+    if (refreshParam) {
+      console.log("🔄 Detected refresh parameter, reloading challenges...");
+      load();
+    }
+  }, [searchParams]);
 
   // 🔧 FIX: Reload data when user returns to this page
   useEffect(() => {
@@ -233,8 +254,29 @@ function DashboardContent() {
               const max = rules.maxParticipants as number | undefined;
               const count = c._count?.enrollments ?? 0;
               const streakCount = c.streakCount ?? 0;
-              const isActive = new Date(c.startDate) <= new Date() && new Date() <= new Date(c.endDate);
-              const status = new Date(c.startDate) > new Date() ? "Scheduled" : isActive ? "Live" : "Completed";
+              
+              // Safe status calculation with fallback
+              let status = "Scheduled";
+              try {
+                if (c.startDate && c.endDate) {
+                  const startDate = new Date(c.startDate);
+                  const endDate = new Date(c.endDate);
+                  const now = new Date();
+                  
+                  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                    status = "Unknown";
+                  } else if (now < startDate) {
+                    status = "Scheduled";
+                  } else if (now > endDate) {
+                    status = "Completed";
+                  } else {
+                    status = "Live";
+                  }
+                }
+              } catch (error) {
+                console.warn('Error calculating status for challenge:', c.id, error);
+                status = "Unknown";
+              }
               
               // Extract marketing data from rules
               const marketingRules = (c.rules ?? {}) as any;
@@ -291,7 +333,7 @@ function DashboardContent() {
                     {/* Actions */}
                     <div className="flex gap-2">
                       {/* Winners button - nur für beendete Challenges */}
-                      {new Date() > new Date(c.endDate) && (
+                      {status === "Completed" && (
                         <Link href={`/dashboard/${companyId}/winners/${c.id}`}>
                           <button className="bg-yellow-600 hover:bg-yellow-700 text-white p-2 rounded-lg transition-colors" title="Select Winners">
                             <Trophy className="h-4 w-4" />
