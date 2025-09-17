@@ -7,7 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { whopAppSdk } from '@/lib/whop-sdk-dual';
+import { whopSdk, whopAppSdk } from '@/lib/whop-sdk-unified';
 import { whopPaymentService, PaymentRequest } from '@/lib/whop-payments';
 
 export async function POST(request: NextRequest) {

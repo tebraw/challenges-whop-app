@@ -4,7 +4,7 @@ import { getCurrentUser, requireAdmin } from '@/lib/auth';
 import { autoCreateOrUpdateUser } from '@/lib/auto-company-extraction';
 import { challengeAdminSchema } from '@/lib/adminSchema';
 import { headers } from 'next/headers';
-import { whopAppSdk } from '@/lib/whop-sdk-dual';
+import { whopSdk, whopAppSdk } from '@/lib/whop-sdk-unified';
 import { getExperienceContext } from '@/lib/whop-experience';
 
 // Generate simple ID - we'll use the built-in cuid() from Prisma

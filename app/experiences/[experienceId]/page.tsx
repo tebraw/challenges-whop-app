@@ -1,5 +1,5 @@
 import { headers } from 'next/headers';
-import { whopSdk } from '@/lib/whop-sdk-dual';
+import { whopSdk } from '@/lib/whop-sdk-unified';
 import { prisma } from '@/lib/prisma';
 import CustomerChallenges from './components/CustomerChallenges';
 
@@ -17,7 +17,6 @@ export default async function ExperiencePage({ params }: Props) {
   console.log('🎭 Experience Page for:', experienceId);
   
   try {
-    // The headers contains the user token (automatic in Whop iFrame)
     const headersList = await headers();
     const whopUserToken = headersList.get('x-whop-user-token');
     
@@ -32,15 +31,16 @@ export default async function ExperiencePage({ params }: Props) {
       );
     }
     
-    // OFFICIAL WHOP PATTERN: Verify user token and check experience access
+    // Verify user access to this experience
     const { userId } = await whopSdk.verifyUserToken(headersList);
-    
-    const result = await whopSdk.access.checkIfUserHasAccessToExperience({
+    const whopUser = await whopSdk.users.getUser({ userId }).catch(() => null);
+
+    const experienceAccess = await whopSdk.access.checkIfUserHasAccessToExperience({
       userId,
-      experienceId,
+      experienceId
     });
     
-    if (!result.hasAccess) {
+    if (!experienceAccess.hasAccess) {
       return (
         <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
           <div className="text-center">
@@ -52,10 +52,6 @@ export default async function ExperiencePage({ params }: Props) {
     }
     
     console.log('✅ Experience access verified for user:', userId);
-    
-    // Get user data from Whop
-    const whopUser = await whopSdk.users.getUser({ userId }).catch(() => null);
-    const experience = await whopSdk.experiences.getExperience({ experienceId });
     
     // Get or create user in our system
     let user = await prisma.user.findUnique({

@@ -1,54 +1,47 @@
 /**
- * 🎯 OFFICIAL WHOP SDK CONFIGURATION
+ * 🔧 DUAL WHOP SDK CONFIGURATION
  * 
- * Based on EXACT official Whop NextJS Template:
- * https://github.com/whopio/whop-nextjs-app-template/blob/main/lib/whop-sdk.ts
- * 
- * RESTORED: Official pattern with onBehalfOfUserId for proper Agent operations
+ * Problem: We need TWO different API keys for different use cases:
+ * 1. COMPANY API KEY - for Company Owner operations (products, company data)
+ * 2. APP API KEY - for Experience operations (member access, experience data)
  */
 import { WhopServerSdk, makeWebhookValidator } from "@whop/api";
 
-// 🏢 OFFICIAL WHOP SDK - EXACT Template Configuration
-export const whopSdk = WhopServerSdk({
-  // App ID from Whop Dashboard
+// 🏢 COMPANY SDK - for Company Owner operations
+export const whopCompanySdk = WhopServerSdk({
   appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
-  
-  // App API Key - REQUIRED for all requests
-  appApiKey: process.env.WHOP_API_KEY ?? "fallback",
-  
-  // 🔑 CRITICAL: Agent User ID for Company/Dashboard operations
-  // This is used for API requests that need agent permissions
-  // Experience user tokens are handled separately via verifyUserToken(headers)
-  onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
-  
-  // Company ID - OPTIONAL, can be set dynamically with withCompany()
-  companyId: process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
-});
-
-// 🔄 LEGACY ALIASES - For backwards compatibility
-export const whopAppSdk = whopSdk;
-export const whopExperienceSdk = whopSdk;
-export const whopCompanySdk = whopSdk;
-
-// 🎯 DYNAMIC SDK HELPERS - For specific use cases
-export const getSDKWithAgent = () => WhopServerSdk({
-  appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
-  appApiKey: process.env.WHOP_API_KEY ?? "fallback",
+  appApiKey: process.env.WHOP_API_KEY ?? "fallback", // Company API Key
   onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
   companyId: process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
 });
+
+// 🎭 APP SDK - for Experience/Member operations  
+export const whopAppSdk = WhopServerSdk({
+  appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
+  appApiKey: process.env.WHOP_APP_API_KEY ?? "fallback", // App API Key (original)
+  onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
+});
+
+// 🔄 SMART SDK - automatically choose the right SDK based on context
+export function getWhopSdk(context: 'company' | 'experience' | 'auto' = 'auto') {
+  switch (context) {
+    case 'company':
+      return whopCompanySdk;
+    case 'experience':
+      return whopAppSdk;
+    case 'auto':
+    default:
+      // For backwards compatibility, default to company SDK
+      return whopCompanySdk;
+  }
+}
 
 // Export webhook validator
 export const validateWebhook = makeWebhookValidator({
   webhookSecret: process.env.WHOP_WEBHOOK_SECRET ?? "fallback",
 });
 
-// 🎯 OFFICIAL USAGE PATTERNS (per Whop Documentation):
-// 
-// Experience Views: whopSdk.verifyUserToken(headers) - uses real user token from iFrame
-// Dashboard Views: whopSdk.withCompany(companyId).payments.listReceiptsForCompany()
-// Company Operations: whopSdk.withCompany(companyId).access.checkIfUserHasAccessToCompany()
-// Agent Operations: getSDKWithAgent().someMethod() - when you need the agent user
-// 
-// Dynamic Company: whopSdk.withCompany("biz_123").someMethod()
-// Dynamic User: whopSdk.withUser("user_456").someMethod()
+// 🎯 USAGE GUIDE:
+// - Use whopCompanySdk for: products, company data, admin operations
+// - Use whopAppSdk for: experience access, member verification, user tokens
+// - Use getWhopSdk('company') or getWhopSdk('experience') for explicit control

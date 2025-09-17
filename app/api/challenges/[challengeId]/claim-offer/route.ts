@@ -2,8 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { whopSdk, createCompanyWhopSdk } from '@/lib/whop-sdk';
-import { whopAppSdk } from '@/lib/whop-sdk-dual';
+import { whopSdk, whopAppSdk, createCompanyWhopSdk } from '@/lib/whop-sdk-unified';
 
 export async function POST(
   request: NextRequest,

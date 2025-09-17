@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { whopAppSdk } from '@/lib/whop-sdk-dual';
+import { whopSdk, whopAppSdk } from '@/lib/whop-sdk-unified';
 import { autoCreateOrUpdateUser } from '@/lib/auto-company-extraction';
 import { getExperienceContext } from '@/lib/whop-experience';
 

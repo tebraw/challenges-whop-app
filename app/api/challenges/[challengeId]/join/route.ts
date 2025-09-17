@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { whopAppSdk } from '@/lib/whop-sdk-dual';
+import { whopSdk, whopAppSdk } from '@/lib/whop-sdk-unified';
 
 export async function POST(
   req: NextRequest,
