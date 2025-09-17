@@ -1,6 +1,6 @@
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { whopSdk } from '@/lib/whop-sdk';
+import { whopAppSdk } from '@/lib/whop-sdk-dual';
 import Link from 'next/link';
 import { ArrowLeft, Users, CheckCircle, Award } from 'lucide-react';
 import JoinChallengeButton from '@/components/experiences/JoinChallengeButton';
@@ -33,10 +33,10 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
     }
     
     // Verify user access
-    const { userId } = await whopSdk.verifyUserToken(headersList);
-    const whopUser = await whopSdk.users.getUser({ userId }).catch(() => null);
+    const { userId } = await whopAppSdk.verifyUserToken(headersList);
+    const whopUser = await whopAppSdk.users.getUser({ userId }).catch(() => null);
     
-    const experienceAccess = await whopSdk.access.checkIfUserHasAccessToExperience({
+    const experienceAccess = await whopAppSdk.access.checkIfUserHasAccessToExperience({
       userId,
       experienceId
     });

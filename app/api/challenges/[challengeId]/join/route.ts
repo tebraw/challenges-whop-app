@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { whopSdk } from '@/lib/whop-sdk';
+import { whopAppSdk } from '@/lib/whop-sdk-dual';
 
 export async function POST(
   req: NextRequest,
@@ -17,7 +17,7 @@ export async function POST(
     }
 
     // Verify user with Whop SDK (same method as Experience pages)
-    const { userId } = await whopSdk.verifyUserToken(headersList);
+    const { userId } = await whopAppSdk.verifyUserToken(headersList);
     
     // Find user in our database
     const user = await prisma.user.findUnique({

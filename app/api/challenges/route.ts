@@ -4,7 +4,7 @@ import { getCurrentUser, requireAdmin } from '@/lib/auth';
 import { autoCreateOrUpdateUser } from '@/lib/auto-company-extraction';
 import { challengeAdminSchema } from '@/lib/adminSchema';
 import { headers } from 'next/headers';
-import { whopSdk } from '@/lib/whop-sdk';
+import { whopAppSdk } from '@/lib/whop-sdk-dual';
 import { getExperienceContext } from '@/lib/whop-experience';
 
 // Generate simple ID - we'll use the built-in cuid() from Prisma
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     
     let userId: string | null = null;
     try {
-      const tokenResult = await whopSdk.verifyUserToken(headersList);
+      const tokenResult = await whopAppSdk.verifyUserToken(headersList);
       userId = tokenResult.userId;
     } catch (error) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Experience Member needs to be checked
       try {
-        const experienceAccessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
+        const experienceAccessResult = await whopAppSdk.access.checkIfUserHasAccessToExperience({
           userId,
           experienceId: experienceId!
         });

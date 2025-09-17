@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { whopSdk } from '@/lib/whop-sdk';
+import { whopAppSdk, getWhopSdk } from '@/lib/whop-sdk-dual';
 import { headers } from 'next/headers';
 
 export async function GET(req: NextRequest) {
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     // Try to get user info
     let userId = null;
     try {
-      const { userId: extractedUserId } = await whopSdk.verifyUserToken(headersList);
+      const { userId: extractedUserId } = await whopAppSdk.verifyUserToken(headersList);
       userId = extractedUserId;
       console.log('👤 User ID:', userId);
     } catch (error) {
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     // If we have an experience ID, test access
     if (experienceId && userId) {
       try {
-        const experienceAccess = await whopSdk.access.checkIfUserHasAccessToExperience({
+        const experienceAccess = await whopAppSdk.access.checkIfUserHasAccessToExperience({
           userId,
           experienceId
         });
@@ -76,10 +76,10 @@ export async function GET(req: NextRequest) {
       }
     }
     
-    // Also test company access
+    // Also test company access  
     if (userId) {
       try {
-        const companyAccess = await whopSdk.access.checkIfUserHasAccessToCompany({
+        const companyAccess = await getWhopSdk('company').access.checkIfUserHasAccessToCompany({
           userId,
           companyId
         });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { whopSdk } from '@/lib/whop-sdk';
+import { whopAppSdk } from '@/lib/whop-sdk-dual';
 import { autoCreateOrUpdateUser } from '@/lib/auto-company-extraction';
 import { getExperienceContext } from '@/lib/whop-experience';
 
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     
     let userId: string | null = null;
     try {
-      const tokenResult = await whopSdk.verifyUserToken(headersList);
+      const tokenResult = await whopAppSdk.verifyUserToken(headersList);
       userId = tokenResult.userId;
     } catch (error) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });

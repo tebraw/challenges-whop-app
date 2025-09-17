@@ -7,7 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { whopSdk } from '@/lib/whop-sdk';
+import { whopAppSdk } from '@/lib/whop-sdk-dual';
 import { whopPaymentService, PaymentRequest } from '@/lib/whop-payments';
 
 export async function POST(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     
     let userId: string;
     try {
-      const tokenResult = await whopSdk.verifyUserToken(headersList);
+      const tokenResult = await whopAppSdk.verifyUserToken(headersList);
       userId = tokenResult.userId;
     } catch (error) {
       return NextResponse.json(
