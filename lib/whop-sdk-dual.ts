@@ -1,47 +1,33 @@
 /**
- * 🔧 DUAL WHOP SDK CONFIGURATION
+ * 🎯 WHOP DASHBOARD APP STANDARD SDK CONFIGURATION
  * 
- * Problem: We need TWO different API keys for different use cases:
- * 1. COMPANY API KEY - for Company Owner operations (products, company data)
- * 2. APP API KEY - for Experience operations (member access, experience data)
+ * Based on official Whop Documentation:
+ * https://docs.whop.com/apps/tutorials/dashboard-apps
  */
 import { WhopServerSdk, makeWebhookValidator } from "@whop/api";
 
-// 🏢 COMPANY SDK - for Company Owner operations
-export const whopCompanySdk = WhopServerSdk({
-  appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
-  appApiKey: process.env.WHOP_API_KEY ?? "fallback", // Company API Key
-  onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
-  companyId: process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
-});
-
-// 🎭 APP SDK - for Experience/Member operations  
+// 🏢 WHOP APP SDK - Official Dashboard App Configuration
 export const whopAppSdk = WhopServerSdk({
+  // App ID from Whop Dashboard
   appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
-  appApiKey: process.env.WHOP_APP_API_KEY ?? "fallback", // App API Key (original)
-  onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
+  
+  // App API Key - CRITICAL: Use WHOP_API_KEY for Dashboard Apps
+  appApiKey: process.env.WHOP_API_KEY ?? "fallback",
+  
+  // DO NOT set companyId or onBehalfOfUserId here statically
+  // Dashboard Apps handle these dynamically per request
 });
 
-// 🔄 SMART SDK - automatically choose the right SDK based on context
-export function getWhopSdk(context: 'company' | 'experience' | 'auto' = 'auto') {
-  switch (context) {
-    case 'company':
-      return whopCompanySdk;
-    case 'experience':
-      return whopAppSdk;
-    case 'auto':
-    default:
-      // For backwards compatibility, default to company SDK
-      return whopCompanySdk;
-  }
-}
+// 🔄 LEGACY SUPPORT - For backwards compatibility with existing routes
+export const whopCompanySdk = whopAppSdk;
 
 // Export webhook validator
 export const validateWebhook = makeWebhookValidator({
   webhookSecret: process.env.WHOP_WEBHOOK_SECRET ?? "fallback",
 });
 
-// 🎯 USAGE GUIDE:
-// - Use whopCompanySdk for: products, company data, admin operations
-// - Use whopAppSdk for: experience access, member verification, user tokens
-// - Use getWhopSdk('company') or getWhopSdk('experience') for explicit control
+// 🎯 OFFICIAL USAGE PATTERNS:
+// - Dashboard Apps: Use whopAppSdk with dynamic companyId
+// - User Verification: whopSdk.verifyUserToken(headers)
+// - Company Access: whopSdk.access.checkIfUserHasAccessToCompany({userId, companyId})
+// - Company Data: whopSdk.payments.listReceiptsForCompany({companyId, first: 10})

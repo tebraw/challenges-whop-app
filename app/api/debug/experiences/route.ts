@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { whopAppSdk, getWhopSdk } from '@/lib/whop-sdk-dual';
+import { whopAppSdk } from '@/lib/whop-sdk-dual';
 import { headers } from 'next/headers';
 
 export async function GET(req: NextRequest) {
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
     // Also test company access  
     if (userId) {
       try {
-        const companyAccess = await getWhopSdk('company').access.checkIfUserHasAccessToCompany({
+        const companyAccess = await whopAppSdk.access.checkIfUserHasAccessToCompany({
           userId,
           companyId
         });

@@ -5,12 +5,20 @@ import { whopAppSdk } from '@/lib/whop-sdk-dual';
 /**
  * 🎯 WHOP DASHBOARD APP STANDARD - Marketing & Monetization API
  * 
- * AUTHENTICATION STRATEGY (Whop Official):
+ * OFFICIAL IMPLEMENTATION based on:
+ * https://docs.whop.com/apps/tutorials/dashboard-apps
+ * 
+ * AUTHENTICATION STRATEGY (Official Whop):
  * 1. whopSdk.verifyUserToken(headers) - verify user in iFrame context
  * 2. whopSdk.access.checkIfUserHasAccessToCompany() - check admin access
- * 3. Use company data with App API Key + permissions
+ * 3. whopSdk.payments.listReceiptsForCompany() - load real company data
  * 
- * NEVER use getCurrentUser() for Dashboard Apps!
+ * REQUIRED PERMISSIONS (from documentation):
+ * - payment:basic:read
+ * - access_pass:basic:read  
+ * - member:basic:read
+ * - plan:basic:read
+ * - promo_code:basic:read
  */
 
 export async function GET(request: NextRequest) {
@@ -67,8 +75,8 @@ export async function GET(request: NextRequest) {
     
     console.log('✅ Step 3: Admin access granted for company:', companyId);
 
-    // Step 4: Load company products via SDK with permissions (Whop Standard)
-    console.log('📦 Step 4: Loading company products via SDK...');
+    // Step 4: Load real company products (Official Whop Documentation Method)
+    console.log('📦 Step 4: Loading real company products via official SDK...');
     
     let products: Array<{
       id: string;
@@ -78,66 +86,101 @@ export async function GET(request: NextRequest) {
     }> = [];
     
     try {
-      // Use Whop App SDK to get real company data (App API Key has proper permissions)
-      const companyData = await whopAppSdk.payments.listReceiptsForCompany({
+      // OFFICIAL METHOD from Whop Documentation:
+      // https://docs.whop.com/apps/tutorials/dashboard-apps
+      console.log('🎯 Calling whopSdk.payments.listReceiptsForCompany...');
+      const companyReceipts = await whopAppSdk.payments.listReceiptsForCompany({
         companyId,
-        first: 10, // Limit for performance
+        first: 5, // Lower limit to avoid "complexity limits" (per documentation)
       });
       
-      console.log('🎯 Company data received:', !!companyData);
+      console.log('✅ Company receipts received:', !!companyReceipts);
+      console.log('📊 Receipts data structure:', {
+        hasReceipts: !!companyReceipts?.receipts,
+        hasNodes: !!companyReceipts?.receipts?.nodes,
+        nodeCount: companyReceipts?.receipts?.nodes?.length || 0
+      });
       
-      if (companyData?.receipts?.nodes) {
-        console.log('📦 Processing receipts:', companyData.receipts.nodes.length, 'receipts found');
+      if (companyReceipts?.receipts?.nodes && companyReceipts.receipts.nodes.length > 0) {
+        console.log('📦 Processing', companyReceipts.receipts.nodes.length, 'real receipts...');
         
-        // Extract unique plans from receipts (simplified approach)
-        const planMap = new Map<string, {
+        // Extract unique products and plans from real receipts
+        const productMap = new Map<string, {
           id: string;
           name: string;
           title: string;
           plans: Array<{ id: string; name: string; price: number; }>;
         }>();
         
-        companyData.receipts.nodes.forEach(receipt => {
+        companyReceipts.receipts.nodes.forEach((receipt, index) => {
+          console.log(`📋 Receipt ${index + 1}:`, {
+            id: receipt?.id,
+            hasPlan: !!receipt?.plan,
+            planId: receipt?.plan?.id,
+            planTitle: receipt?.plan?.title
+          });
+          
           if (receipt?.plan) {
             const plan = receipt.plan;
-            const productId = `product-${plan.id}`; // Create synthetic product ID
+            const productId = `product-${plan.id}`;
             
-            if (!planMap.has(productId)) {
-              planMap.set(productId, {
+            if (!productMap.has(productId)) {
+              productMap.set(productId, {
                 id: productId,
-                name: plan.title || 'Unknown Product',
-                title: plan.title || 'Unknown Product',
+                name: plan.title || `Product ${plan.id}`,
+                title: plan.title || `Product ${plan.id}`,
                 plans: []
               });
+              console.log('🆕 Created product:', plan.title);
             }
             
-            // Add plan to product
-            const productData = planMap.get(productId)!;
-            if (!productData.plans.find((p: any) => p.id === plan.id)) {
+            // Add plan to product (avoid duplicates)
+            const productData = productMap.get(productId)!;
+            if (!productData.plans.find(p => p.id === plan.id)) {
               productData.plans.push({
                 id: plan.id,
-                name: plan.title || 'Unknown Plan',
+                name: plan.title || `Plan ${plan.id}`,
                 price: plan.initialPrice || plan.renewalPrice || 0
               });
+              console.log(`📋 Added plan: ${plan.title} (${plan.initialPrice || plan.renewalPrice || 0})`);
             }
           }
         });
         
-        products = Array.from(planMap.values());
-        console.log('✅ Processed products from plans:', products.length, 'unique products found');
+        products = Array.from(productMap.values());
+        console.log('✅ Processed real company products:', products.length);
+        
+      } else {
+        console.log('⚠️ No receipts found - company might not have any sales yet');
       }
       
     } catch (error) {
-      console.log('❌ SDK product loading failed:', error);
+      console.log('❌ Real product loading failed:', error);
+      console.log('📋 Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        name: error instanceof Error ? error.name : 'Unknown',
+      });
     }
     
-    // Always provide fallback products for reliable UI
+    // Fallback: If no real products found, show that the system works
     if (products.length === 0) {
-      console.log('🔄 Using mock products as fallback');
+      console.log('🎯 No real products found - this is normal for new companies');
+      console.log('💡 Company owners can create products in their Whop dashboard');
+      
+      // Provide informative placeholder that explains the system
       products = [
-        { id: 'mock-1', name: 'Premium Membership', title: 'Premium Membership', plans: [{ id: 'plan-1', name: 'Monthly', price: 2999 }] },
-        { id: 'mock-2', name: 'VIP Access', title: 'VIP Access', plans: [{ id: 'plan-2', name: 'Annual', price: 9999 }] },
-        { id: 'mock-3', name: 'Exclusive Course', title: 'Exclusive Course', plans: [{ id: 'plan-3', name: 'Lifetime', price: 49999 }] }
+        { 
+          id: 'placeholder-info', 
+          name: 'ℹ️ No Products Found', 
+          title: 'ℹ️ No Products Found', 
+          plans: [
+            { 
+              id: 'info-plan', 
+              name: 'Create products in your Whop dashboard to see them here', 
+              price: 0 
+            }
+          ] 
+        }
       ];
     }
 
@@ -161,7 +204,11 @@ export async function GET(request: NextRequest) {
       debug: {
         whopStandard: true,
         authMethod: 'whopSdk.verifyUserToken + access.checkIfUserHasAccessToCompany',
-        productsSource: products.length > 0 ? 'whopSdk.payments.listReceiptsForCompany' : 'mock_fallback'
+        productsSource: products.length > 0 && products[0].id !== 'placeholder-info' 
+          ? 'real_company_receipts_via_official_sdk' 
+          : 'no_real_products_found_placeholder',
+        receiptsAPI: 'whopSdk.payments.listReceiptsForCompany',
+        permissions: ['payment:basic:read', 'access_pass:basic:read', 'member:basic:read', 'plan:basic:read', 'promo_code:basic:read']
       }
     };
     
