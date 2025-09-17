@@ -84,8 +84,33 @@ export async function GET(req: NextRequest) {
       
       if (companyApiKey) {
         console.log('🔐 Company API Key found - trying REST API v2...');
+        console.log('🔍 API Key Details:', {
+          keyLength: companyApiKey.length,
+          keyPrefix: companyApiKey.substring(0, 8) + '...',
+          companyId: companyId
+        });
         
-        // Official Whop REST API v2 endpoint for company products
+        // First, test if our API key is working with Company endpoint
+        console.log('🏢 Testing Company endpoint first...');
+        const companyResponse = await fetch('https://api.whop.com/api/v2/company', {
+          headers: {
+            'Authorization': `Bearer ${companyApiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log('📡 Company API Response Status:', companyResponse.status);
+        
+        if (companyResponse.ok) {
+          const companyData = await companyResponse.json();
+          console.log('✅ Company API Success:', companyData);
+        } else {
+          const companyError = await companyResponse.text();
+          console.log('❌ Company API Error:', companyResponse.status, companyError);
+        }
+        
+        // Now try products endpoint with detailed debugging
+        console.log('🛍️ Testing Products endpoint...');
         const productsResponse = await fetch('https://api.whop.com/api/v2/products', {
           headers: {
             'Authorization': `Bearer ${companyApiKey}`,
