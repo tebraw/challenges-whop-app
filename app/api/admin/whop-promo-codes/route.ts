@@ -39,17 +39,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { 
-      code, 
-      amount_off, 
+    const {
+      code,
+      amount_off,
       promo_type = 'percentage', 
       plan_ids = [],
       unlimited_stock = true,
+      stock = 100, // Default stock if unlimited_stock is false
       expiration_datetime = null,
       new_users_only = false 
-    } = body;
-
-    // Validate required fields
+    } = body;    // Validate required fields
     if (!code || !amount_off) {
       return NextResponse.json({
         error: 'Code and amount_off are required'
@@ -65,6 +64,8 @@ export async function POST(request: NextRequest) {
       unlimited_stock,
       new_users_only,
       base_currency: "usd", // Required by Whop API v2 - must be lowercase!
+      // Add stock parameter if unlimited_stock is false
+      ...(unlimited_stock === false && { stock: parseInt(stock) }),
       ...(expiration_datetime && { expiration_datetime })
     };
 
