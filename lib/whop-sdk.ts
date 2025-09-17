@@ -1,23 +1,26 @@
 import { WhopServerSdk, makeWebhookValidator } from "@whop/api";
 
+// ✅ MULTI-TENANT SDK CONFIGURATION
+// This SDK uses the App API Key which works for all company installations
 export const whopSdk = WhopServerSdk({
-  // Add your app id here - this is required.
-  // You can get this from the Whop dashboard after creating an app section.
+  // App ID - same for all installations
   appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
 
-  // Add your app api key here - this is required.
-  // You can get this from the Whop dashboard after creating an app section.
+  // App API Key - same for all installations (multi-tenant ready)
   appApiKey: process.env.WHOP_API_KEY ?? "fallback",
 
-  // This will make api requests on behalf of this user.
-  // This is optional, however most api requests need to be made on behalf of a user.
-  // You can create an agent user for your app, and use their userId here.
-  // You can also apply a different userId later with the `withUser` function.
+  // Agent user for API requests
   onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
 
-  // When making api requests that query or mutate data about a company, you need to specify the companyId.
-  // This is optional, however if not specified certain requests will fail.
-  // This can also be applied later with the `withCompany` function.
+  // NO hardcoded companyId - will be set dynamically per request
+  // companyId: REMOVED FOR MULTI-TENANT SUPPORT
+});
+
+// Legacy Company-specific SDK for current development
+// ⚠️ This will be replaced with dynamic company context
+export const whopCompanySdk = WhopServerSdk({
+  appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
+  appApiKey: process.env.WHOP_COMPANY_API_KEY ?? "fallback",
   companyId: process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
 });
 
@@ -25,3 +28,9 @@ export const whopSdk = WhopServerSdk({
 export const validateWebhook = makeWebhookValidator({
   webhookSecret: process.env.WHOP_WEBHOOK_SECRET ?? "fallback",
 });
+
+// ✅ MULTI-TENANT HELPER FUNCTION
+// Create company-specific SDK instance for each request
+export function createCompanyWhopSdk(companyId: string) {
+  return whopSdk.withCompany(companyId);
+}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { whopSdk } from '@/lib/whop-sdk';
+import { whopSdk, createCompanyWhopSdk } from '@/lib/whop-sdk';
 import { getExperienceContext } from "@/lib/whop-experience";
 
 export async function GET(req: NextRequest) {
