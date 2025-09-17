@@ -170,7 +170,7 @@ export default function AdminChallengeDetailPage({
       setLoadingProducts(true);
       console.log(`🛍️ Loading Whop products for challenge: ${challengeId}`);
       
-      const response = await fetch(`/api/admin/whop-products?challengeId=${challengeId}`);
+      const response = await fetch(`/api/admin/marketing-monetization?challengeId=${challengeId}`);
       const data = await response.json();
       
       console.log('🛍️ Whop products API response:', data);
@@ -219,18 +219,22 @@ export default function AdminChallengeDetailPage({
       const discountAmount = parseInt(discountMatch[1]);
       const promoCode = `${type.toUpperCase()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       
-      const response = await fetch('/api/admin/whop-promo-codes', {
+      const response = await fetch('/api/admin/marketing-monetization', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          challengeId,
+          offerType: type,
           code: promoCode,
-          amount_off: discountAmount,
-          promo_type: 'percentage',
-          plan_ids: [productId],
-          unlimited_stock: true,
-          new_users_only: false
+          discount_value: discountAmount,
+          discount_type: 'percentage',
+          productId: productId,
+          duration: 'one-time',
+          eligible_users: 'everyone',
+          usage_limit: 999,
+          one_per_customer: false
         })
       });
 

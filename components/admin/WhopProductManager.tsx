@@ -37,7 +37,7 @@ export default function WhopProductManager({ challengeId, onProductSelected }: W
   const loadCreatorProducts = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/whop-products?challengeId=${challengeId}`);
+      const response = await fetch(`/api/admin/marketing-monetization?challengeId=${challengeId}`);
       
       if (response.ok) {
         const data = await response.json();

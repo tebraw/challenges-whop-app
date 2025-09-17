@@ -94,7 +94,7 @@ export default function MonetizationDashboard({ challengeId, challengeData }: Mo
 
   const loadWhopProducts = async () => {
     try {
-      const response = await fetch(`/api/admin/whop-products?challengeId=${challengeId}`);
+      const response = await fetch(`/api/admin/marketing-monetization?challengeId=${challengeId}`);
       if (response.ok) {
         const data = await response.json();
         console.log('Whop products loaded:', data);
