@@ -48,6 +48,9 @@ export default function UnifiedMarketingMonetization({
   const [offers, setOffers] = useState<ActiveOffer[]>([]);
   const [showCreateForm, setShowCreateForm] = useState<'completion' | 'mid_challenge' | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Debug log to confirm component is being called
+  console.log('🎯 UnifiedMarketingMonetization rendered for challenge:', challengeId);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -146,6 +149,15 @@ export default function UnifiedMarketingMonetization({
 
   return (
     <div className="space-y-6">
+      {/* 🚨 DEBUG: Visible marker that component is rendering */}
+      <Card className="p-4 bg-red-900 border-red-600">
+        <div className="text-red-100 font-bold text-lg">
+          🎯 NEW UNIFIED MARKETING & MONETIZATION SYSTEM
+        </div>
+        <div className="text-red-200 text-sm">
+          Challenge ID: {challengeId} | Participants: {challengeData.participants} | Status: {challengeData.status}
+        </div>
+      </Card>
       {/* Status Messages */}
       {error && (
         <Card className="p-4 bg-red-900 border-red-700">
