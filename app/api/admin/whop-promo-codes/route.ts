@@ -38,10 +38,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if Whop API credentials are available
-    if (!process.env.WHOP_API_KEY) {
+    // Check if Whop Company API credentials are available
+    if (!process.env.WHOP_COMPANY_API_KEY) {
       return NextResponse.json({
-        error: 'Whop API credentials not configured'
+        error: 'Whop Company API credentials not configured'
       }, { status: 500 });
     }
 
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch('https://api.whop.com/api/v2/promo_codes', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+        'Authorization': `Bearer ${process.env.WHOP_COMPANY_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(promoData)
