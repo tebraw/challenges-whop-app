@@ -72,6 +72,16 @@ export async function POST(request: NextRequest) {
     
     // Try multi-tenant REST API approach first (same as products API)
     try {
+      console.log('🎫 Sending multi-tenant promo request:', JSON.stringify({
+        url: 'https://api.whop.com/api/v2/promo_codes',
+        headers: {
+          'Authorization': `Bearer ${process.env.WHOP_API_KEY?.substring(0, 8)}...`,
+          'Content-Type': 'application/json',
+          'X-Whop-Company-ID': companyId
+        },
+        body: promoData
+      }, null, 2));
+      
       const response = await fetch('https://api.whop.com/api/v2/promo_codes', {
         method: 'POST',
         headers: {
@@ -96,6 +106,12 @@ export async function POST(request: NextRequest) {
           }
         });
       } else {
+        const errorText = await response.text();
+        console.log('❌ Multi-tenant promo creation failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
         console.log('⚠️ Multi-tenant API failed with status:', response.status);
       }
     } catch (multiTenantError: any) {
