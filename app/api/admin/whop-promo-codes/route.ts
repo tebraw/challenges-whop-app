@@ -58,16 +58,18 @@ export async function POST(request: NextRequest) {
     // Create promo code via Multi-Tenant Whop SDK
     const promoData = {
       code,
-      amount_off: parseInt(amount_off),
+      amount_off: Number(amount_off), // Use Number() instead of parseInt() for proper number conversion
       promo_type,
       plan_ids,
       unlimited_stock,
       new_users_only,
       base_currency: "usd", // Required by Whop API v2 - must be lowercase!
-      // Add stock parameter if unlimited_stock is false
-      ...(unlimited_stock === false && { stock: parseInt(stock) }),
-      ...(expiration_datetime && { expiration_datetime })
+      ...(expiration_datetime && { expiration_datetime }),
+      // CRITICAL: Only add stock parameter when unlimited_stock is FALSE
+      ...((!unlimited_stock) && { stock: Number(stock) })
     };
+    
+    console.log('🎫 FULL PROMO DATA BEING SENT:', JSON.stringify(promoData, null, 2));
 
     console.log('🎫 Creating promo code with multi-tenant SDK for company:', companyId);
     
