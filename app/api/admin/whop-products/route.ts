@@ -125,14 +125,19 @@ export async function GET(req: NextRequest) {
           console.log('✅ Got products from REST API:', productsData.data?.length || 0);
           
           if (productsData.data && productsData.data.length > 0) {
-            const formattedProducts = productsData.data.map((product: any) => ({
-              id: product.id,
-              title: product.title || product.name || 'Unnamed Product',
-              price: 0, // Will get from plans
-              currency: 'USD',
-              type: product.visibility || 'visible',
-              status: 'active'
-            }));
+            const formattedProducts = productsData.data.map((product: any) => {
+              const productName = product.title || product.name || 'Unnamed Product';
+              console.log(`📦 Direct Product ${product.id}: "${productName}"`);
+              return {
+                id: product.id,
+                name: productName, // Frontend expects 'name' field
+                title: productName, // Keep title for compatibility
+                price: 0, // Will get from plans
+                currency: 'USD',
+                type: product.visibility || 'visible',
+                status: 'active'
+              };
+            });
             
             console.log('🎯 REST API v2 SUCCESS - Returning real products:', formattedProducts.length);
             
@@ -169,14 +174,19 @@ export async function GET(req: NextRequest) {
               
               plansData.data.forEach((plan: any) => {
                 if (plan.product && plan.product.id) {
+                  const productName = plan.product.title || plan.product.name || 'Unnamed Product';
                   uniqueProducts.set(plan.product.id, {
                     id: plan.product.id,
-                    title: plan.product.title || plan.product.name || 'Unnamed Product',
+                    name: productName, // Frontend expects 'name' field
+                    title: productName, // Keep title for compatibility
                     price: plan.initial_price || plan.renewal_price || 0,
                     currency: plan.base_currency || 'USD',
                     type: plan.product.visibility || 'visible',
                     status: 'active'
                   });
+                  
+                  // Debug: Log each product name
+                  console.log(`📦 Product ${plan.product.id}: "${productName}"`);
                 }
               });
               
