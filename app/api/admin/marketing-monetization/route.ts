@@ -13,15 +13,27 @@ import { whopCompanySdk } from '@/lib/whop-sdk-dual';
  */
 
 export async function GET(request: NextRequest) {
+  console.log('🎯 Marketing & Monetization API called - ENHANCED DEBUG');
+  console.log('🔑 Environment Variables Check:');
+  console.log('  - WHOP_API_KEY available:', process.env.WHOP_API_KEY ? 'YES' : 'NO');
+  console.log('  - WHOP_APP_API_KEY available:', process.env.WHOP_APP_API_KEY ? 'YES' : 'NO');
+  console.log('  - WHOP_API_KEY prefix:', process.env.WHOP_API_KEY ? process.env.WHOP_API_KEY.substring(0, 10) + '...' : 'NONE');
+  console.log('  - WHOP_APP_API_KEY prefix:', process.env.WHOP_APP_API_KEY ? process.env.WHOP_APP_API_KEY.substring(0, 10) + '...' : 'NONE');
+  
   try {
+    console.log('🔍 Calling getCurrentUser()...');
     const user = await getCurrentUser();
+    console.log('✅ getCurrentUser() successful:', user ? 'USER_FOUND' : 'NO_USER');
     
     if (!user || user.role !== 'ADMIN') {
+      console.log('❌ Admin access denied:', { hasUser: !!user, role: user?.role });
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
       );
     }
+    
+    console.log('✅ Admin access granted for user:', user.id);
 
     const { searchParams } = new URL(request.url);
     const challengeId = searchParams.get('challengeId');
@@ -147,8 +159,16 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Marketing & Monetization GET error:', error);
+    console.error('❌ Error details:', {
+      name: (error as any)?.name,
+      message: (error as any)?.message,
+      stack: (error as any)?.stack?.substring(0, 200) + '...'
+    });
+    console.log('🔍 Environment variables during error:');
+    console.log('  - WHOP_API_KEY available:', process.env.WHOP_API_KEY ? 'YES' : 'NO');
+    console.log('  - WHOP_APP_API_KEY available:', process.env.WHOP_APP_API_KEY ? 'YES' : 'NO');
     return NextResponse.json(
-      { error: 'Failed to load marketing data' },
+      { error: 'Failed to load marketing data', debug: (error as any)?.message },
       { status: 500 }
     );
   }
