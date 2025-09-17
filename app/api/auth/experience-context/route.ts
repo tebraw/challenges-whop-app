@@ -7,7 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { whopSdk } from '@/lib/whop-sdk';
+import { whopAppSdk, whopCompanySdk } from '@/lib/whop-sdk-dual';
 import { getExperienceContext } from '@/lib/whop-experience';
 import { createCorsResponse, handleCorsPreflightOptions } from '@/lib/cors';
 
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     let whopRole: string = 'no_access';
     
     try {
-      const tokenResult = await whopSdk.verifyUserToken(headersList);
+      const tokenResult = await whopAppSdk.verifyUserToken(headersList);
       userId = tokenResult.userId;
       console.log('✅ Whop token verification successful:', userId);
     } catch (error) {
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       if (experienceContext.companyId && !experienceContext.experienceId) {
         console.log('🎯 Business Dashboard detected: Company ID without Experience ID');
         try {
-          const companyAccessResult = await whopSdk.access.checkIfUserHasAccessToCompany({
+          const companyAccessResult = await whopCompanySdk.access.checkIfUserHasAccessToCompany({
             userId,
             companyId: experienceContext.companyId
           });
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       } else if (experienceContext.experienceId) {
         // Check experience access
         try {
-          const accessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
+          const accessResult = await whopAppSdk.access.checkIfUserHasAccessToExperience({
             userId,
             experienceId: experienceContext.experienceId
           });
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
       } else if (experienceContext.companyId) {
         // Fallback to company access
         try {
-          const companyAccessResult = await whopSdk.access.checkIfUserHasAccessToCompany({
+          const companyAccessResult = await whopCompanySdk.access.checkIfUserHasAccessToCompany({
             userId,
             companyId: experienceContext.companyId
           });
