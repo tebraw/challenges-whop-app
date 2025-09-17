@@ -147,6 +147,7 @@ export async function POST(
       unlimited_stock: false,
       max_uses: 1, // One-time use only
       new_users_only: false,
+      base_currency: 'USD', // Required by Whop API
       user_id: whopUserId // Restrict to this specific user
     };
 

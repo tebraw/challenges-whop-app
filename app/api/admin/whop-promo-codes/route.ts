@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
       plan_ids,
       unlimited_stock,
       new_users_only,
+      base_currency: 'USD', // Required by Whop API
       ...(expiration_datetime && { expiration_datetime })
     };
 
