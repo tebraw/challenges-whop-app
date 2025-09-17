@@ -60,110 +60,73 @@ export async function GET(request: NextRequest) {
       // Get Experience context
       const experienceContext = await getExperienceContext();
       
-      // 🎯 BUSINESS DASHBOARD: Check if AdminGuard passed Company ID via headers
-      const headerCompanyId = headersList.get('x-whop-company-id') || headersList.get('x-company-id');
+      console.log('🎭 Experience Context detected:', {
+        experienceId: experienceContext.experienceId,
+        companyId: experienceContext.companyId,
+        isEmbedded: experienceContext.isEmbedded,
+        userId
+      });
       
-      // Prefer AdminGuard header over experience context if available
-      if (headerCompanyId && headerCompanyId.startsWith('biz_')) {
-        experienceContext.companyId = headerCompanyId;
-        console.log('🎯 Using Company ID from AdminGuard headers:', headerCompanyId);
-      }
-      
-      // 🎯 BUSINESS DASHBOARD SPECIAL CASE: If companyId but no experienceId → Business Dashboard access
-      if (experienceContext.companyId && !experienceContext.experienceId) {
-        console.log('🎯 Business Dashboard detected: Company ID without Experience ID');
+      // � EXPERIENCE ACCESS: Prioritize Experience ID over Company ID
+      if (experienceContext.experienceId) {
+        console.log('🎯 Checking Experience access for:', experienceContext.experienceId);
         try {
-          // Official Whop pattern: Use whopSdk.withCompany() for company operations
-          const companyAccessResult = await whopSdk.access.checkIfUserHasAccessToCompany({
-            userId,
-            companyId: experienceContext.companyId
-          });
-          
-          whopRole = companyAccessResult.hasAccess ? companyAccessResult.accessLevel : 'no_access';
-          console.log('🎯 Business Dashboard access result:', whopRole);
-        } catch (error) {
-          console.error('🎯 Business Dashboard access check failed:', error);
-          // Assume admin access for Business Dashboard if API fails but we have valid context
-          if (experienceContext.isEmbedded) {
-            console.log('🎯 Business Dashboard fallback: Assuming admin access');
-            whopRole = 'admin';
-          } else {
-            whopRole = 'no_access';
-          }
-        }
-      } else if (experienceContext.experienceId) {
-        // Check experience access
-        try {
-          // Official Whop pattern: Universal SDK for all operations
+          // OFFICIAL WHOP PATTERN: Check Experience access first
           const accessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
             userId,
             experienceId: experienceContext.experienceId
           });
           
           whopRole = accessResult.hasAccess ? accessResult.accessLevel : 'no_access';
+          console.log('✅ Experience access result:', { whopRole, hasAccess: accessResult.hasAccess });
         } catch (error) {
-          console.error('Experience access check failed:', error);
+          console.error('❌ Experience access check failed:', error);
           whopRole = 'no_access';
         }
       } else if (experienceContext.companyId) {
-        // Fallback to company access
+        // � BUSINESS DASHBOARD: Only if NO Experience ID
+        console.log('🎯 No Experience ID - checking Company access for:', experienceContext.companyId);
         try {
-          // Official Whop pattern: Universal SDK for company operations  
           const companyAccessResult = await whopSdk.access.checkIfUserHasAccessToCompany({
             userId,
             companyId: experienceContext.companyId
           });
           
           whopRole = companyAccessResult.hasAccess ? companyAccessResult.accessLevel : 'no_access';
+          console.log('✅ Company access result:', { whopRole, hasAccess: companyAccessResult.hasAccess });
         } catch (error) {
-          console.error('Company access check failed:', error);
+          console.error('❌ Company access check failed:', error);
           whopRole = 'no_access';
         }
+      } else {
+        console.log('❌ No Experience ID or Company ID found');
+        whopRole = 'no_access';
       }
     }
 
-    // 🎯 FALLBACK: If user is in Whop iframe with company context but API calls failed
-    // Assume potential admin access for company owners
-    const experienceContext = await getExperienceContext();
-    
-    console.log('🔍 FALLBACK CHECK:', {
-      hasUserId: !!userId,
-      hasCompanyId: !!experienceContext.companyId,
-      companyId: experienceContext.companyId,
-      isEmbedded: experienceContext.isEmbedded,
-      currentWhopRole: whopRole,
-      shouldTriggerFallback: userId && experienceContext.companyId && experienceContext.isEmbedded && whopRole === 'no_access'
-    });
-    
-    if (userId && experienceContext.companyId && experienceContext.isEmbedded && whopRole === 'no_access') {
-      console.log('🔄 Whop iframe detected with company context - assuming admin access');
-      whopRole = 'admin'; // Fallback assumption for company owners in iframe
-    }
+    // Get Experience context for all responses
+    const currentExperienceContext = await getExperienceContext();
 
     // 🎯 WHOP RULE #2: Map to app roles
     const appRole = mapWhopRoleToAppRole(whopRole);
     
-    // 🎯 BUSINESS DASHBOARD: Don't return error if we have userId but missing context
-    // This is normal for Business Dashboard access
-    const hasValidContext = userId && (experienceContext.experienceId || experienceContext.companyId);
+    console.log('🎭 Final Experience Context:', {
+      userId,
+      experienceId: currentExperienceContext.experienceId,
+      companyId: currentExperienceContext.companyId,
+      whopRole,
+      appRole,
+      isAuthenticated: !!userId && whopRole !== 'no_access'
+    });
     
     return createCorsResponse({
       userId,
-      experienceId: experienceContext.experienceId,
-      companyId: experienceContext.companyId,
+      experienceId: currentExperienceContext.experienceId,
+      companyId: currentExperienceContext.companyId,
       userRole: appRole,
       whopRole,
       isAuthenticated: !!userId && whopRole !== 'no_access',
-      isEmbedded: experienceContext.isEmbedded,
-      // Only show error if we truly have no context at all
-      ...((!hasValidContext && userId) ? { 
-        error: "Context required",
-        debug: `Neither experienceId nor companyId found - please access via Whop app`,
-        headers: {
-          "x-experience-id": experienceContext.experienceId || null,
-          "x-whop-experience-id": experienceContext.experienceId || null
-        }
-      } : {})
+      isEmbedded: currentExperienceContext.isEmbedded || false
     });
 
   } catch (error) {

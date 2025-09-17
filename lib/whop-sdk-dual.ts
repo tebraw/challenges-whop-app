@@ -1,14 +1,14 @@
 /**
  * 🎯 OFFICIAL WHOP SDK CONFIGURATION
  * 
- * Based on official Whop Documentation:
- * https://docs.whop.com/sdk/whop-api-client
+ * Based on EXACT official Whop NextJS Template:
+ * https://github.com/whopio/whop-nextjs-app-template/blob/main/lib/whop-sdk.ts
  * 
- * FIXED: Removed permanent onBehalfOfUserId to allow Experience user tokens
+ * RESTORED: Official pattern with onBehalfOfUserId for proper Agent operations
  */
 import { WhopServerSdk, makeWebhookValidator } from "@whop/api";
 
-// 🏢 OFFICIAL WHOP SDK - Universal Configuration (CORRECTED)
+// 🏢 OFFICIAL WHOP SDK - EXACT Template Configuration
 export const whopSdk = WhopServerSdk({
   // App ID from Whop Dashboard
   appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
@@ -16,8 +16,10 @@ export const whopSdk = WhopServerSdk({
   // App API Key - REQUIRED for all requests
   appApiKey: process.env.WHOP_API_KEY ?? "fallback",
   
-  // onBehalfOfUserId: REMOVED - Experience views need real user tokens from iFrame headers
-  // Agent User ID can be set dynamically with withUser() for Dashboard operations
+  // 🔑 CRITICAL: Agent User ID for Company/Dashboard operations
+  // This is used for API requests that need agent permissions
+  // Experience user tokens are handled separately via verifyUserToken(headers)
+  onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
   
   // Company ID - OPTIONAL, can be set dynamically with withCompany()
   companyId: process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
