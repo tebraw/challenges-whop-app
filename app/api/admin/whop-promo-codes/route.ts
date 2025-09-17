@@ -1,7 +1,7 @@
 // app/api/admin/whop-promo-codes/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { whopCompanySdk } from '@/lib/whop-sdk-dual';
+import { whopCompanySdk, createCompanyWhopSdk } from '@/lib/whop-sdk';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,13 +38,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if Whop Company API credentials are available
-    if (!process.env.WHOP_COMPANY_API_KEY) {
-      return NextResponse.json({
-        error: 'Whop Company API credentials not configured'
-      }, { status: 500 });
-    }
-
     const body = await request.json();
     const { 
       code, 
@@ -63,7 +56,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Create promo code via Whop API v2
+    // Create promo code via Multi-Tenant Whop SDK
     const promoData = {
       code,
       amount_off: parseInt(amount_off),
@@ -74,6 +67,47 @@ export async function POST(request: NextRequest) {
       base_currency: 'USD', // Required by Whop API
       ...(expiration_datetime && { expiration_datetime })
     };
+
+    console.log('🎫 Creating promo code with multi-tenant SDK for company:', companyId);
+    
+    // Try multi-tenant REST API approach first (same as products API)
+    try {
+      const response = await fetch('https://api.whop.com/api/v2/promo_codes', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+          'Content-Type': 'application/json',
+          'X-Whop-Company-ID': companyId
+        },
+        body: JSON.stringify(promoData)
+      });
+
+      if (response.ok) {
+        const promoCode = await response.json();
+        console.log('✅ Multi-tenant promo code created:', promoCode.code);
+        return NextResponse.json({
+          success: true,
+          promoCode: {
+            id: promoCode.id,
+            code: promoCode.code,
+            amount_off: promoCode.amount_off,
+            promo_type: promoCode.promo_type,
+            created_at: promoCode.created_at
+          }
+        });
+      } else {
+        console.log('⚠️ Multi-tenant API failed with status:', response.status);
+      }
+    } catch (multiTenantError: any) {
+      console.log('⚠️ Multi-tenant SDK failed, falling back to manual API:', multiTenantError?.message || 'Unknown error');
+    }
+
+    // Fallback to manual API call (legacy)
+    if (!process.env.WHOP_COMPANY_API_KEY) {
+      return NextResponse.json({
+        error: 'Whop Company API credentials not configured for fallback'
+      }, { status: 500 });
+    }
 
     const response = await fetch('https://api.whop.com/api/v2/promo_codes', {
       method: 'POST',

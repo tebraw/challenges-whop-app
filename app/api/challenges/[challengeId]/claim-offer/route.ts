@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
+import { whopSdk, createCompanyWhopSdk } from '@/lib/whop-sdk';
 import { whopAppSdk } from '@/lib/whop-sdk-dual';
 
 export async function POST(
@@ -55,11 +56,15 @@ export async function POST(
       );
     }
 
-    // Get challenge offer
+    // Get challenge offer with company info
     const challengeOffer = await prisma.challengeOffer.findUnique({
       where: { id: offerId },
       include: {
-        challenge: true,
+        challenge: {
+          include: {
+            tenant: true // Include tenant for company ID
+          }
+        },
         whopProduct: true
       }
     });
@@ -68,6 +73,15 @@ export async function POST(
       return NextResponse.json(
         { error: 'Offer not found' },
         { status: 404 }
+      );
+    }
+
+    // Extract company ID from challenge tenant
+    const companyId = challengeOffer.challenge.tenant?.whopCompanyId;
+    if (!companyId) {
+      return NextResponse.json(
+        { error: 'Company context not found' },
+        { status: 400 }
       );
     }
 
@@ -151,22 +165,45 @@ export async function POST(
       user_id: whopUserId // Restrict to this specific user
     };
 
+    let createdPromoCode;
     const promoResponse = await fetch('https://api.whop.com/api/v2/promo_codes', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.WHOP_COMPANY_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+        'Content-Type': 'application/json',
+        'X-Whop-Company-ID': companyId
       },
       body: JSON.stringify(promoData)
     });
 
     if (!promoResponse.ok) {
-      const errorText = await promoResponse.text();
-      console.error('Whop promo code creation failed:', errorText);
-      throw new Error(`Failed to create promo code: ${promoResponse.status}`);
-    }
+      // Fallback to legacy company API key if multi-tenant fails
+      console.log('⚠️ Multi-tenant promo creation failed, trying legacy fallback');
+      
+      if (!process.env.WHOP_COMPANY_API_KEY) {
+        throw new Error('No fallback API key available');
+      }
 
-    const createdPromoCode = await promoResponse.json();
+      const fallbackResponse = await fetch('https://api.whop.com/api/v2/promo_codes', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.WHOP_COMPANY_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(promoData)
+      });
+
+      if (!fallbackResponse.ok) {
+        const errorText = await fallbackResponse.text();
+        console.error('Fallback promo code creation failed:', errorText);
+        throw new Error(`Failed to create promo code: ${fallbackResponse.status}`);
+      }
+
+      createdPromoCode = await fallbackResponse.json();
+    } else {
+      console.log('✅ Multi-tenant promo code created successfully');
+      createdPromoCode = await promoResponse.json();
+    }
 
     // Generate Whop checkout URL
     const checkoutUrl = `https://whop.com/checkout/${challengeOffer.whopProductId}?promo=${personalizedPromoCode}`;

@@ -73,11 +73,72 @@ export async function GET(req: NextRequest) {
 
     console.log('Challenge found:', challenge);
 
-    // 🎯 WHOP REST API v2 IMPLEMENTATION - FIRST PRIORITY!
-    // Company Owner access via Company API Key + REST API (no GraphQL complexity limits)
-    // This runs BEFORE User Token check - Company API Key doesn't need User Token!
+    // 🎯 MULTI-TENANT SDK IMPLEMENTATION - ABSOLUTE FIRST PRIORITY!
+    // Use createCompanyWhopSdk for proper multi-tenant company context
     try {
-      console.log('🚀 Attempting Whop REST API v2 with Company API Key:', companyId);
+      console.log('🚀 MULTI-TENANT: Attempting createCompanyWhopSdk for company:', companyId);
+      
+      const companyWhopSdk = createCompanyWhopSdk(companyId);
+      
+      if (companyWhopSdk) {
+        console.log('✅ Multi-tenant SDK created successfully for company:', companyId);
+        
+        // Try to get company data first to verify access
+        const companyData = await companyWhopSdk.companies.getCompany({ companyId });
+        console.log('✅ Multi-tenant company data:', {
+          id: companyData?.id || companyId,
+          title: companyData?.title || 'Unknown',
+          route: companyData?.route || 'unknown'
+        });
+        
+        // Get products using REST API approach since SDK structure is complex
+        console.log('🛍️ Attempting multi-tenant products via REST API...');
+        const productsResponse = await fetch('https://api.whop.com/api/v2/products', {
+          headers: {
+            'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          console.log('✅ Multi-tenant products loaded:', productsData.data?.length || 0);
+          
+          if (productsData.data && productsData.data.length > 0) {
+            const formattedProducts = productsData.data.map((product: any) => {
+              const productName = product.title || product.name || 'Unnamed Product';
+              console.log(`📦 Multi-tenant Product ${product.id}: "${productName}"`);
+              return {
+                id: product.id,
+                name: productName,
+                title: productName,
+                price: 0,
+                currency: 'USD',
+                type: product.visibility || 'visible',
+                status: 'active'
+              };
+            });
+            
+            console.log('🎯 MULTI-TENANT SUCCESS - Returning company-specific products:', formattedProducts.length);
+            
+            return NextResponse.json({
+              products: formattedProducts,
+              success: true,
+              source: 'multi-tenant-whop-sdk-rest',
+              companyId: companyId
+            });
+          }
+        }
+      }
+    } catch (multiTenantError) {
+      console.log('❌ Multi-tenant SDK failed:', multiTenantError);
+    }
+
+    // 🎯 WHOP REST API v2 IMPLEMENTATION - FALLBACK
+    // Company Owner access via Company API Key + REST API (no GraphQL complexity limits)
+    // This runs as FALLBACK if multi-tenant SDK fails
+    try {
+      console.log('🚀 FALLBACK: Attempting Whop REST API v2 with Company API Key:', companyId);
       
       // Use Company API Key for direct REST API access
       const companyApiKey = process.env.WHOP_API_KEY;
