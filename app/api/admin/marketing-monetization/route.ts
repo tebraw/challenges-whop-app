@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { whopCompanySdk } from '@/lib/whop-sdk-dual';
 
 /**
  * Unified Marketing & Monetization API
@@ -44,28 +45,48 @@ export async function GET(request: NextRequest) {
 
     console.log('🎯 Loading Marketing & Monetization data for challenge:', challengeId);
 
-    // Load Whop Products for dropdown
-    const productsResponse = await fetch('https://api.whop.com/api/v2/products', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
-        'Content-Type': 'application/json',
-        'X-Whop-Company-ID': companyId
-      }
-    });
-
     let products = [];
-    if (productsResponse.ok) {
-      const productsData = await productsResponse.json();
-      products = productsData.data?.map((product: any) => ({
-        id: product.id,
-        name: product.title || product.name || 'Unnamed Product',
-        title: product.title,
-        visibility: product.visibility
-      })) || [];
-      console.log(`✅ Loaded ${products.length} products from Whop`);
-    } else {
-      console.log('⚠️ Failed to load products, using fallback');
+    let existingCodes = [];
+
+    // Load Whop Products using Company SDK
+    try {
+      console.log('🔍 Using Company API to load products for company:', companyId);
+      console.log('🔑 API Key available:', process.env.WHOP_API_KEY ? 'YES' : 'NO');
+      console.log('🔑 API Key prefix:', process.env.WHOP_API_KEY ? process.env.WHOP_API_KEY.substring(0, 10) + '...' : 'NONE');
+      
+      // Try to get products via REST API with Company context
+      const productsResponse = await fetch('https://api.whop.com/api/v2/products', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+          'Content-Type': 'application/json',
+          'X-Whop-Company-ID': companyId
+        }
+      });
+
+      console.log('📊 Products API Response:', {
+        status: productsResponse.status,
+        statusText: productsResponse.statusText,
+        headers: Object.fromEntries(productsResponse.headers.entries())
+      });
+
+      if (productsResponse.ok) {
+        const productsData = await productsResponse.json();
+        products = productsData.data?.map((product: any) => ({
+          id: product.id,
+          name: product.title || product.name || 'Unnamed Product',
+          title: product.title,
+          visibility: product.visibility
+        })) || [];
+        console.log(`✅ Company API: Loaded ${products.length} products from Whop`);
+      } else {
+        const errorText = await productsResponse.text();
+        console.log('❌ Products API Error Response:', errorText);
+        throw new Error(`Products API failed: ${productsResponse.status} - ${errorText}`);
+      }
+      
+    } catch (error) {
+      console.log('⚠️ Failed to load products with Company API, using fallback:', error);
       // Fallback mock products
       products = [
         { id: 'prod_fallback_1', name: 'Premium Course', title: 'Premium Course' },
@@ -74,24 +95,28 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Load existing promo codes for this challenge
-    const promoCodesResponse = await fetch('https://api.whop.com/api/v2/promo_codes', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
-        'Content-Type': 'application/json',
-        'X-Whop-Company-ID': companyId
-      }
-    });
+    // Load existing promo codes
+    try {
+      const promoCodesResponse = await fetch('https://api.whop.com/api/v2/promo_codes', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+          'Content-Type': 'application/json',
+          'X-Whop-Company-ID': companyId
+        }
+      });
 
-    let existingCodes = [];
-    if (promoCodesResponse.ok) {
-      const codesData = await promoCodesResponse.json();
-      // Filter codes for this challenge based on metadata
-      existingCodes = codesData.data?.filter((code: any) => {
-        return code.metadata?.challengeId === challengeId;
-      }) || [];
-      console.log(`✅ Found ${existingCodes.length} existing promo codes for challenge`);
+      if (promoCodesResponse.ok) {
+        const codesData = await promoCodesResponse.json();
+        // Filter codes for this challenge based on metadata
+        existingCodes = codesData.data?.filter((code: any) => {
+          return code.metadata?.challengeId === challengeId;
+        }) || [];
+        console.log(`✅ Company API: Found ${existingCodes.length} existing promo codes for challenge`);
+      }
+    } catch (error) {
+      console.log('⚠️ Failed to load promo codes:', error);
+      existingCodes = [];
     }
 
     // Separate completion vs mid-challenge offers
