@@ -626,12 +626,12 @@ export default function AdminChallengeDetailPage({
                         }}
                       >
                         {whopProducts.length === 0 ? (
-                          <option>No products available - Connect your Whop account</option>
+                          <option style={{ backgroundColor: '#374151', color: '#ffffff' }}>No products available - Connect your Whop account</option>
                         ) : (
                           <>
-                            <option value="">Select product...</option>
+                            <option value="" style={{ backgroundColor: '#374151', color: '#ffffff' }}>Select product...</option>
                             {whopProducts.map((product) => (
-                              <option key={product.id} value={product.id}>
+                              <option key={product.id} value={product.id} style={{ backgroundColor: '#374151', color: '#ffffff' }}>
                                 {product.name} {product.price && product.currency ? `(${product.currency} ${product.price})` : ''}
                               </option>
                             ))}
@@ -704,12 +704,12 @@ export default function AdminChallengeDetailPage({
                         }}
                       >
                         {whopProducts.length === 0 ? (
-                          <option>No products available - Connect your Whop account</option>
+                          <option style={{ backgroundColor: '#374151', color: '#ffffff' }}>No products available - Connect your Whop account</option>
                         ) : (
                           <>
-                            <option value="">Select product...</option>
+                            <option value="" style={{ backgroundColor: '#374151', color: '#ffffff' }}>Select product...</option>
                             {whopProducts.map((product) => (
-                              <option key={product.id} value={product.id}>
+                              <option key={product.id} value={product.id} style={{ backgroundColor: '#374151', color: '#ffffff' }}>
                                 {product.name} {product.price && product.currency ? `(${product.currency} ${product.price})` : ''}
                               </option>
                             ))}
