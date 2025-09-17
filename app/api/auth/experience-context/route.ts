@@ -7,7 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { whopAppSdk, whopCompanySdk } from '@/lib/whop-sdk-dual';
+import { whopSdk } from '@/lib/whop-sdk-dual';
 import { getExperienceContext } from '@/lib/whop-experience';
 import { createCorsResponse, handleCorsPreflightOptions } from '@/lib/cors';
 
@@ -41,7 +41,8 @@ export async function GET(request: NextRequest) {
     let whopRole: string = 'no_access';
     
     try {
-      const tokenResult = await whopAppSdk.verifyUserToken(headersList);
+      // Official Whop pattern: Universal SDK with App API Key + onBehalfOfUserId
+      const tokenResult = await whopSdk.verifyUserToken(headersList);
       userId = tokenResult.userId;
       console.log('✅ Whop token verification successful:', userId);
     } catch (error) {
@@ -72,7 +73,8 @@ export async function GET(request: NextRequest) {
       if (experienceContext.companyId && !experienceContext.experienceId) {
         console.log('🎯 Business Dashboard detected: Company ID without Experience ID');
         try {
-          const companyAccessResult = await whopCompanySdk.access.checkIfUserHasAccessToCompany({
+          // Official Whop pattern: Use whopSdk.withCompany() for company operations
+          const companyAccessResult = await whopSdk.access.checkIfUserHasAccessToCompany({
             userId,
             companyId: experienceContext.companyId
           });
@@ -92,7 +94,8 @@ export async function GET(request: NextRequest) {
       } else if (experienceContext.experienceId) {
         // Check experience access
         try {
-          const accessResult = await whopAppSdk.access.checkIfUserHasAccessToExperience({
+          // Official Whop pattern: Universal SDK for all operations
+          const accessResult = await whopSdk.access.checkIfUserHasAccessToExperience({
             userId,
             experienceId: experienceContext.experienceId
           });
@@ -105,7 +108,8 @@ export async function GET(request: NextRequest) {
       } else if (experienceContext.companyId) {
         // Fallback to company access
         try {
-          const companyAccessResult = await whopCompanySdk.access.checkIfUserHasAccessToCompany({
+          // Official Whop pattern: Universal SDK for company operations  
+          const companyAccessResult = await whopSdk.access.checkIfUserHasAccessToCompany({
             userId,
             companyId: experienceContext.companyId
           });
