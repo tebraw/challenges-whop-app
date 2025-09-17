@@ -96,7 +96,8 @@ export async function GET(req: NextRequest) {
         const productsResponse = await fetch('https://api.whop.com/api/v2/products', {
           headers: {
             'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-Whop-Company-ID': companyId // 🎯 CRITICAL: Multi-tenant company context!
           }
         });
         
@@ -156,7 +157,8 @@ export async function GET(req: NextRequest) {
         const companyResponse = await fetch('https://api.whop.com/api/v2/company', {
           headers: {
             'Authorization': `Bearer ${companyApiKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-Whop-Company-ID': companyId // 🎯 CRITICAL: Company API also needs company context!
           }
         });
         
@@ -175,7 +177,8 @@ export async function GET(req: NextRequest) {
         const productsResponse = await fetch('https://api.whop.com/api/v2/products', {
           headers: {
             'Authorization': `Bearer ${companyApiKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-Whop-Company-ID': companyId // 🎯 CRITICAL: Multi-tenant fallback needs company context too!
           }
         });
         
@@ -219,7 +222,8 @@ export async function GET(req: NextRequest) {
           const plansResponse = await fetch('https://api.whop.com/api/v2/plans?expand=product', {
             headers: {
               'Authorization': `Bearer ${companyApiKey}`,
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'X-Whop-Company-ID': companyId // 🎯 CRITICAL: Plans API also needs company context!
             }
           });
           
