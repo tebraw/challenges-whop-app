@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
       new_users_only,
       base_currency: "usd", // Required by Whop API v2 - must be lowercase!
       ...(expiration_datetime && { expiration_datetime }),
-      // CRITICAL: Only add stock parameter when unlimited_stock is FALSE
-      ...((!unlimited_stock) && { stock: Number(stock) })
+      // CRITICAL: Always send stock parameter - API requires it even with unlimited_stock: true
+      stock: unlimited_stock ? 999999 : Number(stock)
     };
     
     console.log('🎫 FULL PROMO DATA BEING SENT:', JSON.stringify(promoData, null, 2));
