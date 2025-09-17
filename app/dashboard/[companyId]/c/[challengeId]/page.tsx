@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { ArrowLeft, Users, Calendar, Trophy, Settings, Eye, BarChart3, Flame, Camera, Zap, DollarSign, Target, TrendingUp, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Users, Calendar, Trophy, Settings, Eye, BarChart3, Flame, Camera, Zap, Target, Pencil, Trash2 } from "lucide-react";
 import EditChallengeModal from "@/components/admin/EditChallengeModal";
 import UnifiedMarketingMonetization from "@/components/admin/UnifiedMarketingMonetization";
 
@@ -94,15 +94,6 @@ export default function AdminChallengeDetailPage({
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [challengeId, setChallengeId] = useState<string>("");
   const [companyId, setCompanyId] = useState<string>("");
-  const [whopProducts, setWhopProducts] = useState<Array<{
-    id: string;
-    name: string;
-    description?: string;
-    price?: number;
-    currency?: string;
-  }>>([]);
-  const [loadingProducts, setLoadingProducts] = useState(false);
-  const [creatingOffer, setCreatingOffer] = useState<'completion' | 'mid-challenge' | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -153,9 +144,6 @@ export default function AdminChallengeDetailPage({
         
         setChallenge(mockChallenge);
         
-        // Load Whop products for this challenge
-        await loadWhopProducts(resolvedParams.challengeId);
-        
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -165,97 +153,6 @@ export default function AdminChallengeDetailPage({
 
     loadChallenge();
   }, [params]);
-
-  async function loadWhopProducts(challengeId: string) {
-    try {
-      setLoadingProducts(true);
-      console.log(`🛍️ Loading Whop products for challenge: ${challengeId}`);
-      
-      const response = await fetch(`/api/admin/marketing-monetization?challengeId=${challengeId}`);
-      const data = await response.json();
-      
-      console.log('🛍️ Whop products API response:', data);
-      
-      if (response.ok) {
-        const products = data.products || [];
-        setWhopProducts(products);
-        
-        // Show debug information in console for troubleshooting
-        if (data.debug) {
-          console.log('🛍️ Debug information:', data.debug);
-        }
-        
-        // Show user-friendly messages
-        if (products.length > 0) {
-          console.log(`✅ Successfully loaded ${products.length} products:`, products.map((p: any) => p.name));
-        } else {
-          console.warn('⚠️ No products found:', data.message);
-          // Try to get mock products in development
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🔧 Development mode - trying to enable mock products...');
-          }
-        }
-      } else {
-        console.error('❌ Failed to load Whop products:', data);
-        setWhopProducts([]);
-      }
-    } catch (error) {
-      console.error('❌ Error loading Whop products:', error);
-      setWhopProducts([]);
-    } finally {
-      setLoadingProducts(false);
-    }
-  }
-
-  async function createPromoCode(type: 'completion' | 'mid-challenge', productId: string, discount: string) {
-    try {
-      setCreatingOffer(type);
-      
-      // Parse discount (e.g., "15%" or "25%" -> 15 or 25)
-      const discountMatch = discount.match(/(\d+)%?/);
-      if (!discountMatch) {
-        throw new Error('Invalid discount format');
-      }
-      
-      const discountAmount = parseInt(discountMatch[1]);
-      const promoCode = `${type.toUpperCase()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-      
-      const response = await fetch('/api/admin/marketing-monetization', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          challengeId,
-          offerType: type,
-          code: promoCode,
-          discount_value: discountAmount,
-          discount_type: 'percentage',
-          productId: productId,
-          duration: 'one-time',
-          eligible_users: 'everyone',
-          usage_limit: 999,
-          one_per_customer: false
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create promo code');
-      }
-
-      const result = await response.json();
-      
-      // Show success message
-      alert(`✅ ${type === 'completion' ? 'Completion' : 'Mid-Challenge'} offer created successfully!\n\nPromo Code: ${result.promoCode.code}\nDiscount: ${discountAmount}% off`);
-      
-    } catch (error) {
-      console.error('Error creating promo code:', error);
-      alert(`❌ Failed to create ${type} offer: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setCreatingOffer(null);
-    }
-  }
 
   async function handleDeleteChallenge() {
     if (!challengeId || deleting) return;
@@ -538,226 +435,7 @@ export default function AdminChallengeDetailPage({
           </Card>
         </div>
 
-        {/* Marketing & Monetization Section */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <DollarSign className="h-5 w-5 text-green-400" />
-            <h3 className="text-xl font-semibold text-white">Marketing & Monetization</h3>
-          </div>
 
-          {/* Whop Connection Status */}
-          {whopProducts.length === 0 && !loadingProducts && (
-            <Card className="p-4 mb-6 bg-yellow-900 border-yellow-700">
-              <div className="flex items-center gap-2 text-yellow-200">
-                <DollarSign className="h-5 w-5" />
-                <div>
-                  <h4 className="font-medium">No Whop Products Found</h4>
-                  <p className="text-sm text-yellow-300">
-                    Connect your Whop account and add products to enable monetization features.
-                  </p>
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {/* Monetization Status */}
-          <Card className="p-6 mb-6 bg-gray-800 border-gray-700">
-            <div className="flex items-center gap-2 mb-4">
-              <Target className="h-5 w-5 text-green-400" />
-              <h4 className="text-lg font-medium text-white">Monetization Status</h4>
-              <span className="text-sm text-gray-400">Active offers and revenue tracking</span>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-8">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-green-400 mb-1">
-                  ${challenge.revenue?.total || 0}
-                </div>
-                <div className="text-gray-400">Total Revenue</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-blue-400 mb-1">
-                  {challenge.revenue?.conversions || 0}
-                </div>
-                <div className="text-gray-400">Total Conversions</div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Marketing Offers */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Debug Info */}
-            <div className="lg:col-span-2 mb-4">
-              <div className="bg-blue-900/50 border border-blue-600 rounded-lg p-4">
-                <h4 className="text-blue-200 font-medium mb-2">🔧 Debug Info:</h4>
-                <div className="text-sm text-blue-100 space-y-1">
-                  <div>Loading Products: {loadingProducts ? 'Yes' : 'No'}</div>
-                  <div>Products Found: {whopProducts.length}</div>
-                  <div>Challenge ID: {challengeId}</div>
-                  {whopProducts.length > 0 && (
-                    <div>Products: {whopProducts.map(p => p.name).join(', ')}</div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Challenge Completion Offer */}
-            <Card className="p-6 bg-gray-800 border-gray-700">
-              <div className="flex items-center gap-2 mb-4">
-                <Trophy className="h-5 w-5 text-green-400" />
-                <h4 className="text-lg font-medium text-white">Challenge Completion</h4>
-              </div>
-              <p className="text-gray-400 text-sm mb-4">Reward users who complete the challenge</p>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Product</label>
-                  {loadingProducts ? (
-                    <div className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-400">
-                      Loading products...
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <select 
-                        id="completion-product"
-                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:bg-gray-600 transition-colors cursor-pointer relative z-10"
-                        disabled={whopProducts.length === 0}
-                        style={{ 
-                          appearance: 'none',
-                          backgroundImage: 'url("data:image/svg+xml;utf8,<svg fill=\'white\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/></svg>")',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'right 12px center',
-                          backgroundSize: '16px'
-                        }}
-                      >
-                        {whopProducts.length === 0 ? (
-                          <option style={{ backgroundColor: '#374151', color: '#ffffff' }}>No products available - Connect your Whop account</option>
-                        ) : (
-                          <>
-                            <option value="" style={{ backgroundColor: '#374151', color: '#ffffff' }}>Select product...</option>
-                            {whopProducts.map((product) => (
-                              <option key={product.id} value={product.id} style={{ backgroundColor: '#374151', color: '#ffffff' }}>
-                                {product.name} {product.price && product.currency ? `(${product.currency} ${product.price})` : ''}
-                              </option>
-                            ))}
-                          </>
-                        )}
-                      </select>
-                    </div>
-                  )}
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Discount (%)</label>
-                  <input 
-                    id="completion-discount"
-                    type="number" 
-                    defaultValue="15"
-                    min="1"
-                    max="100"
-                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <Button 
-                  className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={whopProducts.length === 0 || creatingOffer === 'completion'}
-                  onClick={() => {
-                    const productSelect = document.getElementById('completion-product') as HTMLSelectElement;
-                    const discountInput = document.getElementById('completion-discount') as HTMLInputElement;
-                    
-                    if (!productSelect.value) {
-                      alert('Please select a product');
-                      return;
-                    }
-                    
-                    createPromoCode('completion', productSelect.value, `${discountInput.value}%`);
-                  }}
-                >
-                  {creatingOffer === 'completion' ? 'Creating...' : 'Create Completion Offer'}
-                </Button>
-              </div>
-            </Card>
-
-            {/* Mid-Challenge Boost */}
-            <Card className="p-6 bg-gray-800 border-gray-700">
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingUp className="h-5 w-5 text-blue-400" />
-                <h4 className="text-lg font-medium text-white">Mid-Challenge Boost</h4>
-              </div>
-              <p className="text-gray-400 text-sm mb-4">Motivate users during the challenge</p>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Product</label>
-                  {loadingProducts ? (
-                    <div className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-400">
-                      Loading products...
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <select 
-                        id="boost-product"
-                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:bg-gray-600 transition-colors cursor-pointer relative z-10"
-                        disabled={whopProducts.length === 0}
-                        style={{ 
-                          appearance: 'none',
-                          backgroundImage: 'url("data:image/svg+xml;utf8,<svg fill=\'white\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/></svg>")',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'right 12px center',
-                          backgroundSize: '16px'
-                        }}
-                      >
-                        {whopProducts.length === 0 ? (
-                          <option style={{ backgroundColor: '#374151', color: '#ffffff' }}>No products available - Connect your Whop account</option>
-                        ) : (
-                          <>
-                            <option value="" style={{ backgroundColor: '#374151', color: '#ffffff' }}>Select product...</option>
-                            {whopProducts.map((product) => (
-                              <option key={product.id} value={product.id} style={{ backgroundColor: '#374151', color: '#ffffff' }}>
-                                {product.name} {product.price && product.currency ? `(${product.currency} ${product.price})` : ''}
-                              </option>
-                            ))}
-                          </>
-                        )}
-                      </select>
-                    </div>
-                  )}
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Discount (%)</label>
-                  <input 
-                    id="boost-discount"
-                    type="number" 
-                    defaultValue="25"
-                    min="1"
-                    max="100"
-                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <Button 
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={whopProducts.length === 0 || creatingOffer === 'mid-challenge'}
-                  onClick={() => {
-                    const productSelect = document.getElementById('boost-product') as HTMLSelectElement;
-                    const discountInput = document.getElementById('boost-discount') as HTMLInputElement;
-                    
-                    if (!productSelect.value) {
-                      alert('Please select a product');
-                      return;
-                    }
-                    
-                    createPromoCode('mid-challenge', productSelect.value, `${discountInput.value}%`);
-                  }}
-                >
-                  {creatingOffer === 'mid-challenge' ? 'Creating...' : 'Create Mid-Challenge Boost'}
-                </Button>
-              </div>
-            </Card>
-          </div>
-        </div>
 
         {/* Marketing & Monetization Section */}
         <UnifiedMarketingMonetization 
