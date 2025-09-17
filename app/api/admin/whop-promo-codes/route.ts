@@ -55,6 +55,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Validate plan_ids
+    if (!plan_ids || plan_ids.length === 0) {
+      console.log('❌ No plan_ids provided:', plan_ids);
+      return NextResponse.json({
+        error: 'At least one plan_id is required'
+      }, { status: 400 });
+    }
+
+    console.log('📋 Creating promo code with plan_ids:', plan_ids);
+
     // Create promo code via Multi-Tenant Whop SDK
     const promoData = {
       code,
@@ -76,7 +86,7 @@ export async function POST(request: NextRequest) {
     // Try multi-tenant REST API approach first (same as products API)
     try {
       console.log('🎫 Sending multi-tenant promo request:', JSON.stringify({
-        url: 'https://api.whop.com/api/v2/promo_codes',
+        url: 'https://api.whop.com/v2/promo_codes',
         headers: {
           'Authorization': `Bearer ${process.env.WHOP_API_KEY?.substring(0, 8)}...`,
           'Content-Type': 'application/json',
@@ -85,7 +95,7 @@ export async function POST(request: NextRequest) {
         body: promoData
       }, null, 2));
       
-      const response = await fetch('https://api.whop.com/api/v2/promo_codes', {
+      const response = await fetch('https://api.whop.com/v2/promo_codes', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
@@ -128,7 +138,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const response = await fetch('https://api.whop.com/api/v2/promo_codes', {
+    const response = await fetch('https://api.whop.com/v2/promo_codes', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.WHOP_COMPANY_API_KEY}`,
@@ -200,7 +210,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch existing promo codes from Whop API v2
-    const response = await fetch('https://api.whop.com/api/v2/promo_codes?status=active', {
+    const response = await fetch('https://api.whop.com/v2/promo_codes?status=active', {
       headers: {
         'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
         'Content-Type': 'application/json'
