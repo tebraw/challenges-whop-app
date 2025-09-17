@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { whopAppSdk, whopCompanySdk } from '@/lib/whop-sdk-dual';
+import { whopAppSdk } from '@/lib/whop-sdk-dual';
 
 /**
  * 🎯 WHOP DASHBOARD APP STANDARD - Marketing & Monetization API
@@ -78,8 +78,8 @@ export async function GET(request: NextRequest) {
     }> = [];
     
     try {
-      // Use Whop SDK to get real company data
-      const companyData = await whopCompanySdk.payments.listReceiptsForCompany({
+      // Use Whop App SDK to get real company data (App API Key has proper permissions)
+      const companyData = await whopAppSdk.payments.listReceiptsForCompany({
         companyId,
         first: 10, // Limit for performance
       });
