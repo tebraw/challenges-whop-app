@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, Users, CheckCircle, Award } from 'lucide-react';
 import JoinChallengeButton from '@/components/experiences/JoinChallengeButton';
 import ProofForm from '@/components/user/ProofForm';
+import ChallengeOffers from '@/components/experiences/ChallengeOffers';
 
 interface PageProps {
   params: Promise<{ experienceId: string; challengeId: string }>;
@@ -473,6 +474,14 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Challenge Offers Section - Show special offers based on user progress */}
+          {isParticipating && (
+            <ChallengeOffers 
+              challengeId={challengeId}
+              whopHeaders={whopHeaders}
+            />
           )}
 
           {/* Check-in/Proof Upload Section */}

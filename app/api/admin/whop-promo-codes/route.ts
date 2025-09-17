@@ -1,17 +1,40 @@
 // app/api/admin/whop-promo-codes/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, getCurrentUser } from '@/lib/auth';
+import { headers } from 'next/headers';
+import { whopCompanySdk } from '@/lib/whop-sdk-dual';
 
 export async function POST(request: NextRequest) {
-      try {
-    // SECURITY: Require admin authentication
-    await requireAdmin();
-    const user = await getCurrentUser();
+  try {
+    // SECURITY: Company Owner authentication (same as whop-products API)
+    const headersList = await headers();
+    const whopUserToken = headersList.get('x-whop-user-token');
+    const companyId = headersList.get('x-whop-company-id');
 
-    if (!user || !user.tenantId) {
+    if (!whopUserToken) {
       return NextResponse.json(
-        { error: 'Authentication required' },
+        { error: 'Unauthorized - No Whop token' },
         { status: 401 }
+      );
+    }
+
+    if (!companyId) {
+      return NextResponse.json(
+        { error: 'Company ID required' },
+        { status: 400 }
+      );
+    }
+
+    // Verify Company Owner access
+    let userId: string;
+    try {
+      const { userId: extractedUserId } = await whopCompanySdk.verifyUserToken(headersList);
+      userId = extractedUserId;
+      console.log('✅ Company Owner verified for promo codes:', userId);
+    } catch (error) {
+      console.error('❌ Company Owner verification failed:', error);
+      return NextResponse.json(
+        { error: 'Invalid Company Owner access' },
+        { status: 403 }
       );
     }
 
@@ -90,9 +113,30 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-      try {
-    // SECURITY: Require admin authentication
-    await requireAdmin();
+  try {
+    // SECURITY: Company Owner authentication (same as whop-products API)
+    const headersList = await headers();
+    const whopUserToken = headersList.get('x-whop-user-token');
+    const companyId = headersList.get('x-whop-company-id');
+
+    if (!whopUserToken) {
+      return NextResponse.json(
+        { error: 'Unauthorized - No Whop token' },
+        { status: 401 }
+      );
+    }
+
+    // Verify Company Owner access
+    try {
+      await whopCompanySdk.verifyUserToken(headersList);
+      console.log('✅ Company Owner verified for promo code list');
+    } catch (error) {
+      console.error('❌ Company Owner verification failed:', error);
+      return NextResponse.json(
+        { error: 'Invalid Company Owner access' },
+        { status: 403 }
+      );
+    }
 
     // Check if Whop API credentials are available
     if (!process.env.WHOP_API_KEY) {
