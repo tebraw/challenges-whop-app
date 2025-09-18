@@ -78,13 +78,18 @@ export default async function ExperiencePage({ params }: Props) {
       }
     }
     
-    // Find the company/creator associated with this experience
-    // Filter challenges by this experience's company only
+    // Get the user's tenant/company ID for proper challenge filtering
+    console.log('🏢 User tenant info:', {
+      userId: user.id,
+      tenantId: user.tenantId,
+      whopCompanyId: user.tenant?.whopCompanyId
+    });
+    
+    // Filter challenges by the user's tenant/company
+    // This ensures members see challenges from their own community
     const challenges = await prisma.challenge.findMany({
       where: {
-        tenant: {
-          whopCompanyId: experienceId  // Only show challenges from THIS experience/company
-        }
+        tenantId: user.tenantId  // Show challenges from user's tenant/company
       },
       include: {
         _count: {
@@ -104,6 +109,12 @@ export default async function ExperiencePage({ params }: Props) {
       orderBy: {
         createdAt: 'desc'
       }
+    });
+    
+    console.log('📊 Found challenges for user:', {
+      challengeCount: challenges.length,
+      userTenantId: user.tenantId,
+      challengeTenantIds: challenges.map(c => ({ id: c.id, title: c.title, tenantId: c.tenantId }))
     });
     
     // Calculate user statistics
