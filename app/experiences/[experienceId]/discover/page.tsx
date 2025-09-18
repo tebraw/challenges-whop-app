@@ -1,0 +1,228 @@
+import { headers } from 'next/headers';
+import { whopSdk } from '@/lib/whop-sdk-unified';
+import { prisma } from '@/lib/prisma';
+import Link from 'next/link';
+import { Calendar, Users, Trophy, Star, Clock, Award } from 'lucide-react';
+
+interface Props {
+  params: Promise<{
+    experienceId: string;
+  }>;
+}
+
+export const dynamic = 'force-dynamic';
+
+export default async function ExperienceDiscoverPage({ params }: Props) {
+  const { experienceId } = await params;
+  
+  console.log('🔍 Experience Discover Page for:', experienceId);
+  
+  try {
+    const headersList = await headers();
+    const whopUserToken = headersList.get('x-whop-user-token');
+    
+    if (!whopUserToken) {
+      return (
+        <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Access Required</h1>
+            <p className="text-gray-400">Please access this app through Whop.</p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Verify user access to this experience
+    const { userId } = await whopSdk.verifyUserToken(headersList);
+    
+    const experienceAccess = await whopSdk.access.checkIfUserHasAccessToExperience({
+      userId,
+      experienceId
+    });
+    
+    if (!experienceAccess.hasAccess) {
+      return (
+        <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+            <p className="text-gray-400">You don't have access to this experience.</p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Get ALL challenges from ALL communities (cross-community discovery)
+    const allChallenges = await prisma.challenge.findMany({
+      where: {
+        isPublic: true,  // Only public challenges
+        NOT: {
+          tenant: {
+            whopCompanyId: experienceId  // EXCLUDE challenges from current experience
+          }
+        }
+      },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            whopCompanyId: true
+          }
+        },
+        _count: {
+          select: {
+            enrollments: true
+          }
+        }
+      },
+      orderBy: [
+        { featured: 'desc' },
+        { createdAt: 'desc' }
+      ],
+      take: 50  // Limit for performance
+    });
+
+    console.log(`🔍 Found ${allChallenges.length} cross-community challenges`);
+    
+    return (
+      <div className="min-h-screen bg-gray-900">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          {/* Beautiful Header */}
+          <div className="mb-10 text-center">
+            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-orange-600/20 to-red-600/20 rounded-full px-6 py-3 mb-6">
+              <span className="text-3xl">🔍</span>
+              <h1 className="text-2xl font-bold text-white">Discover Challenges</h1>
+            </div>
+            <p className="text-gray-300 text-lg max-w-2xl mx-auto">
+              Explore amazing challenges from communities across the platform! 🌟
+            </p>
+          </div>
+          
+          {/* Stats */}
+          <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-2xl p-6 mb-8 text-center">
+            <div className="text-4xl mb-3">🌍</div>
+            <div className="text-3xl font-bold text-orange-400 mb-2">
+              {allChallenges.length}
+            </div>
+            <div className="text-gray-300 font-medium">Communities to Explore</div>
+          </div>
+          
+          {/* Challenges Grid */}
+          {allChallenges.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🔍</div>
+              <h3 className="text-xl font-semibold text-gray-300 mb-2">No challenges found</h3>
+              <p className="text-gray-400">
+                Come back later to discover amazing challenges from other communities!
+              </p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {allChallenges.map((challenge: any) => {
+                const status = new Date() < new Date(challenge.startAt) ? 'upcoming' : 
+                              new Date() > new Date(challenge.endAt) ? 'ended' : 'active';
+                
+                const statusColor = status === 'upcoming' ? 'text-blue-400' : 
+                                   status === 'ended' ? 'text-gray-400' : 'text-green-400';
+                
+                const statusIcon = status === 'upcoming' ? <Clock className="h-4 w-4" /> : 
+                                  status === 'ended' ? <Trophy className="h-4 w-4" /> : 
+                                  <Star className="h-4 w-4" />;
+
+                return (
+                  <Link 
+                    key={challenge.id} 
+                    href={`/experiences/${experienceId}/discover/${challenge.id}`}
+                    className="group"
+                  >
+                    <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden hover:border-orange-500/50 transition-all duration-300 group-hover:transform group-hover:scale-[1.02]">
+                      {/* Challenge Image */}
+                      <div className="aspect-video bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
+                        {challenge.imageUrl ? (
+                          <img 
+                            src={challenge.imageUrl} 
+                            alt={challenge.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-4xl">🎯</span>
+                        )}
+                      </div>
+                      
+                      {/* Challenge Content */}
+                      <div className="p-6">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className={`flex items-center gap-1 text-xs font-medium ${statusColor}`}>
+                            {statusIcon}
+                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                          </div>
+                          {challenge.featured && (
+                            <span className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full text-xs font-medium">
+                              ⭐ Featured
+                            </span>
+                          )}
+                        </div>
+                        
+                        <h3 className="font-bold text-white text-lg mb-2 group-hover:text-orange-400 transition-colors">
+                          {challenge.title}
+                        </h3>
+                        
+                        <p className="text-gray-400 text-sm mb-4 line-clamp-3">
+                          {challenge.description}
+                        </p>
+                        
+                        {/* Community Info */}
+                        <div className="bg-gray-700/50 rounded-lg p-3 mb-4">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-orange-400">🏢</span>
+                            <span className="text-gray-300 font-medium">
+                              {challenge.tenant?.name || 'Community'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Stats */}
+                        <div className="flex items-center justify-between text-sm text-gray-400">
+                          <div className="flex items-center gap-1">
+                            <Users className="h-4 w-4" />
+                            <span>{challenge._count?.enrollments || 0} participants</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            <span>{new Date(challenge.startAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+          
+          {/* Back to Community */}
+          <div className="mt-12 text-center">
+            <Link 
+              href={`/experiences/${experienceId}`}
+              className="inline-flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-colors border border-gray-600"
+            >
+              ← Back to Your Community
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+    
+  } catch (error) {
+    console.error('Experience discover page error:', error);
+    
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
+          <p className="text-gray-400">Please try refreshing the page.</p>
+        </div>
+      </div>
+    );
+  }
+}

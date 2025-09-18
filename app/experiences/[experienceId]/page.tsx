@@ -79,10 +79,12 @@ export default async function ExperiencePage({ params }: Props) {
     }
     
     // Find the company/creator associated with this experience
-    // For now, we'll show all challenges, but this should be filtered by the experience's company
+    // Filter challenges by this experience's company only
     const challenges = await prisma.challenge.findMany({
       where: {
-        // TODO: Filter by experience's company when we have that mapping
+        tenant: {
+          whopCompanyId: experienceId  // Only show challenges from THIS experience/company
+        }
       },
       include: {
         _count: {

@@ -48,14 +48,14 @@ export async function GET(request: Request) {
 
     // Company Owner = ADMIN Rolle + hat whopCompanyId
     if (currentUser.role === 'ADMIN' && currentUser.whopCompanyId) {
-      console.log('👑 User is company owner - granting full access');
+      console.log('👑 User is company owner - granting admin access (NO DISCOVER)');
       return NextResponse.json({
         accessLevel: {
           userType: 'company_owner',
           canCreateChallenges: true,
           canViewAdmin: true,
-          canViewMyFeed: true,
-          canViewDiscover: true,
+          canViewMyFeed: false,  // Company Owners don't need My Feed
+          canViewDiscover: false,  // Company Owners don't need Discover
           userId: currentUser.id,
           companyId: currentUser.whopCompanyId,
           isParticipant,

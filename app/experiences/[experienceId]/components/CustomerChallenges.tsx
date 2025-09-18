@@ -150,10 +150,10 @@ export default function CustomerChallenges({
               Start following creators and join challenges to see them here.
             </p>
             <Link 
-              href="/discover"
-              className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+              href={`/experiences/${experienceId}/discover`}
+              className="inline-block bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg transition-colors"
             >
-              Discover Challenges
+              🔍 Discover Challenges
             </Link>
           </div>
         ) : (
