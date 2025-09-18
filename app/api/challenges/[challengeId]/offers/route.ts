@@ -113,26 +113,32 @@ export async function GET(
 
     completionRate = maxCheckIns > 0 ? (completedCheckIns / maxCheckIns) * 100 : 0;
 
-    // Filter offers based on eligibility
-    const eligibleOffers = challenge.challengeOffers.filter((offer: any) => {
+    // Show ALL offers with eligibility status (don't filter)
+    const allOffers = challenge.challengeOffers.map((offer: any) => {
       const triggerConditions = offer.triggerConditions ? JSON.parse(offer.triggerConditions) : {};
       
       // Check offer type eligibility
+      let isEligible = false;
+      let requiredProgress = '';
+      
       if (offer.offerType === 'completion') {
         // Completion offers: user must have 90%+ completion rate
-        return completionRate >= (triggerConditions.minCompletionRate || 90);
+        const minRate = triggerConditions.minCompletionRate || 90;
+        isEligible = completionRate >= minRate;
+        requiredProgress = `${minRate}% completion required`;
       } else if (offer.offerType === 'mid-challenge') {
         // Mid-challenge boost: user must have 25%+ but less than 90% completion
         const minRate = triggerConditions.minCompletionRate || 25;
         const maxRate = triggerConditions.maxCompletionRate || 89;
-        return completionRate >= minRate && completionRate <= maxRate;
+        isEligible = completionRate >= minRate && completionRate <= maxRate;
+        requiredProgress = `${minRate}-${maxRate}% progress required`;
       }
       
-      return false;
+      return { offer, isEligible, requiredProgress };
     });
 
     // Format offers for frontend
-    const formattedOffers = eligibleOffers.map((offer: any) => ({
+    const formattedOffers = allOffers.map(({ offer, isEligible, requiredProgress }) => ({
       id: offer.id,
       offerType: offer.offerType,
       whopProductId: offer.whopProductId,
@@ -144,7 +150,9 @@ export async function GET(
       customMessage: offer.customMessage,
       timeLimit: offer.timeLimit,
       isActive: offer.isActive,
-      createdAt: offer.createdAt
+      createdAt: offer.createdAt,
+      isEligible: isEligible,
+      requiredProgress: requiredProgress
     }));
 
     return NextResponse.json({
