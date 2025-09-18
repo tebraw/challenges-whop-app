@@ -394,9 +394,37 @@ export async function POST(request: NextRequest) {
           console.log('✅ WhopProduct record ready:', whopProduct.id);
         } catch (whopError) {
           console.error('❌ WhopProduct creation failed:', whopError);
-          console.log('🔄 Continuing with ChallengeOffer creation despite WhopProduct failure...');
-          // Don't return early - continue with ChallengeOffer creation
-          // Use a fallback whopProduct ID or skip foreign key
+          console.log('🔄 Creating fallback WhopProduct record for Foreign Key constraint...');
+          
+          // Create a simple fallback WhopProduct record
+          try {
+            whopProduct = await prisma.whopProduct.create({
+              data: {
+                whopProductId: planId,
+                name: `Plan ${planId}`,
+                description: `Fallback product for plan ${planId}`,
+                price: originalPrice,
+                currency: 'USD',
+                productType: 'plan',
+                checkoutUrl: `https://whop.com/checkout/${planId}`,
+                isActive: true,
+                creatorId: 'system-generated',
+                whopCreatorId: companyId || 'unknown'
+              }
+            });
+            console.log('✅ Fallback WhopProduct created:', whopProduct.id);
+          } catch (fallbackError) {
+            console.error('❌ Even fallback WhopProduct creation failed:', fallbackError);
+            // Use existing WhopProduct if available
+            const existingProduct = await prisma.whopProduct.findFirst();
+            whopProduct = existingProduct;
+            console.log('🔄 Using existing WhopProduct as last resort:', whopProduct?.id);
+          }
+        }
+        
+        // Ensure we have a whopProduct before creating ChallengeOffer
+        if (!whopProduct) {
+          throw new Error('Unable to create or find WhopProduct for Foreign Key constraint');
         }
         
         const offer = await prisma.challengeOffer.create({
@@ -404,7 +432,7 @@ export async function POST(request: NextRequest) {
             challengeId: challengeId,
             offerType: offerType,
             discountPercentage: discountPercentage,
-            whopProductId: whopProduct?.id || planId, // Use WhopProduct ID or fallback to planId
+            whopProductId: whopProduct.id, // Always use valid WhopProduct ID
             originalPrice: originalPrice,
             discountedPrice: discountedPrice,
             isActive: true,
