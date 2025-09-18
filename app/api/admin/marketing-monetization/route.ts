@@ -87,17 +87,19 @@ export async function GET(request: NextRequest) {
         throw new Error('Company API Key required for plans loading');
       }
 
-      // Load both plans and products simultaneously
+      // Load both plans and products simultaneously with company isolation
       const [plansResponse, productsResponse] = await Promise.all([
         fetch('https://api.whop.com/api/v2/plans', {
           headers: {
             'Authorization': `Bearer ${companyApiKey}`,
+            'X-Whop-Company-ID': companyId,
             'Content-Type': 'application/json'
           }
         }),
         fetch('https://api.whop.com/api/v2/products', {
           headers: {
             'Authorization': `Bearer ${companyApiKey}`,
+            'X-Whop-Company-ID': companyId,
             'Content-Type': 'application/json'
           }
         })
