@@ -51,15 +51,33 @@ export default async function ExperienceDiscoverPage({ params }: Props) {
       );
     }
     
-    // Get ALL challenges from ALL communities (cross-community discovery)
+    // Get the user's tenant info for proper challenge categorization
+    let user = await prisma.user.findUnique({
+      where: { whopUserId: userId },
+      include: { tenant: true }
+    });
+
+    if (!user) {
+      // Auto-create user if not exists
+      const { autoCreateOrUpdateUser } = await import('@/lib/auto-company-extraction');
+      await autoCreateOrUpdateUser(userId, experienceId, null);
+      
+      user = await prisma.user.findUnique({
+        where: { whopUserId: userId },
+        include: { tenant: true }
+      });
+    }
+
+    console.log('🔍 Discover - User tenant info:', {
+      userId: user?.id,
+      tenantId: user?.tenantId,
+      whopCompanyId: user?.tenant?.whopCompanyId
+    });
+
+    // Get ALL public challenges from ALL communities (including own community)
     const allChallenges = await prisma.challenge.findMany({
       where: {
-        isPublic: true,  // Only public challenges
-        NOT: {
-          tenant: {
-            whopCompanyId: experienceId  // EXCLUDE challenges from current experience
-          }
-        }
+        isPublic: true  // Show ALL public challenges
       },
       include: {
         tenant: {
@@ -129,11 +147,15 @@ export default async function ExperienceDiscoverPage({ params }: Props) {
                                   status === 'ended' ? <Trophy className="h-4 w-4" /> : 
                                   <Star className="h-4 w-4" />;
 
+                // Check if this challenge is from user's own community
+                const isOwnCommunity = challenge.tenantId === user?.tenantId;
+                const actionText = isOwnCommunity ? "Join Challenge" : "Join Community First";
+                const actionIcon = isOwnCommunity ? "🚀" : "🏢";
+
                 return (
-                  <Link 
-                    key={challenge.id} 
-                    href={`/experiences/${experienceId}/discover/${challenge.id}`}
-                    className="group"
+                  <div
+                    key={challenge.id}
+                    className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden hover:border-orange-500/50 transition-all duration-300"
                   >
                     <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden hover:border-orange-500/50 transition-all duration-300 group-hover:transform group-hover:scale-[1.02]">
                       {/* Challenge Image */}
@@ -161,9 +183,14 @@ export default async function ExperienceDiscoverPage({ params }: Props) {
                               ⭐ Featured
                             </span>
                           )}
+                          {isOwnCommunity && (
+                            <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded-full text-xs font-medium">
+                              ✅ Your Community
+                            </span>
+                          )}
                         </div>
                         
-                        <h3 className="font-bold text-white text-lg mb-2 group-hover:text-orange-400 transition-colors">
+                        <h3 className="font-bold text-white text-lg mb-2 hover:text-orange-400 transition-colors">
                           {challenge.title}
                         </h3>
                         
@@ -172,12 +199,15 @@ export default async function ExperienceDiscoverPage({ params }: Props) {
                         </p>
                         
                         {/* Community Info */}
-                        <div className="bg-gray-700/50 rounded-lg p-3 mb-4">
+                        <div className={`rounded-lg p-3 mb-4 ${isOwnCommunity ? 'bg-green-500/10 border border-green-500/20' : 'bg-gray-700/50'}`}>
                           <div className="flex items-center gap-2 text-sm">
-                            <span className="text-orange-400">🏢</span>
+                            <span className={isOwnCommunity ? "text-green-400" : "text-orange-400"}>🏢</span>
                             <span className="text-gray-300 font-medium">
                               {challenge.tenant?.name || 'Community'}
                             </span>
+                            {isOwnCommunity && (
+                              <span className="text-green-400 text-xs">(Your Community)</span>
+                            )}
                           </div>
                         </div>
                         
@@ -192,9 +222,28 @@ export default async function ExperienceDiscoverPage({ params }: Props) {
                             <span>{new Date(challenge.startAt).toLocaleDateString()}</span>
                           </div>
                         </div>
+                        
+                        {/* Action Button */}
+                        <div className="mt-4 pt-4 border-t border-gray-700">
+                          {isOwnCommunity ? (
+                            <Link
+                              href={`/experiences/${experienceId}/challenges/${challenge.id}`}
+                              className="inline-flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+                            >
+                              Join Challenge
+                            </Link>
+                          ) : (
+                            <Link
+                              href={`/experiences/${experienceId}/discover/${challenge.id}`}
+                              className="inline-flex items-center justify-center w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-lg font-medium transition-colors border border-gray-600"
+                            >
+                              View Details & Join Community
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 );
               })}
             </div>
