@@ -79,7 +79,12 @@ export default function WhopPromoForm({
         body: JSON.stringify({
           challengeId,
           offerType: type,
-          ...formData
+          planId: formData.planId,
+          discountPercentage: formData.discount_value,
+          promoCode: formData.code || `${type.toUpperCase()}_SAVE${formData.discount_value}`,
+          // Add other relevant fields
+          timeLimit: formData.has_expiration ? formData.expiration_date : null,
+          customMessage: `${formData.discount_value}% off for ${type === 'completion' ? 'completing' : 'participating in'} the challenge!`
         })
       });
 

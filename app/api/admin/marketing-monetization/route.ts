@@ -75,24 +75,33 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ Company access verified');
 
-    // Load real plans using V2 API (direct approach)
+    // Load real plans and products using V2 API
     let plans: WhopPlan[] = [];
     try {
-      console.log('📦 Loading plans for company via V2 API...');
+      console.log('📦 Loading plans and products for company via V2 API...');
       
-      // Use Company API Key for V2 plans endpoint
+      // Use Company API Key for V2 endpoints
       const companyApiKey = process.env.WHOP_API_KEY;
       if (!companyApiKey) {
         console.log('❌ No Company API Key found');
         throw new Error('Company API Key required for plans loading');
       }
 
-      const plansResponse = await fetch('https://api.whop.com/api/v2/plans', {
-        headers: {
-          'Authorization': `Bearer ${companyApiKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // Load both plans and products simultaneously
+      const [plansResponse, productsResponse] = await Promise.all([
+        fetch('https://api.whop.com/api/v2/plans', {
+          headers: {
+            'Authorization': `Bearer ${companyApiKey}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        fetch('https://api.whop.com/api/v2/products', {
+          headers: {
+            'Authorization': `Bearer ${companyApiKey}`,
+            'Content-Type': 'application/json'
+          }
+        })
+      ]);
 
       if (!plansResponse.ok) {
         console.log('❌ Plans API failed:', plansResponse.status, plansResponse.statusText);
@@ -101,20 +110,43 @@ export async function GET(request: NextRequest) {
 
       const plansData = await plansResponse.json();
       console.log('📦 Plans API response:', plansData?.data?.length || 0, 'plans');
+
+      // Load products for proper naming
+      let products: any[] = [];
+      if (productsResponse.ok) {
+        const productsData = await productsResponse.json();
+        products = productsData?.data || [];
+        console.log('📦 Products API response:', products.length, 'products');
+      } else {
+        console.log('⚠️ Products API failed, using plan_type for names');
+      }
+
+      // Create product lookup map for better naming
+      const productMap = new Map();
+      products.forEach(product => {
+        productMap.set(product.id, product.title || product.name || product.id);
+        console.log(`📦 Product: ${product.title || product.name} (${product.id})`);
+      });
       
       if (plansData?.data) {
-        plans = plansData.data.map((plan: any) => ({
-          id: plan.id,
-          name: plan.plan_type || plan.id,
-          title: plan.plan_type || plan.id,
-          product: plan.product || '',
-          initial_price: plan.initial_price || 0,
-          base_currency: plan.base_currency || 'USD',
-          plan_type: plan.plan_type || 'unknown',
-          visibility: plan.visibility
-        }));
+        plans = plansData.data.map((plan: any) => {
+          // Get product name from product map, fallback to plan_type
+          const productName = productMap.get(plan.product) || plan.plan_type || plan.id;
+          const planDisplayName = `${productName} (${plan.plan_type || 'plan'})`;
+          
+          return {
+            id: plan.id,
+            name: planDisplayName,
+            title: planDisplayName,
+            product: plan.product || '',
+            initial_price: plan.initial_price || 0,
+            base_currency: plan.base_currency || 'USD',
+            plan_type: plan.plan_type || 'unknown',
+            visibility: plan.visibility
+          };
+        });
         
-        console.log('📦 Processed plans:', plans.length);
+        console.log('📦 Processed plans with product names:', plans.length);
         plans.forEach(plan => {
           console.log(`📦 Plan: ${plan.name} (${plan.id}) - $${plan.initial_price/100} ${plan.base_currency}`);
         });
