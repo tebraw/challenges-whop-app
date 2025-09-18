@@ -75,68 +75,52 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ Company access verified');
 
-    // Load real plans using Whop SDK for proper multi-tenancy
+    // Load real plans using Company API with SDK-verified company context
     let plans: WhopPlan[] = [];
     try {
-      console.log('📦 Loading company-specific data via Whop SDK...');
+      console.log('📦 Loading company-specific plans via Whop API...');
+      console.log('🔑 Using SDK-verified company:', companyId);
       
-      // Use Whop SDK for company-specific data loading with automatic multi-tenancy
-      console.log('🔑 Using Whop SDK for company:', companyId);
-      
-      const companyPayments = await whopAppSdk.payments.listReceiptsForCompany({
-        companyId,
-        first: 50 // Limit results to avoid complexity issues
-      });
-
-      console.log('📦 Company receipts loaded:', companyPayments?.receipts?.nodes?.length || 0, 'receipts');
-
-      // Extract plans from receipts/purchases data
-      const plansFromReceipts = new Map();
-      
-      if (companyPayments?.receipts?.nodes) {
-        companyPayments.receipts.nodes.forEach((receipt: any) => {
-          if (receipt?.plan && !plansFromReceipts.has(receipt.plan.id)) {
-            const plan = receipt.plan;
-            plansFromReceipts.set(plan.id, {
-              id: plan.id,
-              name: plan.title || plan.name || `Plan ${plan.id}`,
-              title: plan.title || plan.name || `Plan ${plan.id}`,
-              product: plan.product || '',
-              initial_price: plan.initial_price || plan.price || 0,
-              base_currency: plan.base_currency || 'USD',
-              plan_type: plan.plan_type || 'subscription',
-              visibility: plan.visibility
-            });
-          }
-        });
-      }
-
-      // Convert map to array
-      plans = Array.from(plansFromReceipts.values());
-      
-      console.log('📦 Plans extracted from company receipts:', plans.length);
-      plans.forEach(plan => {
-        console.log(`📦 Plan: ${plan.name} (${plan.id}) - $${plan.initial_price/100} ${plan.base_currency}`);
-      });
-
-      // If no plans found from receipts, try to get company plans directly
-      if (plans.length === 0) {
-        console.log('🔍 No plans in receipts, attempting direct company plan lookup...');
-        
-        try {
-          // Alternative: Use SDK to get company data
-          const companyData = await whopAppSdk.companies.getCompany({ 
-            companyId 
-          });
-          console.log('🏢 Company data retrieved:', companyData?.title || 'No title');
-          
-          // For now, we'll use fallback plans if SDK doesn't provide direct plan access
-          console.log('⚠️ Using fallback plans - SDK does not expose direct plan listing');
-        } catch (sdkError) {
-          console.log('⚠️ Company data lookup failed:', sdkError);
+      // Use REST API with SDK-verified company context for proper multi-tenancy
+      const plansResponse = await fetch('https://api.whop.com/api/v2/plans', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+          'Content-Type': 'application/json',
+          'X-Whop-Company-ID': companyId // Use SDK-verified company ID
         }
+      });
+
+      if (!plansResponse.ok) {
+        const errorText = await plansResponse.text();
+        console.error('❌ Plans API failed:', plansResponse.status, errorText);
+        throw new Error(`Plans API error: ${plansResponse.status} ${errorText}`);
       }
-      
+
+      const plansData = await plansResponse.json();
+      console.log('📦 Raw plans data:', JSON.stringify(plansData, null, 2));
+
+      if (plansData.data && Array.isArray(plansData.data)) {
+        plans = plansData.data.map((plan: any) => ({
+          id: plan.id,
+          name: plan.title || plan.name || `Plan ${plan.id}`,
+          title: plan.title || plan.name || `Plan ${plan.id}`,
+          product: plan.product || '',
+          initial_price: plan.initial_price || plan.price || 0,
+          base_currency: plan.base_currency || 'USD',
+          plan_type: plan.plan_type || 'subscription',
+          visibility: plan.visibility
+        }));
+        
+        console.log('📦 Company plans loaded successfully:', plans.length);
+        plans.forEach(plan => {
+          console.log(`📦 Plan: ${plan.name} (${plan.id}) - $${plan.initial_price/100} ${plan.base_currency}`);
+        });
+      } else {
+        console.log('⚠️ No plans data found in API response');
+        plans = [];
+      }
+
     } catch (error) {
       console.log('⚠️ Error loading plans, using mock data:', error);
       
