@@ -75,83 +75,66 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ Company access verified');
 
-    // Load real plans and products using V2 API
+    // Load real plans using Whop SDK for proper multi-tenancy
     let plans: WhopPlan[] = [];
     try {
-      console.log('📦 Loading plans and products for company via V2 API...');
+      console.log('📦 Loading company-specific data via Whop SDK...');
       
-      // Use Company API Key for V2 endpoints
-      const companyApiKey = process.env.WHOP_API_KEY;
-      if (!companyApiKey) {
-        console.log('❌ No Company API Key found');
-        throw new Error('Company API Key required for plans loading');
-      }
-
-      // Load both plans and products simultaneously with company isolation
-      const [plansResponse, productsResponse] = await Promise.all([
-        fetch('https://api.whop.com/api/v2/plans', {
-          headers: {
-            'Authorization': `Bearer ${companyApiKey}`,
-            'X-Whop-Company-ID': companyId,
-            'Content-Type': 'application/json'
-          }
-        }),
-        fetch('https://api.whop.com/api/v2/products', {
-          headers: {
-            'Authorization': `Bearer ${companyApiKey}`,
-            'X-Whop-Company-ID': companyId,
-            'Content-Type': 'application/json'
-          }
-        })
-      ]);
-
-      if (!plansResponse.ok) {
-        console.log('❌ Plans API failed:', plansResponse.status, plansResponse.statusText);
-        throw new Error(`Plans API failed: ${plansResponse.status}`);
-      }
-
-      const plansData = await plansResponse.json();
-      console.log('📦 Plans API response:', plansData?.data?.length || 0, 'plans');
-
-      // Load products for proper naming
-      let products: any[] = [];
-      if (productsResponse.ok) {
-        const productsData = await productsResponse.json();
-        products = productsData?.data || [];
-        console.log('📦 Products API response:', products.length, 'products');
-      } else {
-        console.log('⚠️ Products API failed, using plan_type for names');
-      }
-
-      // Create product lookup map for better naming
-      const productMap = new Map();
-      products.forEach(product => {
-        productMap.set(product.id, product.title || product.name || product.id);
-        console.log(`📦 Product: ${product.title || product.name} (${product.id})`);
+      // Use Whop SDK for company-specific data loading with automatic multi-tenancy
+      console.log('🔑 Using Whop SDK for company:', companyId);
+      
+      const companyPayments = await whopAppSdk.payments.listReceiptsForCompany({
+        companyId,
+        first: 50 // Limit results to avoid complexity issues
       });
+
+      console.log('📦 Company receipts loaded:', companyPayments?.receipts?.nodes?.length || 0, 'receipts');
+
+      // Extract plans from receipts/purchases data
+      const plansFromReceipts = new Map();
       
-      if (plansData?.data) {
-        plans = plansData.data.map((plan: any) => {
-          // Get product name from product map, fallback to plan_type
-          const productName = productMap.get(plan.product) || plan.plan_type || plan.id;
-          const planDisplayName = `${productName} (${plan.plan_type || 'plan'})`;
-          
-          return {
-            id: plan.id,
-            name: planDisplayName,
-            title: planDisplayName,
-            product: plan.product || '',
-            initial_price: plan.initial_price || 0,
-            base_currency: plan.base_currency || 'USD',
-            plan_type: plan.plan_type || 'unknown',
-            visibility: plan.visibility
-          };
+      if (companyPayments?.receipts?.nodes) {
+        companyPayments.receipts.nodes.forEach((receipt: any) => {
+          if (receipt?.plan && !plansFromReceipts.has(receipt.plan.id)) {
+            const plan = receipt.plan;
+            plansFromReceipts.set(plan.id, {
+              id: plan.id,
+              name: plan.title || plan.name || `Plan ${plan.id}`,
+              title: plan.title || plan.name || `Plan ${plan.id}`,
+              product: plan.product || '',
+              initial_price: plan.initial_price || plan.price || 0,
+              base_currency: plan.base_currency || 'USD',
+              plan_type: plan.plan_type || 'subscription',
+              visibility: plan.visibility
+            });
+          }
         });
+      }
+
+      // Convert map to array
+      plans = Array.from(plansFromReceipts.values());
+      
+      console.log('📦 Plans extracted from company receipts:', plans.length);
+      plans.forEach(plan => {
+        console.log(`📦 Plan: ${plan.name} (${plan.id}) - $${plan.initial_price/100} ${plan.base_currency}`);
+      });
+
+      // If no plans found from receipts, try to get company plans directly
+      if (plans.length === 0) {
+        console.log('🔍 No plans in receipts, attempting direct company plan lookup...');
         
-        console.log('📦 Processed plans with product names:', plans.length);
-        plans.forEach(plan => {
-          console.log(`📦 Plan: ${plan.name} (${plan.id}) - $${plan.initial_price/100} ${plan.base_currency}`);
-        });
+        try {
+          // Alternative: Use SDK to get company data
+          const companyData = await whopAppSdk.companies.getCompany({ 
+            companyId 
+          });
+          console.log('🏢 Company data retrieved:', companyData?.title || 'No title');
+          
+          // For now, we'll use fallback plans if SDK doesn't provide direct plan access
+          console.log('⚠️ Using fallback plans - SDK does not expose direct plan listing');
+        } catch (sdkError) {
+          console.log('⚠️ Company data lookup failed:', sdkError);
+        }
       }
       
     } catch (error) {
@@ -283,14 +266,28 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Create promo code via Whop API
-    console.log('🎫 Creating promo code via Whop API...');
+    // Create promo code via Whop API with SDK-verified company context
+    console.log('🎫 Creating promo code via Whop API with SDK verification...');
+    
+    // First verify user has access to this company via SDK
+    const hasAccess = await whopAppSdk.access.checkIfUserHasAccessToCompany({
+      companyId: companyId
+    });
+
+    if (!hasAccess) {
+      console.error('❌ User does not have access to company:', companyId);
+      return NextResponse.json({
+        error: 'Access denied to company'
+      }, { status: 403 });
+    }
+
+    console.log('✅ SDK verified user access to company:', companyId);
     
     const promoData = {
       code: promoCode,
       amount_off: Number(discountPercentage),
       promo_type: 'percentage',
-      plan_ids: [planId], // Use plan_id directly
+      plan_ids: [planId],
       unlimited_stock: true,
       stock: 999999,
       new_users_only: false,
@@ -299,12 +296,13 @@ export async function POST(request: NextRequest) {
 
     console.log('🎫 Promo code data:', promoData);
 
+    // Use REST API with proper SDK-verified company isolation
     const promoResponse = await fetch('https://api.whop.com/v2/promo_codes', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
         'Content-Type': 'application/json',
-        'X-Whop-Company-ID': companyId
+        'X-Whop-Company-ID': companyId // SDK-verified company ID
       },
       body: JSON.stringify(promoData)
     });
@@ -318,7 +316,7 @@ export async function POST(request: NextRequest) {
     }
 
     const createdPromoCode = await promoResponse.json();
-    console.log('✅ Promo code created:', createdPromoCode.code);
+    console.log('✅ Promo code created with SDK verification:', createdPromoCode.code);
 
     // Store offer in database
     if (challengeId) {
