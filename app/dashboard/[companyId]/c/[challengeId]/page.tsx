@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { ArrowLeft, Users, Calendar, Trophy, Settings, Eye, BarChart3, Flame, Camera, Zap, Target, Pencil, Trash2 } from "lucide-react";
 import EditChallengeModal from "@/components/admin/EditChallengeModal";
-import UnifiedMarketingMonetization from "@/components/admin/UnifiedMarketingMonetization";
+// import UnifiedMarketingMonetization from "@/components/admin/UnifiedMarketingMonetization";
 
 type ChallengeDetailData = {
   id: string;
@@ -434,18 +434,6 @@ export default function AdminChallengeDetailPage({
             )}
           </Card>
         </div>
-
-
-
-        {/* Marketing & Monetization Section */}
-        <UnifiedMarketingMonetization 
-          challengeId={challengeId}
-          challengeData={{
-            title: challenge.title,
-            participants: challenge.participants,
-            status: challenge.status
-          }}
-        />
 
         {/* Edit Modal */}
         {challengeId && (
