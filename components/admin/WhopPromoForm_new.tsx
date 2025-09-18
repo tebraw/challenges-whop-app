@@ -7,16 +7,19 @@ import { Card } from '@/components/ui/Card';
 import Select from '@/components/ui/Select';
 import { Percent, DollarSign, Tag, Users, Clock, CalendarIcon } from 'lucide-react';
 
-interface WhopProduct {
+interface WhopPlan {
   id: string;
   name: string;
   title: string;
   visibility?: string;
+  initial_price?: number;
+  base_currency?: string;
+  plan_type?: string;
 }
 
 interface WhopPromoFormProps {
   type: 'completion' | 'mid_challenge';
-  products: WhopProduct[];
+  plans: WhopPlan[];
   challengeId: string;
   participantCount?: number;
   onSuccess: (promoCode: any) => void;
@@ -25,7 +28,7 @@ interface WhopPromoFormProps {
 
 export default function WhopPromoForm({ 
   type, 
-  products, 
+  plans, 
   challengeId, 
   participantCount = 100,
   onSuccess, 
@@ -38,8 +41,8 @@ export default function WhopPromoForm({
     discount_type: 'percentage' as 'percentage' | 'flat_amount',
     discount_value: type === 'completion' ? 50 : 25,
     
-    // Product Selection
-    productId: '',
+    // Plan Selection
+    planId: '',
     
     // Duration Settings (Whop UI fields)
     duration: 'one-time' as 'one-time' | 'forever' | 'multiple_months',
@@ -60,7 +63,7 @@ export default function WhopPromoForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.productId || !formData.discount_value) {
+    if (!formData.planId || !formData.discount_value) {
       onError('Please select a product and enter a discount value');
       return;
     }
@@ -92,7 +95,7 @@ export default function WhopPromoForm({
       setFormData({
         ...formData,
         code: '',
-        productId: '',
+        planId: '',
       });
 
     } catch (error) {
@@ -154,15 +157,15 @@ export default function WhopPromoForm({
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm font-medium">Product</label>
+              <label className="text-sm font-medium">Plan</label>
               <Select 
-                value={formData.productId} 
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateFormData('productId', e.target.value)}
+                value={formData.planId} 
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateFormData('planId', e.target.value)}
               >
-                <option value="">Select product...</option>
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name}
+                <option value="">Select plan...</option>
+                {plans.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.name}
                   </option>
                 ))}
               </Select>
@@ -354,7 +357,7 @@ export default function WhopPromoForm({
         {/* Submit Button */}
         <Button 
           type="submit" 
-          disabled={loading || !formData.productId || !formData.discount_value}
+          disabled={loading || !formData.planId || !formData.discount_value}
           className="w-full"
         >
           {loading ? 'Creating...' : 

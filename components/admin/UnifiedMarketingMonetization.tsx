@@ -6,13 +6,14 @@ import Button from '@/components/ui/Button';
 import { DollarSign, Target, TrendingUp, Trophy, Plus, Zap, AlertCircle } from 'lucide-react';
 import WhopPromoForm from './WhopPromoForm_new';
 
-interface WhopProduct {
+interface WhopPlan {
   id: string;
   name: string;
   title: string;
   visibility?: string;
-  price?: number;
-  currency?: string;
+  initial_price?: number;
+  base_currency?: string;
+  plan_type?: string;
 }
 
 interface ActiveOffer {
@@ -21,8 +22,8 @@ interface ActiveOffer {
   code: string;
   discount: number;
   discountType: 'percentage' | 'flat_amount';
-  productId: string;
-  productName: string;
+  planId: string;
+  planName: string;
   status: 'active' | 'inactive';
   conversions: number;
   revenue: number;
@@ -44,7 +45,7 @@ export default function UnifiedMarketingMonetization({
   challengeData 
 }: UnifiedMarketingMonetizationProps) {
   const [loading, setLoading] = useState(true);
-  const [products, setProducts] = useState<WhopProduct[]>([]);
+  const [plans, setPlans] = useState<WhopPlan[]>([]);
   const [offers, setOffers] = useState<ActiveOffer[]>([]);
   const [showCreateForm, setShowCreateForm] = useState<'completion' | 'mid_challenge' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +72,7 @@ export default function UnifiedMarketingMonetization({
       
       const data = await response.json();
       
-      setProducts(data.products || []);
+      setPlans(data.plans || []);
       setOffers(data.offers || []);
       
     } catch (err) {
@@ -181,7 +182,7 @@ export default function UnifiedMarketingMonetization({
       <div className="flex items-center gap-2">
         <DollarSign className="h-5 w-5 text-green-400" />
         <h3 className="text-xl font-semibold text-white">Marketing & Monetization</h3>
-        {products.length === 0 && (
+        {plans.length === 0 && (
           <div className="ml-4 px-3 py-1 bg-yellow-900 border border-yellow-700 rounded-lg">
             <span className="text-yellow-200 text-sm">Whop Integration Required</span>
           </div>
@@ -216,17 +217,17 @@ export default function UnifiedMarketingMonetization({
           </div>
         </div>
 
-        {products.length > 0 && (
+        {plans.length > 0 && (
           <div className="mt-4 pt-4 border-t border-gray-700">
             <div className="text-sm text-gray-400">
-              Connected to {products.length} Whop product{products.length !== 1 ? 's' : ''}
+              Connected to {plans.length} Whop plan{plans.length !== 1 ? 's' : ''}
             </div>
           </div>
         )}
       </Card>
 
-      {/* No Products Warning */}
-      {products.length === 0 && (
+      {/* No Plans Warning */}
+      {plans.length === 0 && (
         <Card className="p-6 bg-yellow-900 border-yellow-700">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-6 w-6 text-yellow-200" />
@@ -247,7 +248,7 @@ export default function UnifiedMarketingMonetization({
       )}
 
       {/* Offer Management */}
-      {products.length > 0 && (
+      {plans.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Completion Offers */}
           <Card className="p-6 bg-gray-800 border-gray-700">
@@ -275,7 +276,7 @@ export default function UnifiedMarketingMonetization({
                 {completionOffers.map(offer => (
                   <div key={offer.id} className="p-3 bg-green-900/20 border border-green-700 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="font-medium text-green-200">{offer.productName}</div>
+                      <div className="font-medium text-green-200">{offer.planName}</div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-green-400">-{offer.discount}%</span>
                         <Button
@@ -329,7 +330,7 @@ export default function UnifiedMarketingMonetization({
                 {midChallengeOffers.map(offer => (
                   <div key={offer.id} className="p-3 bg-blue-900/20 border border-blue-700 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="font-medium text-blue-200">{offer.productName}</div>
+                      <div className="font-medium text-blue-200">{offer.planName}</div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-blue-400">-{offer.discount}%</span>
                         <Button
@@ -379,7 +380,7 @@ export default function UnifiedMarketingMonetization({
 
               <WhopPromoForm
                 type={showCreateForm}
-                products={products}
+                plans={plans}
                 challengeId={challengeId}
                 participantCount={challengeData.participants}
                 onSuccess={handlePromoSuccess}
