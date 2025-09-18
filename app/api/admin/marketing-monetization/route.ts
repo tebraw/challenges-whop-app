@@ -394,13 +394,9 @@ export async function POST(request: NextRequest) {
           console.log('✅ WhopProduct record ready:', whopProduct.id);
         } catch (whopError) {
           console.error('❌ WhopProduct creation failed:', whopError);
-          // Return promo code success even if database storage fails
-          return NextResponse.json({
-            success: true,
-            message: 'Promo code created successfully (database storage skipped)',
-            promoCode: createdPromoCode,
-            planId: planId
-          });
+          console.log('🔄 Continuing with ChallengeOffer creation despite WhopProduct failure...');
+          // Don't return early - continue with ChallengeOffer creation
+          // Use a fallback whopProduct ID or skip foreign key
         }
         
         const offer = await prisma.challengeOffer.create({
@@ -408,7 +404,7 @@ export async function POST(request: NextRequest) {
             challengeId: challengeId,
             offerType: offerType,
             discountPercentage: discountPercentage,
-            whopProductId: whopProduct.id, // Use the WhopProduct ID
+            whopProductId: whopProduct?.id || planId, // Use WhopProduct ID or fallback to planId
             originalPrice: originalPrice,
             discountedPrice: discountedPrice,
             isActive: true,
