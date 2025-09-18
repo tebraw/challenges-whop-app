@@ -114,6 +114,19 @@ export default async function ExperienceDiscoverPage({ params }: Props) {
             <p className="text-gray-300 text-lg max-w-2xl mx-auto">
               Explore amazing challenges from communities across the platform! 🌟
             </p>
+            
+            {/* Tab Navigation */}
+            <div className="flex gap-4 justify-center mt-6">
+              <Link 
+                href={`/experiences/${experienceId}`}
+                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                My Challenges
+              </Link>
+              <div className="bg-orange-600 text-white px-4 py-2 rounded-lg font-medium">
+                🔍 Discover All
+              </div>
+            </div>
           </div>
           
           {/* Stats */}

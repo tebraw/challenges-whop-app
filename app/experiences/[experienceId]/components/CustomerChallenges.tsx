@@ -141,6 +141,19 @@ export default function CustomerChallenges({
           <p className="text-gray-400">
             Challenges from creators you follow and participate in
           </p>
+          
+          {/* Tab Navigation */}
+          <div className="flex gap-4 mt-6">
+            <div className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium">
+              My Challenges
+            </div>
+            <Link 
+              href={`/experiences/${experienceId}/discover`}
+              className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              🔍 Discover All
+            </Link>
+          </div>
         </div>
 
         {challenges.length === 0 ? (
