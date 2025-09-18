@@ -104,38 +104,69 @@ export default function ChallengeOffers({ challengeId, whopHeaders }: ChallengeO
       if (response.ok) {
         const result = await response.json();
         
-        // Show success modal with promo code and checkout link
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4';
-        modal.innerHTML = `
-          <div class="bg-gray-900 rounded-2xl p-8 w-full max-w-md border border-green-500/30 text-center">
-            <div class="text-6xl mb-4">🎉</div>
-            <h3 class="text-2xl font-bold text-white mb-4">Offer Claimed!</h3>
-            <div class="bg-green-500/20 border border-green-500/40 rounded-xl p-4 mb-6">
-              <p class="text-green-300 font-medium mb-2">Your Promo Code:</p>
-              <div class="text-xl font-bold text-white bg-green-500/30 rounded-lg p-3 font-mono">
-                ${result.promoCode}
+        // Check if this is a direct checkout flow
+        if (result.directCheckout) {
+          // Show brief success message then redirect immediately
+          const quickNotification = document.createElement('div');
+          quickNotification.className = 'fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-4 rounded-xl shadow-2xl transform transition-all duration-500';
+          quickNotification.innerHTML = `
+            <div class="flex items-center gap-3">
+              <div class="text-2xl">🎉</div>
+              <div>
+                <div class="font-bold">Offer Claimed!</div>
+                <div class="text-sm opacity-90">Redirecting to checkout...</div>
               </div>
             </div>
-            <p class="text-gray-300 mb-2">${result.message}</p>
-            <p class="text-sm text-gray-400 mb-6">
-              Save ${result.discount.percentage}% on ${result.productName}
-            </p>
-            <div class="flex gap-3">
-              <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-xl transition-colors">
-                Close
-              </button>
-              <a href="${result.checkoutUrl}" target="_blank" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
-                <span>Buy Now</span>
-                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/><path d="M19 19H5V5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7z"/></svg>
-              </a>
+          `;
+          document.body.appendChild(quickNotification);
+          
+          // Auto-remove notification after redirect
+          setTimeout(() => {
+            if (quickNotification.parentNode) {
+              quickNotification.parentNode.removeChild(quickNotification);
+            }
+          }, 3000);
+          
+          // Direct redirect to checkout with promo pre-applied
+          window.open(result.checkoutUrl, '_blank');
+          
+          // Remove the claimed offer from display
+          setOffers(prev => prev.filter(offer => offer.id !== offerId));
+          
+        } else {
+          // Fallback: Show modal with promo code (if API doesn't support direct checkout)
+          const modal = document.createElement('div');
+          modal.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4';
+          modal.innerHTML = `
+            <div class="bg-gray-900 rounded-2xl p-8 w-full max-w-md border border-green-500/30 text-center">
+              <div class="text-6xl mb-4">🎉</div>
+              <h3 class="text-2xl font-bold text-white mb-4">Offer Claimed!</h3>
+              <div class="bg-green-500/20 border border-green-500/40 rounded-xl p-4 mb-6">
+                <p class="text-green-300 font-medium mb-2">Your Promo Code:</p>
+                <div class="text-xl font-bold text-white bg-green-500/30 rounded-lg p-3 font-mono">
+                  ${result.promoCode || 'DISCOUNT_APPLIED'}
+                </div>
+              </div>
+              <p class="text-gray-300 mb-2">${result.message}</p>
+              <p class="text-sm text-gray-400 mb-6">
+                Save ${result.discount.percentage}% on ${result.productName}
+              </p>
+              <div class="flex gap-3">
+                <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-xl transition-colors">
+                  Close
+                </button>
+                <a href="${result.checkoutUrl}" target="_blank" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+                  <span>Buy Now</span>
+                  <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/><path d="M19 19H5V5h7V3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7z"/></svg>
+                </a>
+              </div>
             </div>
-          </div>
-        `;
-        document.body.appendChild(modal);
-        
-        // Remove the claimed offer from display
-        setOffers(prev => prev.filter(offer => offer.id !== offerId));
+          `;
+          document.body.appendChild(modal);
+          
+          // Remove the claimed offer from display  
+          setOffers(prev => prev.filter(offer => offer.id !== offerId));
+        }
         
       } else {
         const error = await response.json();
@@ -238,12 +269,12 @@ export default function ChallengeOffers({ challengeId, whopHeaders }: ChallengeO
                     {claiming === offer.id ? (
                       <>
                         <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                        <span>Claiming...</span>
+                        <span>Processing...</span>
                       </>
                     ) : (
                       <>
-                        <Gift className="h-5 w-5" />
-                        <span>Claim {offer.discountPercentage}% Discount</span>
+                        <ExternalLink className="h-5 w-5" />
+                        <span>Buy Now with {offer.discountPercentage}% OFF</span>
                       </>
                     )}
                   </button>

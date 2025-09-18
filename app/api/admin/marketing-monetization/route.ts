@@ -347,41 +347,23 @@ export async function POST(request: NextRequest) {
           console.log('⚠️ Could not load plan details for pricing:', error);
         }
         
-        // Create or update WhopProduct record for the plan
-        const whopProduct = await prisma.whopProduct.upsert({
-          where: { whopProductId: planId },
-          update: {
-            name: planName,
-            price: planPrice / 100, // Convert from cents to dollars
-            currency: 'USD',
-            isActive: true
-          },
-          create: {
-            whopProductId: planId,
-            name: planName,
-            description: `Plan: ${planName}`,
-            price: planPrice / 100, // Convert from cents to dollars
-            currency: 'USD',
-            productType: 'plan',
-            checkoutUrl: `https://whop.com/checkout/${planId}`,
-            isActive: true,
-            creatorId: userVerification.userId,
-            whopCreatorId: companyId
-          }
-        });
-
-        console.log('✅ WhopProduct record ensured for plan:', whopProduct.id);
-
-        // Calculate pricing
-        const originalPrice = planPrice / 100; // Convert from cents
+        // SKIP WhopProduct database storage - Foreign key constraint issue  
+        // Direct promo code creation works without local WhopProduct record
+        console.log('📝 WhopProduct database storage SKIPPED - using direct plan ID for promo codes');
+        console.log(`🔍 Creating offer for plan: ${planId} (${planName}) - Price: $${planPrice / 100}`);
+        
+        // Calculate pricing for offer creation (no database dependency)
+        const originalPrice = planPrice / 100; // Convert from cents to dollars
         const discountedPrice = originalPrice * (1 - discountPercentage / 100);
+
+        console.log('✅ Offer creation bypassing WhopProduct storage - using direct plan ID');
         
         const offer = await prisma.challengeOffer.create({
           data: {
             challengeId: challengeId,
             offerType: offerType,
             discountPercentage: discountPercentage,
-            whopProductId: whopProduct.id, // Use database ID, not Whop plan ID
+            whopProductId: planId, // Use direct Whop plan ID instead of database reference
             originalPrice: originalPrice,
             discountedPrice: discountedPrice,
             isActive: true,

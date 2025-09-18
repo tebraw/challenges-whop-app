@@ -204,8 +204,9 @@ export async function POST(
       createdPromoCode = await promoResponse.json();
     }
 
-    // Generate Whop checkout URL
-    const checkoutUrl = `https://whop.com/checkout/${challengeOffer.whopProductId}?promo=${personalizedPromoCode}`;
+    // Generate DIRECT Whop checkout URL with promo pre-applied
+    // Using plan-specific checkout URL that automatically applies the promo code
+    const directCheckoutUrl = `https://whop.com/checkout/${challengeOffer.whopProductId}?promo=${personalizedPromoCode}&auto_apply=true`;
 
     // Record conversion tracking
     await prisma.offerConversion.create({
@@ -214,27 +215,28 @@ export async function POST(
         userId: user.id,
         challengeId: challengeId,
         conversionType: 'claimed',
-        whopCheckoutUrl: checkoutUrl,
+        whopCheckoutUrl: directCheckoutUrl,
         metadata: JSON.stringify({
           promoCode: personalizedPromoCode,
           originalPrice: challengeOffer.originalPrice,
           discountedPrice: challengeOffer.discountedPrice,
-          completionRate: Math.round(completionRate)
+          completionRate: Math.round(completionRate),
+          directCheckout: true // Flag for direct checkout tracking
         })
       }
     });
 
     return NextResponse.json({
       success: true,
-      promoCode: personalizedPromoCode,
-      checkoutUrl: checkoutUrl,
+      directCheckout: true, // Signal to frontend: skip modal, go directly to checkout
+      checkoutUrl: directCheckoutUrl,
       discount: {
         percentage: challengeOffer.discountPercentage,
         originalPrice: challengeOffer.originalPrice,
         discountedPrice: challengeOffer.discountedPrice
       },
       productName: challengeOffer.whopProduct?.name || 'Premium Product',
-      message: challengeOffer.customMessage || `Congratulations! You've earned ${challengeOffer.discountPercentage}% off!`
+      message: challengeOffer.customMessage || `🎉 Congratulations! Redirecting you to checkout with ${challengeOffer.discountPercentage}% discount already applied!`
     });
 
   } catch (error) {

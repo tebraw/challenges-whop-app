@@ -43,33 +43,28 @@ export async function GET(request: NextRequest) {
     if (localProducts.length === 0) {
       const whopProducts = await getCreatorProducts(creatorId);
       
-      // Sync to local database
-      for (const product of whopProducts) {
-        await prisma.whopProduct.create({
-          data: {
-            whopProductId: product.id,
-            name: product.title,
-            description: product.description,
-            price: product.price,
-            currency: product.currency,
-            productType: product.product_type,
-            imageUrl: product.image_url,
-            checkoutUrl: product.checkout_url,
-            creatorId: creatorId,
-            whopCreatorId: product.creator_id
-          }
-        });
-      }
+      // SKIP DATABASE SYNC - WhopProduct foreign key constraint issue
+      // Direct return from Whop API instead of local database storage
+      console.log('📝 WhopProduct database sync SKIPPED - using direct Whop API response');
+      console.log(`🔍 Found ${whopProducts.length} products from Whop API`);
+      
+      // Convert Whop API format to expected format without database storage
+      const convertedProducts = whopProducts.map(product => ({
+        id: product.id, // Use Whop ID directly
+        whopProductId: product.id,
+        name: product.title,
+        description: product.description,
+        price: product.price,
+        currency: product.currency,
+        productType: product.product_type,
+        imageUrl: product.image_url,
+        checkoutUrl: product.checkout_url,
+        creatorId: creatorId,
+        whopCreatorId: product.creator_id,
+        isActive: true
+      }));
 
-      // Fetch updated local products
-      const syncedProducts = await prisma.whopProduct.findMany({
-        where: {
-          creatorId: creatorId,
-          isActive: true
-        }
-      });
-
-      return NextResponse.json({ products: syncedProducts });
+      return NextResponse.json({ products: convertedProducts });
     }
 
     return NextResponse.json({ products: localProducts });
@@ -94,45 +89,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch products from Whop API
+    // Fetch products from Whop API (skip database sync - foreign key constraint issue)
     const whopProducts = await getCreatorProducts(whopCreatorId);
 
-    // Update local database
-    const syncResults = [];
-    for (const product of whopProducts) {
-      const syncedProduct = await prisma.whopProduct.upsert({
-        where: {
-          whopProductId: product.id
-        },
-        update: {
-          name: product.title,
-          description: product.description,
-          price: product.price,
-          currency: product.currency,
-          productType: product.product_type,
-          imageUrl: product.image_url,
-          checkoutUrl: product.checkout_url,
-          isActive: product.is_active
-        },
-        create: {
-          whopProductId: product.id,
-          name: product.title,
-          description: product.description,
-          price: product.price,
-          currency: product.currency,
-          productType: product.product_type,
-          imageUrl: product.image_url,
-          checkoutUrl: product.checkout_url,
-          creatorId: creatorId,
-          whopCreatorId: whopCreatorId
-        }
-      });
-      syncResults.push(syncedProduct);
-    }
+    // SKIP database sync - return direct API response converted to expected format
+    console.log('📝 WhopProduct database sync SKIPPED - foreign key constraint issue');
+    console.log(`🔍 Returning ${whopProducts.length} products directly from Whop API`);
+    
+    // Convert Whop API response to expected format without database storage
+    const convertedProducts = whopProducts.map(product => ({
+      id: `whop_${product.id}`, // Create virtual ID
+      whopProductId: product.id,
+      name: product.title,
+      description: product.description,
+      price: product.price,
+      currency: product.currency,
+      productType: product.product_type,
+      imageUrl: product.image_url,
+      checkoutUrl: product.checkout_url,
+      isActive: product.is_active,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }));
 
     return NextResponse.json({ 
-      message: `Synced ${syncResults.length} products`,
-      products: syncResults
+      message: `Retrieved ${convertedProducts.length} products from Whop API (database sync skipped)`,
+      products: convertedProducts
     });
   } catch (error) {
     console.error('Error syncing products:', error);
