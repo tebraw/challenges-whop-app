@@ -156,7 +156,7 @@ export async function POST(
       code: personalizedPromoCode,
       amount_off: challengeOffer.discountPercentage || 0,
       promo_type: 'percentage',
-      plan_ids: [challengeOffer.whopProductId],
+      plan_ids: [challengeOffer.whopProduct.whopProductId], // Use actual Whop Plan ID
       unlimited_stock: false,
       stock: 1, // One-time use only - must specify stock when unlimited_stock is false
       new_users_only: false,
@@ -206,7 +206,8 @@ export async function POST(
 
     // Generate DIRECT Whop checkout URL with promo pre-applied
     // Using plan-specific checkout URL that automatically applies the promo code
-    const directCheckoutUrl = `https://whop.com/checkout/${challengeOffer.whopProductId}?promo=${personalizedPromoCode}&auto_apply=true`;
+    // Create enhanced direct checkout URL with auto-applied promo code
+    const directCheckoutUrl = `https://whop.com/checkout/${challengeOffer.whopProduct.whopProductId}?promo=${personalizedPromoCode}&auto_apply=true`;
 
     // Record conversion tracking
     await prisma.offerConversion.create({

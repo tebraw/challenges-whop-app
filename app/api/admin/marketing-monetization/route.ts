@@ -347,23 +347,45 @@ export async function POST(request: NextRequest) {
           console.log('⚠️ Could not load plan details for pricing:', error);
         }
         
-        // SKIP WhopProduct database storage - Foreign key constraint issue  
-        // Direct promo code creation works without local WhopProduct record
-        console.log('📝 WhopProduct database storage SKIPPED - using direct plan ID for promo codes');
-        console.log(`🔍 Creating offer for plan: ${planId} (${planName}) - Price: $${planPrice / 100}`);
+        // Create minimal WhopProduct record for Foreign Key constraint compatibility
+        // This allows direct plan usage while maintaining database integrity
+        console.log('📝 Creating minimal WhopProduct record for foreign key constraint');
+        console.log(`🔍 Plan: ${planId} (${planName}) - Price: $${planPrice / 100}`);
         
-        // Calculate pricing for offer creation (no database dependency)
+        // Calculate pricing for offer creation  
         const originalPrice = planPrice / 100; // Convert from cents to dollars
         const discountedPrice = originalPrice * (1 - discountPercentage / 100);
 
-        console.log('✅ Offer creation bypassing WhopProduct storage - using direct plan ID');
+        // Create minimal WhopProduct record (required for foreign key constraint)
+        const whopProduct = await prisma.whopProduct.upsert({
+          where: { whopProductId: planId },
+          update: {
+            name: planName,
+            price: originalPrice,
+            isActive: true
+          },
+          create: {
+            whopProductId: planId,
+            name: planName,
+            description: `Plan: ${planName}`,
+            price: originalPrice,
+            currency: 'USD',
+            productType: 'plan',
+            checkoutUrl: `https://whop.com/checkout/${planId}`,
+            isActive: true,
+            creatorId: userVerification.userId, // Use verified user ID
+            whopCreatorId: companyId
+          }
+        });
+
+        console.log('✅ WhopProduct record ensured for foreign key constraint');
         
         const offer = await prisma.challengeOffer.create({
           data: {
             challengeId: challengeId,
             offerType: offerType,
             discountPercentage: discountPercentage,
-            whopProductId: planId, // Use direct Whop plan ID instead of database reference
+            whopProductId: whopProduct.id, // Use database ID for foreign key constraint
             originalPrice: originalPrice,
             discountedPrice: discountedPrice,
             isActive: true,
