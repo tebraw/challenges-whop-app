@@ -15,6 +15,48 @@ export default function JoinCommunityButton({
 }: JoinCommunityButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
+  // Mobile-optimized redirect function
+  const redirectToUrl = (url: string) => {
+    console.log('🔗 Attempting redirect to:', url);
+    
+    // Strategy 1: Try window.location.href (works in most mobile environments)
+    try {
+      window.location.href = url;
+      console.log('✅ Redirect via window.location.href');
+      return;
+    } catch (error) {
+      console.log('❌ window.location.href failed:', error);
+    }
+    
+    // Strategy 2: Try window.open (for desktop)
+    try {
+      const opened = window.open(url, '_blank');
+      if (opened) {
+        console.log('✅ Redirect via window.open');
+        return;
+      }
+    } catch (error) {
+      console.log('❌ window.open failed:', error);
+    }
+    
+    // Strategy 3: Create and click a link element (fallback)
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      console.log('✅ Redirect via link element');
+    } catch (error) {
+      console.log('❌ Link element failed:', error);
+      // Last resort: copy to clipboard and show message
+      navigator.clipboard?.writeText(url);
+      alert(`Please visit: ${url}`);
+    }
+  };
+
   const handleJoinCommunity = async () => {
     if (isLoading) return;
     
@@ -34,8 +76,8 @@ export default function JoinCommunityButton({
           creatorInfo: data.creatorInfo
         });
         
-        // Redirect to Challenge Creator's Whop profile
-        window.open(data.creatorProfileUrl, '_blank');
+        // Mobile-optimized redirect
+        redirectToUrl(data.creatorProfileUrl);
         
         // Optional: Show success message
         if (data.urlType === 'handle') {
@@ -44,12 +86,12 @@ export default function JoinCommunityButton({
       } else {
         console.error('❌ Failed to get creator profile:', data.error);
         // Fallback to generic Whop URL
-        window.open(data.fallbackUrl || 'https://whop.com', '_blank');
+        redirectToUrl(data.fallbackUrl || 'https://whop.com');
       }
     } catch (error) {
       console.error('❌ Error getting creator profile:', error);
       // Ultimate fallback
-      window.open('https://whop.com', '_blank');
+      redirectToUrl('https://whop.com');
     } finally {
       setIsLoading(false);
     }
