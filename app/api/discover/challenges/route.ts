@@ -1,7 +1,6 @@
 // app/api/discover/challenges/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { categorizeChallenge } from '@/lib/challenge-categories';
 
 export async function GET(request: Request) {
   try {
@@ -20,14 +19,6 @@ export async function GET(request: Request) {
           id: id,
           isPublic: true 
         },
-        include: {
-          tenant: true,
-          _count: {
-            select: {
-              enrollments: true
-            }
-          }
-        },
         select: {
           id: true,
           title: true,
@@ -36,18 +27,17 @@ export async function GET(request: Request) {
           endAt: true,
           proofType: true,
           cadence: true,
-          image: true,
-          category: true,
+          imageUrl: true,
           difficulty: true,
           isPublic: true,
           rules: true, // Include rules for rewards
+          featured: true,
+          createdAt: true,
           tenant: {
             select: {
               id: true,
               name: true,
-              whopCompanyId: true,
-              whopHandle: true,
-              whopProductId: true
+              whopCompanyId: true
             }
           },
           _count: {
@@ -60,22 +50,6 @@ export async function GET(request: Request) {
 
       if (!challenge) {
         return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
-      }
-
-      // Auto-categorize if needed
-      const categoryValue = challenge.category || categorizeChallenge(
-        challenge.title,
-        challenge.description,
-        challenge.tenant?.name || null,
-        null
-      );
-      
-      if (!challenge.category && categoryValue) {
-        await prisma.challenge.update({
-          where: { id: challenge.id },
-          data: { category: categoryValue }
-        });
-        challenge.category = categoryValue;
       }
 
       return NextResponse.json({
@@ -119,14 +93,6 @@ export async function GET(request: Request) {
     const [challenges, total] = await Promise.all([
       prisma.challenge.findMany({
         where,
-        include: {
-          tenant: true,
-          _count: {
-            select: {
-              enrollments: true
-            }
-          }
-        },
         select: {
           id: true,
           title: true,
@@ -135,8 +101,7 @@ export async function GET(request: Request) {
           endAt: true,
           proofType: true,
           cadence: true,
-          image: true,
-          category: true,
+          imageUrl: true,
           difficulty: true,
           isPublic: true,
           rules: true, // Include rules for rewards
@@ -146,9 +111,7 @@ export async function GET(request: Request) {
             select: {
               id: true,
               name: true,
-              whopCompanyId: true,
-              whopHandle: true,
-              whopProductId: true
+              whopCompanyId: true
             }
           },
           _count: {
@@ -167,33 +130,10 @@ export async function GET(request: Request) {
       prisma.challenge.count({ where })
     ]);
 
-    // Auto-categorize challenges that don't have a category
-    const updatedChallenges = await Promise.all(
-      challenges.map(async (challenge: any) => {
-        if (!challenge.category) {
-          const categoryValue = categorizeChallenge(
-            challenge.title,
-            challenge.description,
-            challenge.tenant?.name || null,
-            null
-          );
-          
-          // Update the challenge in the database
-          await prisma.challenge.update({
-            where: { id: challenge.id },
-            data: { category: categoryValue }
-          });
-          
-          return { ...challenge, category: categoryValue };
-        }
-        return challenge;
-      })
-    );
-
     const hasMore = offset + limit < total;
 
     return NextResponse.json({
-      challenges: updatedChallenges,
+      challenges,
       total,
       hasMore,
       pagination: {
