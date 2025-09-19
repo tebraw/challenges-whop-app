@@ -162,7 +162,7 @@ export default async function ExperienceDiscoverPage({ params }: Props) {
 
                 // Check if this challenge is from user's own community
                 const isOwnCommunity = challenge.tenantId === user?.tenantId;
-                const actionText = isOwnCommunity ? "Join Challenge" : "Join Community First";
+                const actionText = isOwnCommunity ? "Open Challenge" : "Join Community First";
                 const actionIcon = isOwnCommunity ? "🚀" : "🏢";
 
                 return (
@@ -240,17 +240,17 @@ export default async function ExperienceDiscoverPage({ params }: Props) {
                         <div className="mt-4 pt-4 border-t border-gray-700">
                           {isOwnCommunity ? (
                             <Link
-                              href={`/experiences/${experienceId}/challenges/${challenge.id}`}
-                              className="inline-flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+                              href={`/experiences/${experienceId}/c/${challenge.id}`}
+                              className="inline-flex items-center justify-center w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
                             >
-                              Join Challenge
+                              🚀 Open Challenge
                             </Link>
                           ) : (
                             <Link
                               href={`/experiences/${experienceId}/discover/${challenge.id}`}
                               className="inline-flex items-center justify-center w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-lg font-medium transition-colors border border-gray-600"
                             >
-                              View Details & Join Community
+                              🏢 View Details & Join Community
                             </Link>
                           )}
                         </div>

@@ -2,7 +2,8 @@ import { headers } from 'next/headers';
 import { whopSdk } from '@/lib/whop-sdk-unified';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import { Calendar, Users, Trophy, Star, Clock, Award, ArrowLeft } from 'lucide-react';
+import { Calendar, Users, Trophy, Star, Clock, Award, ArrowLeft, Gift, Percent, Lock } from 'lucide-react';
+import ChallengeOffers from '@/components/experiences/ChallengeOffers';
 
 interface Props {
   params: Promise<{
@@ -68,6 +69,20 @@ export default async function ExperienceDiscoverChallengePage({ params }: Props)
             enrollments: true
           }
         }
+      }
+    });
+
+    // Load challenge offers to show potential rewards
+    const challengeOffers = await prisma.challengeOffer.findMany({
+      where: {
+        challengeId: challengeId,
+        isActive: true
+      },
+      include: {
+        whopProduct: true
+      },
+      orderBy: {
+        discountPercentage: 'desc'
       }
     });
 
@@ -183,6 +198,54 @@ export default async function ExperienceDiscoverChallengePage({ params }: Props)
                   </p>
                 </div>
               </div>
+              
+              {/* Challenge Offers/Rewards Preview */}
+              {challengeOffers.length > 0 && (
+                <div className="mb-8">
+                  <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-6">
+                    <h3 className="text-xl font-bold text-white mb-4">🎁 What You Can Win</h3>
+                    <p className="text-gray-300 mb-6">
+                      See what rewards await you when you join this community and participate in the challenge!
+                    </p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {challengeOffers.map((offer) => (
+                        <div key={offer.id} className="bg-gray-800/50 border border-purple-500/30 rounded-xl p-6">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                              <Gift className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                              <h4 className="text-white font-semibold">{offer.whopProduct?.name || 'Exclusive Reward'}</h4>
+                              <p className="text-purple-400 text-sm">{offer.offerType} Offer</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-gray-400 line-through">${(offer.originalPrice / 100).toFixed(2)}</span>
+                            <span className="text-2xl font-bold text-white">${(offer.discountedPrice / 100).toFixed(2)}</span>
+                          </div>
+                          
+                          <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-lg p-3 mb-4">
+                            <div className="flex items-center gap-2">
+                              <Percent className="h-4 w-4 text-green-400" />
+                              <span className="text-green-400 font-bold">{offer.discountPercentage}% OFF</span>
+                            </div>
+                          </div>
+                          
+                          {offer.customMessage && (
+                            <p className="text-gray-300 text-sm mb-4">{offer.customMessage}</p>
+                          )}
+                          
+                          <div className="bg-gray-700/50 border border-gray-600 rounded-lg p-3 text-center">
+                            <Lock className="h-5 w-5 text-gray-400 mx-auto mb-2" />
+                            <p className="text-gray-400 text-sm">Join community to unlock this reward</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {/* Stats Grid */}
               <div className="grid md:grid-cols-3 gap-4 mb-8">
