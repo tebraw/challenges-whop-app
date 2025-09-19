@@ -17,6 +17,7 @@ interface Participant {
   points: number;
   totalScore?: number;
   rank?: number;
+  whopUserId?: string;
 }
 
 interface Winner {
@@ -58,6 +59,7 @@ export default function SelectWinnersPage({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageZoomLevel, setImageZoomLevel] = useState<number>(1);
+  const [sendingNotifications, setSendingNotifications] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     async function init() {
@@ -247,6 +249,46 @@ export default function SelectWinnersPage({
       `🏆 Congratulations ${winner.participant.name}! You won ${getPlaceText(winner.rank).text}!`;
     
     copyToClipboard(message, `message-${winner.rank}`);
+  };
+
+  const sendWhopNotification = async (winner: Winner) => {
+    if (!winner.participant) return;
+
+    const notificationKey = `notification-${winner.rank}`;
+    setSendingNotifications(prev => ({ ...prev, [notificationKey]: true }));
+
+    try {
+      const message = winner.customMessage || 
+        `🏆 Congratulations ${winner.participant.name}! You won ${getPlaceText(winner.rank).text}!`;
+
+      const response = await fetch('/api/whop/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          whopUserId: winner.participant.whopUserId,
+          message: message,
+          title: `🏆 ${challenge?.title || 'Challenge'} - Winner Announcement`,
+          challengeTitle: challenge?.title,
+          deepLink: `/challenges/${challengeId}`
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Whop notification sent:', result);
+        alert(`✅ Notification sent to ${winner.participant.name} via Whop!`);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send notification');
+      }
+    } catch (error) {
+      console.error('❌ Error sending Whop notification:', error);
+      alert(`❌ Failed to send notification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSendingNotifications(prev => ({ ...prev, [notificationKey]: false }));
+    }
   };
 
   const downloadImage = async (imageUrl: string, filename?: string) => {
@@ -500,21 +542,39 @@ export default function SelectWinnersPage({
                             className="w-full bg-gray-700 border border-gray-600 text-white p-3 rounded-lg text-sm resize-none focus:border-blue-500 focus:outline-none transition-colors"
                             rows={3}
                           />
-                          <button
-                            onClick={() => copyWinnerMessage(winner)}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                          >
-                            {copiedItems[`message-${winner.rank}`] ? 
-                              <>
-                                <Check className="h-4 w-4" />
-                                Copied!
-                              </> : 
-                              <>
-                                <Copy className="h-4 w-4" />
-                                Copy Message
-                              </>
-                            }
-                          </button>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => copyWinnerMessage(winner)}
+                              className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                            >
+                              {copiedItems[`message-${winner.rank}`] ? 
+                                <>
+                                  <Check className="h-4 w-4" />
+                                  Copied!
+                                </> : 
+                                <>
+                                  <Copy className="h-4 w-4" />
+                                  Copy Message
+                                </>
+                              }
+                            </button>
+                            <button
+                              onClick={() => sendWhopNotification(winner)}
+                              disabled={sendingNotifications[`notification-${winner.rank}`] || !winner.participant?.whopUserId}
+                              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                            >
+                              {sendingNotifications[`notification-${winner.rank}`] ? 
+                                <>
+                                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                                  Sending...
+                                </> : 
+                                <>
+                                  <Send className="h-4 w-4" />
+                                  Send via Whop
+                                </>
+                              }
+                            </button>
+                          </div>
                         </div>
 
                         {/* Remove Winner */}

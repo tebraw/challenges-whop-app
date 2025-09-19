@@ -1,69 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendWhopNotification, getWhopUserIdByEmail } from '@/lib/whopApi';
-import { sendEmailNotification, convertWhopNotificationToEmail } from '@/lib/emailNotifications';
+import { whopAppSdk } from '@/lib/whop-sdk-dual';
 
 export async function POST(request: NextRequest) {
   try {
-    const { recipient, userEmail, message, title, type } = await request.json();
+    const { 
+      whopUserId, 
+      message, 
+      title, 
+      deepLink,
+      challengeTitle,
+      // Legacy support for old API format
+      recipient,
+      userEmail 
+    } = await request.json();
 
-    // Support both 'recipient' and 'userEmail' for backwards compatibility
-    const email = recipient || userEmail;
+    console.log('🔔 Sending Whop Push Notification:', {
+      whopUserId,
+      title: title || 'Challenge Update',
+      message: message?.substring(0, 50) + '...',
+      deepLink
+    });
 
-    if (!email || !message) {
+    // Validate required fields
+    if (!whopUserId || !message) {
       return NextResponse.json(
-        { error: 'User email and message are required' },
+        { error: 'Missing required fields: whopUserId and message' },
         { status: 400 }
       );
     }
 
-    console.log('🔔 Processing notification request:');
-    console.log('Email:', email);
-    console.log('Title:', title);
-    console.log('Message:', message);
-
-    // Get Whop user ID from email
-    const whopUserId = await getWhopUserIdByEmail(email);
-    
-    if (!whopUserId) {
-      console.log('Could not find Whop user ID for email:', email);
-    }
-
-    // Prepare notification data
-    const notificationData = {
-      userId: whopUserId || `user_${email.replace('@', '_').replace('.', '_')}`,
-      message,
-      title: title || 'Winner Announcement'
+    // Send push notification via Whop SDK
+    // Note: Using any type to bypass TypeScript issues with Whop SDK types
+    const notificationPayload: any = {
+      userIds: [whopUserId],
+      title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
+      body: message
     };
 
-    // Send via Whop API (will log for manual processing)
-    const whopSuccess = await sendWhopNotification(notificationData);
-
-    // Also send as email notification
-    const emailNotification = convertWhopNotificationToEmail(email, notificationData);
-    const emailSuccess = await sendEmailNotification(emailNotification);
-
-    // Determine overall success
-    const success = whopSuccess && emailSuccess;
-
-    if (success) {
-      return NextResponse.json({ 
-        message: 'Notification processed successfully',
-        whopUserId: notificationData.userId,
-        emailSent: emailSuccess,
-        whopLogged: whopSuccess,
-        type: type || 'general'
-      });
-    } else {
-      return NextResponse.json(
-        { error: 'Failed to process notification' },
-        { status: 500 }
-      );
+    if (deepLink) {
+      notificationPayload.url = deepLink;
     }
 
+    const notificationResult = await whopAppSdk.notifications.sendPushNotification(notificationPayload);
+
+    console.log('✅ Whop Push Notification sent successfully:', {
+      whopUserId,
+      notificationSent: notificationResult,
+      status: 'sent'
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Push notification sent successfully via Whop',
+      notificationSent: notificationResult,
+      whopUserId,
+      sentAt: new Date().toISOString()
+    });
+
   } catch (error) {
-    console.error('Error in Whop notification API:', error);
+    console.error('❌ Error sending Whop push notification:', error);
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: 'Failed to send push notification',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        success: false
+      },
       { status: 500 }
     );
   }
