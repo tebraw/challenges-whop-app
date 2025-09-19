@@ -14,6 +14,19 @@ interface Props {
 
 export const dynamic = 'force-dynamic';
 
+// Helper function to fetch real company names from Whop API
+async function getCompanyName(whopCompanyId: string): Promise<string> {
+  try {
+    const companyDetails = await whopSdk.companies.getCompany({
+      companyId: whopCompanyId
+    });
+    return companyDetails.title || whopCompanyId;
+  } catch (error) {
+    console.log(`⚠️ Could not fetch company name for ${whopCompanyId}:`, error);
+    return whopCompanyId; // Fallback to company ID
+  }
+}
+
 export default async function ExperienceDiscoverChallengePage({ params }: Props) {
   const { experienceId, challengeId } = await params;
   
@@ -87,6 +100,12 @@ export default async function ExperienceDiscoverChallengePage({ params }: Props)
           </div>
         </div>
       );
+    }
+
+    // Fetch real company name
+    let realCompanyName = challenge.tenant?.name || 'Community';
+    if (challenge.tenant?.whopCompanyId) {
+      realCompanyName = await getCompanyName(challenge.tenant.whopCompanyId);
     }
 
     // Check if this is from a different community
@@ -174,7 +193,7 @@ export default async function ExperienceDiscoverChallengePage({ params }: Props)
                   <div>
                     <h3 className="text-white font-semibold">From Community</h3>
                     <p className="text-orange-400 font-medium">
-                      {challenge.tenant?.name || 'External Community'}
+                      {realCompanyName}
                     </p>
                   </div>
                 </div>
@@ -272,7 +291,7 @@ export default async function ExperienceDiscoverChallengePage({ params }: Props)
                 <JoinCommunityButton 
                   challengeId={challengeId}
                   challengeTitle={challenge.title}
-                  creatorName={challenge.tenant.name || 'this community'}
+                  creatorName={realCompanyName}
                 />
                 
                 {/* Secondary Action: Learn More */}

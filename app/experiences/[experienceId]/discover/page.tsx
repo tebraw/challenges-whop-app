@@ -12,7 +12,20 @@ interface Props {
 
 export const dynamic = 'force-dynamic';
 
-export default async function ExperienceDiscoverPage({ params }: Props) {
+// Helper function to fetch real company names from Whop API
+async function getCompanyName(whopCompanyId: string): Promise<string> {
+  try {
+    const companyDetails = await whopSdk.companies.getCompany({
+      companyId: whopCompanyId
+    });
+    return companyDetails.title || whopCompanyId;
+  } catch (error) {
+    console.log(`⚠️ Could not fetch company name for ${whopCompanyId}:`, error);
+    return whopCompanyId; // Fallback to company ID
+  }
+}
+
+export default async function DiscoverExperiencePage({ params }: Props) {
   const { experienceId } = await params;
   
   console.log('🔍 Experience Discover Page for:', experienceId);
@@ -75,9 +88,17 @@ export default async function ExperienceDiscoverPage({ params }: Props) {
     });
 
     // Get ALL public challenges from ALL communities (including own community)
+    // Exclude challenges that have already ended
     const allChallenges = await prisma.challenge.findMany({
       where: {
-        isPublic: true  // Show ALL public challenges
+        AND: [
+          { isPublic: true },  // Show ALL public challenges
+          {
+            endAt: {
+              gt: new Date()  // Only show challenges that haven't ended yet
+            }
+          }
+        ]
       },
       include: {
         tenant: {
@@ -101,6 +122,23 @@ export default async function ExperienceDiscoverPage({ params }: Props) {
     });
 
     console.log(`🔍 Found ${allChallenges.length} cross-community challenges`);
+    
+    // Fetch real company names for all challenges
+    const challengesWithCompanyNames = await Promise.all(
+      allChallenges.map(async (challenge) => {
+        if (challenge.tenant?.whopCompanyId) {
+          const realCompanyName = await getCompanyName(challenge.tenant.whopCompanyId);
+          return {
+            ...challenge,
+            tenant: {
+              ...challenge.tenant,
+              realName: realCompanyName
+            }
+          };
+        }
+        return challenge;
+      })
+    );
     
     return (
       <div className="min-h-screen bg-gray-900">
@@ -133,13 +171,13 @@ export default async function ExperienceDiscoverPage({ params }: Props) {
           <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-2xl p-6 mb-8 text-center">
             <div className="text-4xl mb-3">🌍</div>
             <div className="text-3xl font-bold text-orange-400 mb-2">
-              {allChallenges.length}
+              {challengesWithCompanyNames.length}
             </div>
             <div className="text-gray-300 font-medium">Communities to Explore</div>
           </div>
           
           {/* Challenges Grid */}
-          {allChallenges.length === 0 ? (
+          {challengesWithCompanyNames.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🔍</div>
               <h3 className="text-xl font-semibold text-gray-300 mb-2">No challenges found</h3>
@@ -149,7 +187,7 @@ export default async function ExperienceDiscoverPage({ params }: Props) {
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {allChallenges.map((challenge: any) => {
+              {challengesWithCompanyNames.map((challenge: any) => {
                 const status = new Date() < new Date(challenge.startAt) ? 'upcoming' : 
                               new Date() > new Date(challenge.endAt) ? 'ended' : 'active';
                 
@@ -216,7 +254,7 @@ export default async function ExperienceDiscoverPage({ params }: Props) {
                           <div className="flex items-center gap-2 text-sm">
                             <span className={isOwnCommunity ? "text-green-400" : "text-orange-400"}>🏢</span>
                             <span className="text-gray-300 font-medium">
-                              {challenge.tenant?.name || 'Community'}
+                              {challenge.tenant?.realName || challenge.tenant?.name || 'Community'}
                             </span>
                             {isOwnCommunity && (
                               <span className="text-green-400 text-xs">(Your Community)</span>
