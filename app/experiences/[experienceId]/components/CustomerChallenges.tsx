@@ -171,65 +171,97 @@ export default function CustomerChallenges({
             </Link>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {challenges.map((challenge) => {
               const status = new Date() < new Date(challenge.startAt) ? 'upcoming' : 
                             new Date() > new Date(challenge.endAt) ? 'ended' : 'active';
+              
+              const statusColor = status === 'upcoming' ? 'text-blue-400' : 
+                                 status === 'ended' ? 'text-gray-400' : 'text-green-400';
+              
+              const statusIcon = status === 'upcoming' ? <Clock className="h-4 w-4" /> : 
+                                status === 'ended' ? <Award className="h-4 w-4" /> : 
+                                <Star className="h-4 w-4" />;
 
               return (
-                <div key={challenge.id} className="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors group">
+                <div
+                  key={challenge.id}
+                  className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden hover:border-purple-500/50 transition-all duration-300"
+                >
                   <Link href={`/experiences/${experienceId}/c/${challenge.id}`} className="block">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        {challenge.imageUrl ? (
-                          <img
-                            src={challenge.imageUrl}
-                            alt={challenge.title}
-                            className="w-16 h-16 rounded-lg object-cover"
-                          />
-                        ) : (
-                          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-                            <Award className="w-8 h-8 text-white" />
-                          </div>
+                    {/* Challenge Image */}
+                    <div className="aspect-video bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
+                      {challenge.imageUrl ? (
+                        <img 
+                          src={challenge.imageUrl} 
+                          alt={challenge.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-4xl">🎯</span>
+                      )}
+                    </div>
+                    
+                    {/* Challenge Content */}
+                    <div className="p-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className={`flex items-center gap-1 text-xs font-medium ${statusColor}`}>
+                          {statusIcon}
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </div>
+                        {challenge.userParticipation?.isParticipating && (
+                          <span className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full text-xs font-medium">
+                            ⭐ Joined
+                          </span>
                         )}
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h3 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors">
-                              {challenge.title}
-                            </h3>
-                            {status === 'upcoming' && (
-                              <span className="px-2 py-1 bg-green-600 text-green-100 text-xs font-medium rounded">
-                                Geplant
-                              </span>
-                            )}
-                            {status === 'active' && (
-                              <span className="px-2 py-1 bg-blue-600 text-blue-100 text-xs font-medium rounded">
-                                Live
-                              </span>
-                            )}
-                            {challenge.userParticipation?.isParticipating && (
-                              <span className="px-2 py-1 bg-purple-600 text-purple-100 text-xs font-medium rounded">
-                                Joined
-                              </span>
-                            )}
+                        {challenge.userParticipation?.stats?.hasCheckedInToday && (
+                          <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded-full text-xs font-medium">
+                            ✅ Today
+                          </span>
+                        )}
+                      </div>
+                      
+                      <h3 className="font-semibold text-white text-lg mb-2 line-clamp-2">
+                        {challenge.title}
+                      </h3>
+                      
+                      <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+                        {challenge.description}
+                      </p>
+                      
+                      {/* Progress bar for participating users */}
+                      {challenge.userParticipation?.isParticipating && challenge.userParticipation?.stats && (
+                        <div className="mb-4">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs text-gray-300">Progress</span>
+                            <span className="text-xs font-medium text-purple-400">
+                              {Math.round(challenge.userParticipation.stats.completionRate)}%
+                            </span>
                           </div>
-                          
-                          <div className="flex items-center space-x-6 text-sm text-gray-400">
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              {new Date(challenge.startAt).toLocaleDateString()} - {new Date(challenge.endAt).toLocaleDateString()}
-                            </div>
-                            <div className="flex items-center">
-                              <Users className="w-4 h-4 mr-1" />
-                              {challenge._count?.enrollments || 0} participants
-                            </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${challenge.userParticipation.stats.completionRate}%` }}
+                            ></div>
                           </div>
+                        </div>
+                      )}
+                      
+                      {/* Stats */}
+                      <div className="flex items-center justify-between text-xs text-gray-400 mb-4">
+                        <div className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          <span>{challenge._count?.enrollments || 0}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>{new Date(challenge.startAt).toLocaleDateString()}</span>
                         </div>
                       </div>
                       
-                      <button className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">
-                        Open →
+                      {/* Action Button */}
+                      <button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        {challenge.userParticipation?.isParticipating ? 'Continue Challenge' : 'View Challenge'} →
                       </button>
                     </div>
                   </Link>
