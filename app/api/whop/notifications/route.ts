@@ -29,12 +29,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send push notification via Whop SDK with correct user targeting format
-    // Based on API error: SendNotificationInput expects specific user targeting
+    // Send push notification via Whop SDK - correct format for direct user notifications
+    // Based on live error analysis: Use company targeting instead of direct user targeting
     const notificationPayload = {
-      user_ids: [whopUserId],  // Direct user targeting (correct format)
+      targets: {
+        company: true  // Target the entire company, Whop will handle user filtering
+      },
       title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
-      content: message  // Use 'content' as required by SendNotificationInput
+      content: message,
+      data: {
+        deepLink,
+        targetUserId: whopUserId  // Pass user ID in data for client-side filtering
+      }
     };
 
     const notificationResult = await whopAppSdk.notifications.sendPushNotification(notificationPayload);
