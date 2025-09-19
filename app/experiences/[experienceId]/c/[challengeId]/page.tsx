@@ -300,9 +300,11 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
                       <span className="text-xl sm:text-2xl">🔄</span>
                       <div className="flex flex-col">
                         <span className="text-white font-medium text-sm sm:text-base">
-                          {challenge.cadence === 'DAILY' ? 'Daily' : challenge.cadence === 'END_OF_CHALLENGE' ? 'One-time' : 'Regular'}
+                          {challenge.cadence === 'DAILY' ? 'Daily Check-ins' : challenge.cadence === 'END_OF_CHALLENGE' ? 'Single Submission' : 'Regular'}
                         </span>
-                        <span className="text-gray-400 text-xs sm:text-sm">commitment</span>
+                        <span className="text-gray-400 text-xs sm:text-sm">
+                          {challenge.cadence === 'DAILY' ? 'proof required each day' : challenge.cadence === 'END_OF_CHALLENGE' ? 'one proof at completion' : 'commitment'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -440,26 +442,129 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
             </div>
           </div>
           
-          {/* Challenge Timeline - Mobile optimized */}
-          <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-start sm:items-center gap-3 sm:gap-4">
-                <div className="text-2xl sm:text-3xl mt-1 sm:mt-0">ℹ️</div>
-                <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-blue-300 mb-1 leading-tight">
-                    Challenge starts on {new Date(challenge.startAt).toLocaleDateString()}
-                  </h3>
-                  <p className="text-gray-400 text-sm sm:text-base">
-                    {Math.ceil((new Date(challenge.endAt).getTime() - new Date(challenge.startAt).getTime()) / (1000 * 60 * 60 * 24))} days • {challenge._count.enrollments} participants
-                  </p>
+          {/* Challenge Timeline/Terms - Mobile optimized */}
+          {!isParticipating ? (
+            // Info Card for non-participants
+            <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+                  <div className="text-2xl sm:text-3xl mt-1 sm:mt-0">ℹ️</div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold text-blue-300 mb-1 leading-tight">
+                      Challenge starts on {new Date(challenge.startAt).toLocaleDateString()}
+                    </h3>
+                    <p className="text-gray-400 text-sm sm:text-base">
+                      {Math.ceil((new Date(challenge.endAt).getTime() - new Date(challenge.startAt).getTime()) / (1000 * 60 * 60 * 24))} days • {challenge._count.enrollments} participants
+                    </p>
+                  </div>
                 </div>
-              </div>
-              
-              {!isParticipating && (
+                
                 <div className="w-full sm:w-auto">
                   <JoinChallengeButton challengeId={challengeId} experienceId={experienceId} isEnrolled={false} />
                 </div>
-              )}
+              </div>
+            </div>
+          ) : (
+            // Terms & Policy Card for participants
+            <div className="bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border border-purple-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6">
+              <button 
+                onClick={() => {
+                  const modal = document.getElementById('challenge-terms-modal');
+                  if (modal) {
+                    modal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                  }
+                }}
+                className="w-full text-left hover:bg-purple-500/5 transition-all duration-200 rounded-xl p-2 -m-2 group"
+              >
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">📜</div>
+                  <div className="flex-1">
+                    <h3 className="text-lg sm:text-xl font-bold text-purple-300 mb-1 leading-tight group-hover:text-purple-200 transition-colors">
+                      Challenge Terms & Policy
+                    </h3>
+                    <p className="text-gray-400 text-sm sm:text-base group-hover:text-gray-300 transition-colors">
+                      Click to view challenge guidelines and requirements
+                    </p>
+                  </div>
+                  <div className="text-gray-400 group-hover:text-purple-300 transition-colors">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* Challenge Terms Modal */}
+          <div 
+            id="challenge-terms-modal" 
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                const modal = document.getElementById('challenge-terms-modal');
+                if (modal) {
+                  modal.style.display = 'none';
+                  document.body.style.overflow = 'auto';
+                }
+              }
+            }}
+          >
+            <div className="bg-gray-900 border border-gray-700 rounded-2xl sm:rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
+                  <span className="text-3xl">📜</span>
+                  Challenge Terms & Policy
+                </h2>
+                <button
+                  onClick={() => {
+                    const modal = document.getElementById('challenge-terms-modal');
+                    if (modal) {
+                      modal.style.display = 'none';
+                      document.body.style.overflow = 'auto';
+                    }
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-700 rounded-lg"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="prose prose-invert max-w-none">
+                {challenge.rules && 
+                 typeof challenge.rules === 'object' && 
+                 challenge.rules !== null &&
+                 'terms' in challenge.rules && 
+                 (challenge.rules as any).terms ? (
+                  <div className="text-gray-300 leading-relaxed whitespace-pre-wrap text-sm sm:text-base">
+                    {(challenge.rules as any).terms}
+                  </div>
+                ) : (
+                  <div className="text-gray-400 text-center py-8">
+                    <div className="text-4xl mb-4">📋</div>
+                    <p>No specific terms and policies have been set for this challenge.</p>
+                    <p className="mt-2 text-sm">Please follow general community guidelines and challenge requirements.</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-8 pt-6 border-t border-gray-700">
+                <button
+                  onClick={() => {
+                    const modal = document.getElementById('challenge-terms-modal');
+                    if (modal) {
+                      modal.style.display = 'none';
+                      document.body.style.overflow = 'auto';
+                    }
+                  }}
+                  className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl transition-all duration-300 font-semibold text-white shadow-lg hover:shadow-purple-500/25"
+                >
+                  Got it
+                </button>
+              </div>
             </div>
           </div>
 
