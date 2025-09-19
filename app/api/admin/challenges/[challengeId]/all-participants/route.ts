@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
+import { getBatchRealWhopUsernames } from "@/lib/whop-usernames";
 
 // Type definitions for better type safety
 interface EnrollmentWithUserAndProofs {
@@ -10,6 +11,7 @@ interface EnrollmentWithUserAndProofs {
     id: string;
     name?: string | null;
     email?: string | null;
+    whopUserId?: string | null;
   };
   proofs: Array<{
     id: string;
@@ -125,7 +127,14 @@ export async function GET(
       include: {
         enrollments: {
           include: {
-            user: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                whopUserId: true
+              }
+            },
             proofs: {
               orderBy: {
                 createdAt: 'desc'
@@ -158,6 +167,14 @@ export async function GET(
     }
 
     const requiredCheckIns = calculateRequiredCheckIns(challenge);
+
+    // 🎯 FETCH REAL USERNAMES: Get all whopUserIds and fetch real usernames from Whop
+    const whopUserIds = challenge.enrollments
+      .map(enrollment => enrollment.user.whopUserId)
+      .filter(id => id) as string[];
+    
+    const realUsernames = await getBatchRealWhopUsernames(whopUserIds);
+    console.log(`📋 Fetched ${realUsernames.size} real usernames from Whop API`);
 
     // Process all participants and determine eligibility
     const allParticipants: ParticipantData[] = challenge.enrollments.map((enrollment: EnrollmentWithUserAndProofs) => {
@@ -210,7 +227,9 @@ export async function GET(
       return {
         id: enrollment.user.id,
         enrollmentId: enrollment.id,
-        name: enrollment.user.name || enrollment.user.email?.split('@')[0] || 'Unknown',
+        name: enrollment.user.whopUserId 
+          ? realUsernames.get(enrollment.user.whopUserId) || enrollment.user.name || 'Unknown'
+          : enrollment.user.name || enrollment.user.email?.split('@')[0] || 'Unknown',
         email: enrollment.user.email || '',
         avatar: '👤',
         completedCheckIns,

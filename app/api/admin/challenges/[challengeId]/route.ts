@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { getExperienceContext } from "@/lib/whop-experience";
+import { getBatchRealWhopUsernames } from "@/lib/whop-usernames";
 
 // Helper function to determine challenge status
 function getStatus(startAt: string, endAt: string): string {
@@ -22,6 +23,7 @@ interface EnrollmentWithUserAndProofs {
     id: string;
     name?: string | null;
     email?: string | null;
+    whopUserId?: string | null;
   };
   proofs: Array<{
     id: string;
@@ -152,7 +154,14 @@ export async function GET(
         creator: true,
         enrollments: {
           include: {
-            user: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                whopUserId: true
+              }
+            },
             proofs: {
               orderBy: {
                 createdAt: 'asc'
@@ -215,13 +224,23 @@ export async function GET(
       }
     }
 
+    // 🎯 FETCH REAL USERNAMES: Get all whopUserIds and fetch real usernames from Whop
+    const whopUserIds = challenge.enrollments
+      .map(enrollment => enrollment.user.whopUserId)
+      .filter(id => id) as string[];
+    
+    const realUsernames = await getBatchRealWhopUsernames(whopUserIds);
+    console.log(`📋 Fetched ${realUsernames.size} real usernames from Whop API for challenge detail`);
+
     // Generate leaderboard from the challenge enrollments (already includes proofs)
     const leaderboardData: LeaderboardEntry[] = challenge.enrollments.map((enrollment: EnrollmentWithUserAndProofs) => {
       const completedCheckIns = calculateCompletedCheckIns(enrollment.proofs, challenge.cadence);
       const completionRate = maxCheckIns > 0 ? completedCheckIns / maxCheckIns : 0;
       return {
         id: enrollment.user.id,
-        username: enrollment.user.name || 'Unknown User',
+        username: enrollment.user.whopUserId 
+          ? realUsernames.get(enrollment.user.whopUserId) || enrollment.user.name || 'Unknown User'
+          : enrollment.user.name || 'Unknown User',
         email: enrollment.user.email,
         checkIns: completedCheckIns,
         completionRate: completionRate,
