@@ -32,6 +32,7 @@ interface ParticipantData {
   name: string;
   email: string;
   avatar: string;
+  whopUserId?: string | null; // 🔧 FIX: Add whopUserId to interface
   completedCheckIns: number;
   requiredCheckIns: number;
   completionRate: number;
@@ -232,6 +233,7 @@ export async function GET(
           : enrollment.user.name || enrollment.user.email?.split('@')[0] || 'Unknown',
         email: enrollment.user.email || '',
         avatar: '👤',
+        whopUserId: enrollment.user.whopUserId, // 🔧 FIX: Include whopUserId for "Send via Whop" button
         completedCheckIns,
         requiredCheckIns,
         completionRate,

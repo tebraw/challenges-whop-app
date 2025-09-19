@@ -17,7 +17,7 @@ interface Participant {
   points: number;
   totalScore?: number;
   rank?: number;
-  whopUserId?: string;
+  whopUserId?: string | null; // 🔧 FIX: Add whopUserId to enable "Send via Whop" button
 }
 
 interface Winner {
