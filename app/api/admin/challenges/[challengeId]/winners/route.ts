@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, requireAdmin } from "@/lib/auth";
+import { getCurrentUser, requireAdminOrCompanyOwner } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
       try {
-    await requireAdmin();
+    await requireAdminOrCompanyOwner();
     const user = await getCurrentUser();
 
     if (!user || !user.tenantId) {

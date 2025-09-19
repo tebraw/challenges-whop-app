@@ -118,3 +118,30 @@ export async function requireAdmin() {
   }
   return user;
 }
+
+/**
+ * Require admin access OR company owner access via Dashboard App
+ * Company Owners have automatic admin rights for their company
+ */
+export async function requireAdminOrCompanyOwner() {
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error('Authentication required');
+  }
+  
+  // Standard admin users have access
+  if (user.role === 'ADMIN') {
+    return user;
+  }
+  
+  // Company Owner via Dashboard App: Check if they have company access
+  const headersList = await headers();
+  const headerCompanyId = headersList.get('x-whop-company-id');
+  
+  if (headerCompanyId && user.whopCompanyId === headerCompanyId) {
+    console.log('🎯 Company Owner detected: granting admin access for company:', headerCompanyId);
+    return user;
+  }
+  
+  throw new Error('Admin access required');
+}
