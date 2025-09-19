@@ -57,6 +57,7 @@ export default function SelectWinnersPage({
   const [copiedItems, setCopiedItems] = useState<{[key: string]: boolean}>({});
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [imageZoomLevel, setImageZoomLevel] = useState<number>(1);
 
   useEffect(() => {
     async function init() {
@@ -145,8 +146,16 @@ export default function SelectWinnersPage({
         const proofs = data.enrollment?.proofs || [];
         const checkins = data.enrollment?.checkins || [];
         
-        setParticipantProofs(proofs);
-        setParticipantCheckins(checkins);
+        // Sort proofs and checkins by date (newest first)
+        const sortedProofs = proofs.sort((a: any, b: any) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        const sortedCheckins = checkins.sort((a: any, b: any) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        
+        setParticipantProofs(sortedProofs);
+        setParticipantCheckins(sortedCheckins);
         
         console.log('Set proofs state:', proofs);
         console.log('Set checkins state:', checkins);
@@ -301,11 +310,21 @@ export default function SelectWinnersPage({
   const openImageModal = (imageUrl: string) => {
     setSelectedImage(imageUrl);
     setShowImageModal(true);
+    setImageZoomLevel(1); // Reset zoom when opening new image
   };
 
   const closeImageModal = () => {
     setSelectedImage(null);
     setShowImageModal(false);
+    setImageZoomLevel(1);
+  };
+
+  const adjustImageZoom = (delta: number) => {
+    setImageZoomLevel(prev => Math.max(0.25, Math.min(3, prev + delta)));
+  };
+
+  const resetImageZoom = () => {
+    setImageZoomLevel(1);
   };
 
   const sendIndividualNotification = async (winner: Winner) => {
@@ -770,25 +789,68 @@ export default function SelectWinnersPage({
                         <h4 className="text-lg font-semibold mb-4 text-white">Submitted Proofs</h4>
                         <div className="space-y-4">
                           {participantProofs.map((proof) => (
-                            <div key={proof.id} className="bg-gray-700 rounded-lg p-4">
-                              <div className="flex items-center justify-between mb-2">
+                            <div key={proof.id} className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                              <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
                                   <Award className="h-4 w-4 text-purple-400" />
-                                  <span className="font-medium">Proof #{proof.id.slice(-6)}</span>
+                                  <span className="font-medium text-white">Proof #{proof.id.slice(-6)}</span>
+                                  <span className="text-xs bg-purple-600 text-white px-2 py-1 rounded">
+                                    {proof.type || 'GENERAL'}
+                                  </span>
                                 </div>
-                                <span className="text-sm text-gray-400">
-                                  {new Date(proof.createdAt).toLocaleDateString()}
-                                </span>
+                                <div className="text-right">
+                                  <div className="text-sm text-gray-300">
+                                    {new Date(proof.createdAt).toLocaleDateString('de-DE')}
+                                  </div>
+                                  <div className="text-xs text-gray-400">
+                                    {new Date(proof.createdAt).toLocaleTimeString('de-DE')}
+                                  </div>
+                                </div>
                               </div>
                               
+                              {/* Text Content */}
                               {proof.text && (
-                                <div className="mb-3">
-                                  <p className="text-sm text-gray-300">{proof.text}</p>
+                                <div className="mb-4">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-blue-300">📝 Text Proof:</span>
+                                    <button
+                                      onClick={() => copyToClipboard(proof.text, `proof-text-${proof.id}`)}
+                                      className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors"
+                                    >
+                                      {copiedItems[`proof-text-${proof.id}`] ? (
+                                        <>
+                                          <Check className="h-3 w-3" />
+                                          Copied!
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy className="h-3 w-3" />
+                                          Copy
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                  <div className="bg-gray-800 p-3 rounded border border-gray-600">
+                                    <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">{proof.text}</p>
+                                  </div>
                                 </div>
                               )}
                               
+                              {/* Image Content */}
                               {(proof.image || proof.url) && (
-                                <div className="mb-3">
+                                <div className="mb-4">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-green-300">🖼️ Image Proof:</span>
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => downloadImage(proof.image || proof.url, `proof-${proof.id.slice(-6)}.jpg`)}
+                                        className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors"
+                                      >
+                                        <Download className="h-3 w-3" />
+                                        Download
+                                      </button>
+                                    </div>
+                                  </div>
                                   <div className="relative group">
                                     <img 
                                       src={proof.image || proof.url} 
@@ -798,35 +860,59 @@ export default function SelectWinnersPage({
                                     />
                                     {/* Image overlay with actions */}
                                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                      <div className="flex gap-2">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            openImageModal(proof.image || proof.url);
-                                          }}
-                                          className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors"
-                                          title="View Full Size"
-                                        >
-                                          <ZoomIn className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            downloadImage(proof.image || proof.url, `proof-${proof.id.slice(-6)}.jpg`);
-                                          }}
-                                          className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full transition-colors"
-                                          title="Download Image"
-                                        >
-                                          <Download className="h-4 w-4" />
-                                        </button>
-                                      </div>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openImageModal(proof.image || proof.url);
+                                        }}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full transition-colors shadow-lg"
+                                        title="View Full Size"
+                                      >
+                                        <ZoomIn className="h-5 w-5" />
+                                      </button>
                                     </div>
                                   </div>
                                 </div>
                               )}
                               
-                              <div className="text-xs text-gray-500">
-                                Type: {proof.type} | Version: {proof.version}
+                              {/* Link Content */}
+                              {proof.url && !proof.image && (
+                                <div className="mb-4">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-cyan-300">🔗 Link Proof:</span>
+                                    <button
+                                      onClick={() => copyToClipboard(proof.url, `proof-url-${proof.id}`)}
+                                      className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors"
+                                    >
+                                      {copiedItems[`proof-url-${proof.id}`] ? (
+                                        <>
+                                          <Check className="h-3 w-3" />
+                                          Copied!
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy className="h-3 w-3" />
+                                          Copy URL
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                  <div className="bg-gray-800 p-3 rounded border border-gray-600">
+                                    <a 
+                                      href={proof.url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-cyan-400 hover:text-cyan-300 text-sm underline break-all"
+                                    >
+                                      {proof.url}
+                                    </a>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center justify-between text-xs text-gray-500 border-t border-gray-600 pt-2">
+                                <span>Version: {proof.version || '1'}</span>
+                                <span>ID: {proof.id}</span>
                               </div>
                             </div>
                           ))}
@@ -840,25 +926,68 @@ export default function SelectWinnersPage({
                         <h4 className="text-lg font-semibold mb-4 text-white">Daily Check-ins</h4>
                         <div className="space-y-4">
                           {participantCheckins.map((checkin) => (
-                            <div key={checkin.id} className="bg-gray-700 rounded-lg p-4">
-                              <div className="flex items-center justify-between mb-2">
+                            <div key={checkin.id} className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                              <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
                                   <CheckCircle className="h-4 w-4 text-green-400" />
-                                  <span className="font-medium">Check-in</span>
+                                  <span className="font-medium text-white">Check-in Day {checkin.day || 'Unknown'}</span>
+                                  <span className="text-xs bg-green-600 text-white px-2 py-1 rounded">
+                                    {checkin.status || 'SUBMITTED'}
+                                  </span>
                                 </div>
-                                <span className="text-sm text-gray-400">
-                                  {new Date(checkin.createdAt).toLocaleDateString()}
-                                </span>
+                                <div className="text-right">
+                                  <div className="text-sm text-gray-300">
+                                    {new Date(checkin.createdAt).toLocaleDateString('de-DE')}
+                                  </div>
+                                  <div className="text-xs text-gray-400">
+                                    {new Date(checkin.createdAt).toLocaleTimeString('de-DE')}
+                                  </div>
+                                </div>
                               </div>
                               
+                              {/* Text Content */}
                               {checkin.text && (
-                                <div className="mb-3">
-                                  <p className="text-sm text-gray-300">{checkin.text}</p>
+                                <div className="mb-4">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-blue-300">📝 Check-in Text:</span>
+                                    <button
+                                      onClick={() => copyToClipboard(checkin.text, `checkin-text-${checkin.id}`)}
+                                      className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors"
+                                    >
+                                      {copiedItems[`checkin-text-${checkin.id}`] ? (
+                                        <>
+                                          <Check className="h-3 w-3" />
+                                          Copied!
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy className="h-3 w-3" />
+                                          Copy
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                  <div className="bg-gray-800 p-3 rounded border border-gray-600">
+                                    <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">{checkin.text}</p>
+                                  </div>
                                 </div>
                               )}
                               
+                              {/* Image Content */}
                               {checkin.imageUrl && (
-                                <div className="mb-3">
+                                <div className="mb-4">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-green-300">🖼️ Check-in Image:</span>
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => downloadImage(checkin.imageUrl, `checkin-${checkin.id.slice(-6)}.jpg`)}
+                                        className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors"
+                                      >
+                                        <Download className="h-3 w-3" />
+                                        Download
+                                      </button>
+                                    </div>
+                                  </div>
                                   <div className="relative group">
                                     <img 
                                       src={checkin.imageUrl} 
@@ -868,45 +997,60 @@ export default function SelectWinnersPage({
                                     />
                                     {/* Image overlay with actions */}
                                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                      <div className="flex gap-2">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            openImageModal(checkin.imageUrl);
-                                          }}
-                                          className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors"
-                                          title="View Full Size"
-                                        >
-                                          <ZoomIn className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            downloadImage(checkin.imageUrl, `checkin-${checkin.id.slice(-6)}.jpg`);
-                                          }}
-                                          className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full transition-colors"
-                                          title="Download Image"
-                                        >
-                                          <Download className="h-4 w-4" />
-                                        </button>
-                                      </div>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openImageModal(checkin.imageUrl);
+                                        }}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full transition-colors shadow-lg"
+                                        title="View Full Size"
+                                      >
+                                        <ZoomIn className="h-5 w-5" />
+                                      </button>
                                     </div>
                                   </div>
                                 </div>
                               )}
 
+                              {/* Link Content */}
                               {checkin.linkUrl && (
-                                <div className="mb-3">
-                                  <a 
-                                    href={checkin.linkUrl} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-blue-400 hover:text-blue-300 text-sm underline"
-                                  >
-                                    View Link
-                                  </a>
+                                <div className="mb-4">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-cyan-300">🔗 Check-in Link:</span>
+                                    <button
+                                      onClick={() => copyToClipboard(checkin.linkUrl, `checkin-url-${checkin.id}`)}
+                                      className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors"
+                                    >
+                                      {copiedItems[`checkin-url-${checkin.id}`] ? (
+                                        <>
+                                          <Check className="h-3 w-3" />
+                                          Copied!
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy className="h-3 w-3" />
+                                          Copy URL
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                  <div className="bg-gray-800 p-3 rounded border border-gray-600">
+                                    <a 
+                                      href={checkin.linkUrl} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-cyan-400 hover:text-cyan-300 text-sm underline break-all"
+                                    >
+                                      {checkin.linkUrl}
+                                    </a>
+                                  </div>
                                 </div>
                               )}
+                              
+                              <div className="flex items-center justify-between text-xs text-gray-500 border-t border-gray-600 pt-2">
+                                <span>Check-in #{checkin.day || 'Unknown'}</span>
+                                <span>ID: {checkin.id}</span>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -943,27 +1087,89 @@ export default function SelectWinnersPage({
 
         {/* Image Zoom Modal */}
         {showImageModal && selectedImage && (
-          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
-            <div className="relative max-w-screen max-h-screen">
-              <button
+          <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50">
+            <div className="relative w-full h-full flex items-center justify-center p-4">
+              {/* Top Controls */}
+              <div className="absolute top-4 left-0 right-0 flex justify-between items-center px-4 z-10">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => downloadImage(selectedImage, `proof-fullsize-${Date.now()}.jpg`)}
+                    className="bg-black bg-opacity-60 hover:bg-opacity-80 text-white p-3 rounded-full transition-all backdrop-blur-sm"
+                    title="Download Full Size"
+                  >
+                    <Download className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => copyToClipboard(selectedImage, 'image-url')}
+                    className="bg-black bg-opacity-60 hover:bg-opacity-80 text-white p-3 rounded-full transition-all backdrop-blur-sm"
+                    title="Copy Image URL"
+                  >
+                    {copiedItems['image-url'] ? (
+                      <Check className="h-5 w-5" />
+                    ) : (
+                      <Copy className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+                <button
+                  onClick={closeImageModal}
+                  className="bg-black bg-opacity-60 hover:bg-opacity-80 text-white p-3 rounded-full transition-all backdrop-blur-sm"
+                  title="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Zoom Controls */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-black bg-opacity-60 backdrop-blur-sm rounded-full px-4 py-2 z-10">
+                <button
+                  onClick={() => adjustImageZoom(-0.25)}
+                  disabled={imageZoomLevel <= 0.25}
+                  className="text-white hover:text-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed p-2"
+                  title="Zoom Out"
+                >
+                  <span className="text-xl font-bold">−</span>
+                </button>
+                <button
+                  onClick={resetImageZoom}
+                  className="text-white hover:text-gray-300 transition-colors px-3 py-1 text-sm font-medium"
+                  title="Reset Zoom"
+                >
+                  {Math.round(imageZoomLevel * 100)}%
+                </button>
+                <button
+                  onClick={() => adjustImageZoom(0.25)}
+                  disabled={imageZoomLevel >= 3}
+                  className="text-white hover:text-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed p-2"
+                  title="Zoom In"
+                >
+                  <span className="text-xl font-bold">+</span>
+                </button>
+              </div>
+
+              {/* Image Container */}
+              <div 
+                className="overflow-auto max-w-full max-h-full cursor-pointer"
                 onClick={closeImageModal}
-                className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors bg-black bg-opacity-50 rounded-full p-2 z-10"
               >
-                <X className="h-6 w-6" />
-              </button>
-              <button
-                onClick={() => downloadImage(selectedImage, `proof-fullsize-${Date.now()}.jpg`)}
-                className="absolute top-4 left-4 text-white hover:text-gray-300 transition-colors bg-black bg-opacity-50 rounded-full p-2 z-10"
-                title="Download Full Size"
-              >
-                <Download className="h-6 w-6" />
-              </button>
-              <img
-                src={selectedImage}
-                alt="Full Size Proof"
-                className="max-w-full max-h-full object-contain cursor-pointer"
-                onClick={closeImageModal}
-              />
+                <img
+                  src={selectedImage}
+                  alt="Full Size Proof"
+                  className="transition-transform duration-200 block mx-auto"
+                  style={{ 
+                    transform: `scale(${imageZoomLevel})`,
+                    maxWidth: imageZoomLevel > 1 ? 'none' : '100%',
+                    maxHeight: imageZoomLevel > 1 ? 'none' : '100%'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  draggable={false}
+                />
+              </div>
+
+              {/* Hint Text */}
+              <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 text-white text-sm opacity-70 bg-black bg-opacity-60 backdrop-blur-sm px-3 py-1 rounded">
+                Click anywhere to close • Use zoom controls to adjust size
+              </div>
             </div>
           </div>
         )}
