@@ -3,6 +3,7 @@ import { whopSdk } from '@/lib/whop-sdk-unified';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { Calendar, Users, Trophy, Star, Clock, Award, ArrowLeft, Gift } from 'lucide-react';
+import JoinCommunityButton from '@/components/experiences/JoinCommunityButton';
 
 interface Props {
   params: Promise<{
@@ -268,9 +269,11 @@ export default async function ExperienceDiscoverChallengePage({ params }: Props)
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-4">
                 {/* Primary Action: Join Community */}
-                <button className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02]">
-                  🚀 Join Community to Participate
-                </button>
+                <JoinCommunityButton 
+                  challengeId={challengeId}
+                  challengeTitle={challenge.title}
+                  creatorName={challenge.tenant.name || 'this community'}
+                />
                 
                 {/* Secondary Action: Learn More */}
                 <button className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-4 px-6 rounded-xl transition-colors border border-gray-600">
