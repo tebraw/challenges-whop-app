@@ -343,6 +343,7 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
                       challengeId={challengeId}
                       experienceId={experienceId}
                       isEnrolled={isParticipating}
+                      challenge={challenge}
                     />
                   </div>
                   
@@ -461,7 +462,7 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
                 </div>
                 
                 <div className="w-full sm:w-auto">
-                  <JoinChallengeButton challengeId={challengeId} experienceId={experienceId} isEnrolled={false} />
+                  <JoinChallengeButton challengeId={challengeId} experienceId={experienceId} isEnrolled={false} challenge={challenge} />
                 </div>
               </div>
             </div>
