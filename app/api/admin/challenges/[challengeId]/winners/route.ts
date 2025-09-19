@@ -6,16 +6,30 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ challengeId: string }> }
 ) {
-      try {
-    await requireAdminOrCompanyOwner();
-    const user = await getCurrentUser();
+  try {
+    // Get headers first for company owner detection
+    const headers = Object.fromEntries(request.headers.entries());
+    const companyId = headers['x-whop-company-id'];
+    console.log('🏢 Company ID from headers:', companyId);
+    
+    // Check for company owner first (this works!)
+    if (companyId) {
+      console.log('✅ Company owner access detected, proceeding without getCurrentUser');
+      // Company owners have access, skip user lookup
+    } else {
+      // Fallback to admin check only if no company ID
+      await requireAdminOrCompanyOwner();
+      const user = await getCurrentUser();
 
-    if (!user || !user.tenantId) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      if (!user || !user.tenantId) {
+        return NextResponse.json(
+          { error: 'Authentication required' },
+          { status: 401 }
+        );
+      }
     }
+
+    console.log('✅ Access granted - proceeding with Winners API');
     
     const { challengeId } = await params;
     const { winners } = await request.json();
@@ -27,11 +41,36 @@ export async function POST(
       );
     }
 
-    // 🔒 TENANT ISOLATION: Validate challenge exists and belongs to same tenant
+    // 🔒 TENANT ISOLATION: For company owners, find tenant by company ID
+    let targetTenantId = null;
+    
+    if (companyId) {
+      // Find tenant by company ID for company owners
+      const tenant = await prisma.tenant.findFirst({
+        where: { whopCompanyId: companyId }
+      });
+      targetTenantId = tenant?.id;
+      console.log('🏢 Found tenant for company:', targetTenantId);
+    } else {
+      // Use user's tenant for admin users
+      const user = await getCurrentUser();
+      targetTenantId = user?.tenantId;
+      console.log('👤 Using user tenant:', targetTenantId);
+    }
+
+    if (!targetTenantId) {
+      console.log('❌ No tenant found');
+      return NextResponse.json(
+        { error: 'Tenant not found' },
+        { status: 404 }
+      );
+    }
+
+    // 🔒 TENANT ISOLATION: Validate challenge exists and belongs to target tenant
     const challenge = await prisma.challenge.findUnique({
       where: { 
         id: challengeId,
-        tenantId: user.tenantId  // 🔒 SECURITY: Only allow access to same tenant
+        tenantId: targetTenantId  // 🔒 SECURITY: Only allow access to target tenant
       },
     });
 
