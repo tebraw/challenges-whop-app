@@ -29,16 +29,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send push notification via Whop SDK with correct format
-    // Based on error: SendNotificationInput expects 'content' field, not 'body'
+    // Send push notification via Whop SDK with correct targets format
+    // Based on error: Need to specify "targets" like "experience", "company", or "company_team"
     const notificationPayload: any = {
-      userIds: [whopUserId],
+      targets: {
+        users: [whopUserId]  // Target specific users
+      },
       title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
       content: message  // Changed from 'body' to 'content'
     };
 
-    // Don't include 'url' field as it's not supported by SendNotificationInput
-    // deepLink will be handled differently if needed
+    // Alternative format if above doesn't work:
+    // targets: {
+    //   company: companyId,  // Target entire company
+    //   users: [whopUserId]  // Specific users within company
+    // }
 
     const notificationResult = await whopAppSdk.notifications.sendPushNotification(notificationPayload);
 
