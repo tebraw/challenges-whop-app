@@ -29,10 +29,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send push notification via Whop SDK with correct format
-    // Based on official Whop SDK - use userIds directly, not targets
+    // Send push notification via Whop SDK with correct targets format
+    // Based on error: Need "targets" with "experience", "company", or "company_team"
     const notificationPayload = {
-      userIds: [whopUserId],  // Direct user IDs array (not targets)
+      targets: {
+        users: [whopUserId]  // Target specific users (this is the correct format)
+      },
       title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
       content: message  // Use 'content' as required by SendNotificationInput
     };
