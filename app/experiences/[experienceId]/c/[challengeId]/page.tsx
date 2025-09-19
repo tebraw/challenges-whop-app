@@ -258,52 +258,80 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
                 </h1>
                 
                 {challenge.description && (
-                  <p className="text-gray-300 text-sm sm:text-base lg:text-lg mb-4 sm:mb-6 leading-relaxed">
+                  <p className="text-gray-300 text-sm sm:text-base lg:text-lg mb-6 sm:mb-8 leading-relaxed">
                     {challenge.description}
                   </p>
                 )}
                 
-                {/* Info Pills - Mobile stacked, larger tap targets */}
-                <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6 justify-center lg:justify-start">
-                  {/* Participants */}
-                  <div className="flex items-center gap-2 bg-blue-500/20 rounded-full px-3 sm:px-4 py-2 sm:py-2.5 border border-blue-500/30 min-h-[44px] justify-center sm:justify-start">
-                    <span className="text-lg sm:text-xl lg:text-2xl">👥</span>
-                    <span className="text-blue-300 font-medium text-sm sm:text-base">{challenge._count.enrollments} participants</span>
+                {/* Info Section - Clean minimal design without boxes */}
+                <div className="mb-6 sm:mb-8">
+                  {/* Basic Info Grid - 2 columns on mobile, flowing on desktop */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap gap-x-6 gap-y-4 sm:gap-x-8 sm:gap-y-6 lg:gap-x-12 mb-4">
+                    {/* Participants */}
+                    <div className="flex items-center gap-2 min-h-[44px]">
+                      <span className="text-xl sm:text-2xl">👥</span>
+                      <div className="flex flex-col">
+                        <span className="text-white font-medium text-sm sm:text-base">{challenge._count.enrollments}</span>
+                        <span className="text-gray-400 text-xs sm:text-sm">participants</span>
+                      </div>
+                    </div>
+                    
+                    {/* Date Range */}
+                    <div className="flex items-center gap-2 min-h-[44px]">
+                      <span className="text-xl sm:text-2xl">📅</span>
+                      <div className="flex flex-col">
+                        <span className="text-white font-medium text-sm sm:text-base">
+                          <span className="hidden sm:inline">
+                            {new Date(challenge.startAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(challenge.endAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                          <span className="sm:hidden">
+                            {new Date(challenge.startAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                        </span>
+                        <span className="text-gray-400 text-xs sm:text-sm">
+                          <span className="hidden sm:inline">duration</span>
+                          <span className="sm:hidden">start date</span>
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Commitment Type */}
+                    <div className="flex items-center gap-2 min-h-[44px] col-span-2 sm:col-span-1">
+                      <span className="text-xl sm:text-2xl">🔄</span>
+                      <div className="flex flex-col">
+                        <span className="text-white font-medium text-sm sm:text-base">
+                          {challenge.cadence === 'DAILY' ? 'Daily' : challenge.cadence === 'END_OF_CHALLENGE' ? 'One-time' : 'Regular'}
+                        </span>
+                        <span className="text-gray-400 text-xs sm:text-sm">commitment</span>
+                      </div>
+                    </div>
                   </div>
                   
-                  {/* Date */}
-                  <div className="flex items-center gap-2 bg-green-500/20 rounded-full px-3 sm:px-4 py-2 sm:py-2.5 border border-green-500/30 min-h-[44px] justify-center sm:justify-start">
-                    <span className="text-lg sm:text-xl lg:text-2xl">📅</span>
-                    <span className="text-green-300 font-medium text-sm sm:text-base">
-                      <span className="hidden sm:inline">
-                        {new Date(challenge.startAt).toLocaleDateString()} - {new Date(challenge.endAt).toLocaleDateString()}
-                      </span>
-                      <span className="sm:hidden">
-                        {new Date(challenge.startAt).toLocaleDateString()}
-                      </span>
-                    </span>
-                  </div>
-                  
-                  {/* Commitment */}
-                  <div className="flex items-center gap-2 bg-purple-500/20 rounded-full px-3 sm:px-4 py-2 sm:py-2.5 border border-purple-500/30 min-h-[44px] justify-center sm:justify-start">
-                    <span className="text-lg sm:text-xl lg:text-2xl">🔄</span>
-                    <span className="text-purple-300 font-medium text-sm sm:text-base">
-                      {challenge.cadence === 'DAILY' ? 'Daily' : challenge.cadence === 'END_OF_CHALLENGE' ? 'One-time' : 'Regular'} commitment
-                    </span>
-                  </div>
+                  {/* User Status Info - Only if participating */}
+                  {isParticipating && userStats && (
+                    <div className="flex flex-wrap gap-x-8 gap-y-4 pt-4 border-t border-gray-700/50">
+                      {/* Joined Status */}
+                      <div className="flex items-center gap-2 min-h-[44px]">
+                        <span className="text-xl sm:text-2xl">⭐</span>
+                        <div className="flex flex-col">
+                          <span className="text-purple-300 font-medium text-sm sm:text-base">Joined</span>
+                          <span className="text-gray-400 text-xs sm:text-sm">participating</span>
+                        </div>
+                      </div>
+                      
+                      {/* Progress Stats */}
+                      <div className="flex items-center gap-2 min-h-[44px]">
+                        <span className="text-xl sm:text-2xl">📊</span>
+                        <div className="flex flex-col">
+                          <span className="text-green-300 font-medium text-sm sm:text-base">
+                            {userStats.completedCheckIns}/{userStats.maxCheckIns} ({Math.round(userStats.completionRate)}%)
+                          </span>
+                          <span className="text-gray-400 text-xs sm:text-sm">progress</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                
-                {/* User Status - Mobile optimized */}
-                {isParticipating && userStats && (
-                  <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6 justify-center lg:justify-start">
-                    <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/40 text-purple-300 px-3 sm:px-4 py-2 rounded-full font-medium text-sm sm:text-base min-h-[44px] flex items-center justify-center">
-                      ⭐ Joined
-                    </div>
-                    <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/40 text-green-300 px-3 sm:px-4 py-2 rounded-full font-medium text-sm sm:text-base min-h-[44px] flex items-center justify-center">
-                      📊 {userStats.completedCheckIns}/{userStats.maxCheckIns} check-ins ({Math.round(userStats.completionRate)}%)
-                    </div>
-                  </div>
-                )}
                 
                 {/* Action Buttons - Mobile stacked, touch-friendly */}
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
