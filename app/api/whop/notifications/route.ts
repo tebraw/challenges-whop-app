@@ -29,17 +29,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send push notification via Whop SDK
-    // Note: Using any type to bypass TypeScript issues with Whop SDK types
+    // Send push notification via Whop SDK with correct format
+    // Based on error: SendNotificationInput expects 'content' field, not 'body'
     const notificationPayload: any = {
       userIds: [whopUserId],
       title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
-      body: message
+      content: message  // Changed from 'body' to 'content'
     };
 
-    if (deepLink) {
-      notificationPayload.url = deepLink;
-    }
+    // Don't include 'url' field as it's not supported by SendNotificationInput
+    // deepLink will be handled differently if needed
 
     const notificationResult = await whopAppSdk.notifications.sendPushNotification(notificationPayload);
 
