@@ -69,9 +69,9 @@ export default function JoinChallengeButton({
     return (
       <button 
         disabled
-        className={`bg-gradient-to-r from-green-500 to-emerald-500 px-8 py-4 rounded-2xl font-semibold text-lg shadow-lg flex items-center gap-3 transform scale-105 ${className}`}
+        className={`w-full sm:w-auto bg-gradient-to-r from-green-500 to-emerald-500 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold text-sm sm:text-base lg:text-lg shadow-lg flex items-center gap-2 sm:gap-3 justify-center transform scale-105 min-h-[48px] sm:min-h-[56px] ${className}`}
       >
-        <span className="text-2xl">✅</span>
+        <span className="text-lg sm:text-xl lg:text-2xl">✅</span>
         <span>Joined! Redirecting...</span>
       </button>
     );
@@ -82,9 +82,9 @@ export default function JoinChallengeButton({
     return (
       <button 
         onClick={() => router.push(`/experiences/${experienceId}/c/${challengeId}`)}
-        className={`bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-8 py-4 rounded-2xl transition-all duration-300 font-semibold text-lg shadow-lg hover:shadow-blue-500/25 transform hover:scale-105 flex items-center gap-3 ${className}`}
+        className={`w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl transition-all duration-300 font-semibold text-sm sm:text-base lg:text-lg shadow-lg hover:shadow-blue-500/25 transform hover:scale-105 flex items-center gap-2 sm:gap-3 justify-center min-h-[48px] sm:min-h-[56px] touch-target ${className}`}
       >
-        <span className="text-2xl">📊</span>
+        <span className="text-lg sm:text-xl lg:text-2xl">📊</span>
         <span>View Full Challenge</span>
       </button>
     );
@@ -95,9 +95,9 @@ export default function JoinChallengeButton({
     <button 
       onClick={handleJoin}
       disabled={joining}
-      className={`relative overflow-hidden bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-60 disabled:cursor-not-allowed px-8 py-4 rounded-2xl transition-all duration-300 font-semibold text-lg shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 flex items-center gap-3 ${className}`}
+      className={`w-full sm:w-auto relative overflow-hidden bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-60 disabled:cursor-not-allowed px-4 sm:px-6 lg:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl transition-all duration-300 font-semibold text-sm sm:text-base lg:text-lg shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 flex items-center gap-2 sm:gap-3 justify-center min-h-[48px] sm:min-h-[56px] touch-target ${className}`}
     >
-      <span className="text-2xl relative z-10">{joining ? "⏳" : "🚀"}</span>
+      <span className="text-lg sm:text-xl lg:text-2xl relative z-10">{joining ? "⏳" : "🚀"}</span>
       <span className="relative z-10">{joining ? "Joining..." : "Join Challenge"}</span>
       
       {/* Animated background effect during join */}

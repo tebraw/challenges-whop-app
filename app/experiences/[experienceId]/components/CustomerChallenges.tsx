@@ -134,12 +134,12 @@ export default function CustomerChallenges({
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white pt-20">
-      <div className="max-w-4xl mx-auto p-6">
+    <div className="min-h-screen bg-gray-900 text-white">
+      <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">My Feed</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">My Challenges</h1>
           <p className="text-gray-400">
-            Challenges from creators you follow and participate in
+            Your active challenges and progress overview
           </p>
           
           {/* Tab Navigation */}
@@ -157,8 +157,9 @@ export default function CustomerChallenges({
         </div>
 
         {challenges.length === 0 ? (
-          <div className="bg-gray-800 rounded-xl text-center py-12">
-            <h2 className="text-xl font-semibold text-white mb-4">No challenges yet</h2>
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🎯</div>
+            <h3 className="text-xl font-semibold text-gray-300 mb-2">No challenges yet</h3>
             <p className="text-gray-400 mb-6">
               Start following creators and join challenges to see them here.
             </p>
@@ -170,145 +171,137 @@ export default function CustomerChallenges({
             </Link>
           </div>
         ) : (
-          <div className="grid gap-4">
-            {challenges.map((challenge) => (
-              <Link href={`/experiences/${experienceId}/c/${challenge.id}`} key={challenge.id} className="block">
-                <div className="group bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-gray-700/50 rounded-2xl p-4 hover:border-purple-500/30 transition-all duration-300 backdrop-blur-sm cursor-pointer hover:bg-gray-800/90">
-                <div className="flex gap-6">
-                  {/* Challenge Image */}
-                  {challenge.imageUrl ? (
-                    <div className="flex-shrink-0">
-                      <img
-                        src={challenge.imageUrl}
-                        alt={challenge.title}
-                        className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-2xl border-2 border-gray-600/50 group-hover:border-purple-400/50 transition-all duration-300"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-purple-500/30 to-blue-500/30 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl border-2 border-purple-500/20 group-hover:border-purple-400/50 transition-all duration-300">
-                      🎯
-                    </div>
-                  )}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {challenges.map((challenge) => {
+              const status = new Date() < new Date(challenge.startAt) ? 'upcoming' : 
+                            new Date() > new Date(challenge.endAt) ? 'ended' : 'active';
+              
+              const statusColor = status === 'upcoming' ? 'text-blue-400' : 
+                                 status === 'ended' ? 'text-gray-400' : 'text-green-400';
+              
+              const statusIcon = status === 'upcoming' ? <Clock className="h-4 w-4" /> : 
+                                status === 'ended' ? <Award className="h-4 w-4" /> : 
+                                <Star className="h-4 w-4" />;
 
-                  {/* Challenge Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-200 transition-colors line-clamp-2">
-                          {challenge.title}
-                        </h3>
-                        
-                        {challenge.description && (
-                          <p className="text-gray-300 text-sm mb-3 line-clamp-2 leading-relaxed">
-                            {challenge.description}
-                          </p>
+              return (
+                <Link href={`/experiences/${experienceId}/c/${challenge.id}`} key={challenge.id} className="block">
+                  <div className="group bg-gray-800 rounded-xl border border-gray-700 overflow-hidden hover:border-purple-500/50 transition-all duration-300 hover:transform hover:scale-[1.02]">
+                    {/* Challenge Image */}
+                    <div className="aspect-video bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
+                      {challenge.imageUrl ? (
+                        <img 
+                          src={challenge.imageUrl} 
+                          alt={challenge.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-4xl">🎯</span>
+                      )}
+                    </div>
+                    
+                    {/* Challenge Content */}
+                    <div className="p-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className={`flex items-center gap-1 text-xs font-medium ${statusColor}`}>
+                          {statusIcon}
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </div>
+                        {challenge.userParticipation?.isParticipating && (
+                          <span className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full text-xs font-medium">
+                            ⭐ Joined
+                          </span>
                         )}
-
-                        {/* Info Row with Emojis */}
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400 mb-3">
-                          {/* Participants */}
-                          {challenge._count?.enrollments !== undefined && (
-                            <div className="flex items-center gap-1">
-                              <span>👥</span>
-                              <span>{challenge._count.enrollments} participants</span>
-                            </div>
-                          )}
-                          
-                          {/* Date */}
-                          <div className="flex items-center gap-1">
-                            <span>📅</span>
-                            <span>
-                              {new Date(challenge.startAt).toLocaleDateString()} - {new Date(challenge.endAt).toLocaleDateString()}
+                        {challenge.userParticipation?.stats?.hasCheckedInToday && (
+                          <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded-full text-xs font-medium">
+                            ✅ Checked Today
+                          </span>
+                        )}
+                      </div>
+                      
+                      <h3 className="font-bold text-white text-lg mb-2 hover:text-purple-400 transition-colors">
+                        {challenge.title}
+                      </h3>
+                      
+                      <p className="text-gray-400 text-sm mb-4 line-clamp-3">
+                        {challenge.description}
+                      </p>
+                      
+                      {/* Stats */}
+                      <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
+                        <div className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          <span>{challenge._count?.enrollments || 0} participants</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>{new Date(challenge.startAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Progress bar for participating users */}
+                      {challenge.userParticipation?.isParticipating && challenge.userParticipation?.stats && (
+                        <div className="mb-4">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm text-gray-300">Your Progress</span>
+                            <span className="text-sm font-medium text-purple-400">
+                              {Math.round(challenge.userParticipation.stats.completionRate)}%
                             </span>
                           </div>
-                          
-                          {/* Rewards */}
-                          {challenge.rules?.rewards && (
-                            <div className="flex items-center gap-1">
-                              <span>🏆</span>
-                              <span>Rewards available</span>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${challenge.userParticipation.stats.completionRate}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Additional Status badges */}
+                      {challenge.userParticipation?.stats && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/40 text-orange-300 px-3 py-1 rounded-full text-xs font-medium">
+                            📊 {challenge.userParticipation.stats.completedCheckIns}/{challenge.userParticipation.stats.maxCheckIns} check-ins
+                          </div>
+                          {challenge.userParticipation.stats.canCheckInToday && !challenge.userParticipation.stats.hasCheckedInToday && (
+                            <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/40 text-yellow-300 px-3 py-1 rounded-full text-xs font-medium animate-pulse">
+                              ⚡ Ready to Check-in
                             </div>
                           )}
                         </div>
+                      )}
 
-                        {/* Status badges */}
-                        {challenge.userParticipation && (
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {challenge.userParticipation.isParticipating ? (
-                              <>
-                                <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/40 text-purple-300 px-3 py-1 rounded-full text-xs font-medium">
-                                  ⭐ Joined
-                                </div>
-                                {challenge.userParticipation.stats && (
-                                  <>
-                                    <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/40 text-orange-300 px-3 py-1 rounded-full text-xs font-medium">
-                                      📊 {challenge.userParticipation.stats.completedCheckIns}/{challenge.userParticipation.stats.maxCheckIns} check-ins
-                                    </div>
-                                    {challenge.userParticipation.stats.canCheckInToday && !challenge.userParticipation.stats.hasCheckedInToday && (
-                                      <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/40 text-yellow-300 px-3 py-1 rounded-full text-xs font-medium animate-pulse">
-                                        ⚡ Ready to Check-in
-                                      </div>
-                                    )}
-                                    {challenge.userParticipation.stats.hasCheckedInToday && (
-                                      <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/40 text-green-300 px-3 py-1 rounded-full text-xs font-medium">
-                                        ✅ Checked in Today
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                              </>
-                            ) : (
-                              <div className="bg-gradient-to-r from-gray-500/20 to-slate-500/20 border border-gray-500/40 text-gray-300 px-3 py-1 rounded-full text-xs font-medium">
-                                🚀 Available to join
-                              </div>
-                            )}
+                      {/* Rewards */}
+                      {challenge.rules?.rewards && (
+                        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-yellow-400">🏆</span>
+                            <span className="text-gray-300 font-medium">Rewards available</span>
                           </div>
-                        )}
-
-                        {/* Progress bar for participating users */}
-                        {challenge.userParticipation?.isParticipating && challenge.userParticipation?.stats && (
-                          <div className="mb-3">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm text-gray-300">Your Progress</span>
-                              <span className="text-sm font-medium text-purple-400">
-                                {Math.round(challenge.userParticipation.stats.completionRate)}%
-                              </span>
-                            </div>
-                            <div className="w-full bg-gray-700 rounded-full h-2">
-                              <div 
-                                className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
-                                style={{ width: `${challenge.userParticipation.stats.completionRate}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Open Button - Rechts */}
-                      <div className="flex-shrink-0">
-                        <button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-2xl transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 flex items-center gap-2">
-                          <span>🚀</span>
-                          <span>Open Challenge</span>
+                        </div>
+                      )}
+                      
+                      {/* Action Button */}
+                      <div className="mt-4 pt-4 border-t border-gray-700">
+                        <button className="inline-flex items-center justify-center w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105">
+                          <span className="mr-2">🚀</span>
+                          Open Challenge
                         </button>
                         
                         {/* Quick Check-in button if applicable */}
                         {challenge.userParticipation?.isParticipating && 
                          challenge.userParticipation?.stats?.canCheckInToday && 
                          !challenge.userParticipation?.stats?.hasCheckedInToday && (
-                          <Link href={`/experiences/${experienceId}/c/${challenge.id}#checkin`}>
-                            <button className="mt-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-xl transition-all duration-300 font-medium text-xs shadow-lg hover:shadow-green-500/25 transform hover:scale-105 flex items-center gap-2 w-full justify-center">
-                              <span>⚡</span>
-                              <span>Quick Check-in</span>
-                            </button>
-                          </Link>
+                          <button className="mt-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-lg transition-all duration-300 font-medium text-sm shadow-lg hover:shadow-green-500/25 transform hover:scale-105 flex items-center gap-2 w-full justify-center">
+                            <span>⚡</span>
+                            <span>Quick Check-in</span>
+                          </button>
                         )}
                       </div>
                     </div>
                   </div>
-                </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
