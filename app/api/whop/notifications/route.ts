@@ -29,19 +29,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send push notification via Whop SDK - correct format for direct user notifications
-    // Based on live error analysis: Use company targeting instead of direct user targeting
+    // Get Company ID from headers (Dashboard App context)
+    const companyId = request.headers.get('X-Whop-Company-ID');
+    if (!companyId) {
+      console.error('❌ Missing X-Whop-Company-ID header - Dashboard App required');
+      return NextResponse.json(
+        { error: 'Company ID required for notifications' },
+        { status: 400 }
+      );
+    }
+
+    console.log('🏢 Company ID detected:', companyId);
+
+    // Send push notification via Whop SDK - correct Dashboard App format
     const notificationPayload = {
-      targets: {
-        company: true  // Target the entire company, Whop will handle user filtering
-      },
+      companyTeamId: companyId,  // ← This is the key for Dashboard Apps!
       title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
       content: message,
+      userIds: [whopUserId],  // Target specific user within company
       data: {
         deepLink,
-        targetUserId: whopUserId  // Pass user ID in data for client-side filtering
+        targetUserId: whopUserId
       }
     };
+
+    console.log('📡 Sending via SDK with companyTeamId:', notificationPayload);
 
     const notificationResult = await whopAppSdk.notifications.sendPushNotification(notificationPayload);
 
