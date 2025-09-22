@@ -127,6 +127,7 @@ export async function POST(
                 id: true,
                 name: true,
                 email: true,
+                whopUserId: true,  // ✅ CRITICAL: Include whopUserId for notifications
               },
             },
           },
@@ -138,14 +139,14 @@ export async function POST(
     if (createdWinners.length > 0) {
       console.log('🔔 Sending notifications to', createdWinners.length, 'winners for challenge:', challengeId);
       
-      // Import the notification helper
-      const { sendWhopNotification, getWhopUserIdByEmail } = await import('@/lib/whopApi');
+      // Import the notification helper (remove getWhopUserIdByEmail - not needed anymore)
+      const { sendWhopNotification } = await import('@/lib/whopApi');
       
       // Send notification to each winner directly
       for (const winner of createdWinners) {
         try {
-          // Get Whop user ID
-          const whopUserId = await getWhopUserIdByEmail(winner.user.email);
+          // ✅ CRITICAL FIX: Use whopUserId directly from database instead of email lookup
+          const whopUserId = winner.user.whopUserId;
           
           if (whopUserId) {
             const notification = {
@@ -163,7 +164,7 @@ export async function POST(
               console.error(`❌ Failed to send notification to ${winner.user.name}`);
             }
           } else {
-            console.error(`❌ No Whop user ID found for ${winner.user.email}`);
+            console.error(`❌ No Whop user ID found for ${winner.user.email} - whopUserId is null in database`);
           }
         } catch (notificationError) {
           console.error(`❌ Error sending notification to ${winner.user.name}:`, notificationError);
