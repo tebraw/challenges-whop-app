@@ -29,24 +29,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get Company ID from headers (Dashboard App context)
-    const companyId = request.headers.get('X-Whop-Company-ID');
+    // Enhanced Company ID detection from multiple sources
+    const headers = Object.fromEntries(request.headers.entries());
+    const companyIdFromHeader = request.headers.get('X-Whop-Company-ID') || request.headers.get('x-whop-company-id');
     
-    console.log('🔍 Notification Debug - Headers:', {
-      'X-Whop-Company-ID': companyId,
-      'user-agent': request.headers.get('user-agent'),
-      'origin': request.headers.get('origin'),
-      allHeaders: Object.fromEntries(request.headers.entries())
+    // Extract Company ID from referer URL (Dashboard App pattern)
+    const referer = request.headers.get('referer') || '';
+    const companyIdFromUrl = referer.match(/\/dashboard\/([^\/]+)/)?.[1];
+    
+    // Extract from origin if Dashboard App
+    const origin = request.headers.get('origin') || '';
+    const isFromDashboardApp = origin.includes('.apps.whop.com');
+    
+    const companyId = companyIdFromHeader || companyIdFromUrl;
+    
+    console.log('🔍 ENHANCED Company ID Detection:', {
+      'Header X-Whop-Company-ID': companyIdFromHeader,
+      'URL Company ID': companyIdFromUrl,
+      'Final Company ID': companyId,
+      'Referer': referer,
+      'Origin': origin,
+      'Is Dashboard App': isFromDashboardApp,
+      'All headers': headers
     });
 
     if (!companyId) {
-      console.error('❌ Missing X-Whop-Company-ID header - Dashboard App required');
-      console.log('📋 Available headers:', Object.fromEntries(request.headers.entries()));
+      console.error('❌ No Company ID found in headers OR URL');
+      console.log('📋 Available headers:', headers);
       return NextResponse.json(
         { 
           error: 'Company ID required for notifications',
-          debug: 'Missing X-Whop-Company-ID header - ensure calling from Dashboard App context',
-          availableHeaders: Object.fromEntries(request.headers.entries())
+          debug: {
+            message: 'No Company ID found in X-Whop-Company-ID header or dashboard URL',
+            referer: referer,
+            origin: origin,
+            isDashboardApp: isFromDashboardApp,
+            suggestion: 'Ensure calling from Dashboard App with company context'
+          },
+          availableHeaders: headers
         },
         { status: 400 }
       );
