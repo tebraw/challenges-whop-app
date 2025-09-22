@@ -110,8 +110,17 @@ export async function POST(request: NextRequest) {
 
     console.log('🏢 Company ID detected:', companyId);
 
-    // ✅ CORRECTED: Use Experience ID for Challenge Members, Company ID for Company Admins
-    const notificationPayload = experienceId ? {
+    // ✅ SMART TARGETING: Check if experienceId is valid Experience format
+    const isValidExperienceId = experienceId && experienceId.startsWith('exp_');
+    
+    console.log('🎯 Targeting Decision:', {
+      experienceId,
+      isValidExperienceId,
+      companyId,
+      targetingMethod: isValidExperienceId ? 'EXPERIENCE' : 'COMPANY_TEAM'
+    });
+
+    const notificationPayload = isValidExperienceId ? {
       // ✅ EXPERIENCE TARGETING: Send to Challenge Members (Experience participants)
       experienceId: experienceId,
       title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
@@ -119,7 +128,7 @@ export async function POST(request: NextRequest) {
       userIds: [whopUserId],  // Target specific member within experience
       isMention: true  // Ensures immediate mobile push notification
     } : {
-      // 🔄 FALLBACK: Company targeting if no Experience ID available
+      // 🔄 COMPANY TARGETING: For Dashboard App challenges (Company-created challenges)
       companyTeamId: companyId,
       title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
       content: message,
@@ -127,8 +136,8 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('📡 Sending Notification:', {
-      method: experienceId ? 'EXPERIENCE TARGETING' : 'COMPANY TARGETING',
-      experienceId,
+      method: isValidExperienceId ? 'EXPERIENCE TARGETING' : 'COMPANY TARGETING',
+      experienceId: isValidExperienceId ? experienceId : null,
       companyId,
       userIds: [whopUserId],
       payload: notificationPayload
@@ -139,20 +148,20 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Whop Push Notification sent successfully:', {
       whopUserId,
-      experienceId,
+      experienceId: isValidExperienceId ? experienceId : null,
       companyId,
       notificationSent: notificationResult,
       status: 'sent',
-      targetingMethod: experienceId ? 'EXPERIENCE_MEMBERS' : 'COMPANY_TEAM'
+      targetingMethod: isValidExperienceId ? 'EXPERIENCE_MEMBERS' : 'COMPANY_TEAM'
     });
 
     return NextResponse.json({
       success: true,
-      message: `Push notification sent successfully via Whop ${experienceId ? 'Experience' : 'Company'} targeting`,
+      message: `Push notification sent successfully via Whop ${isValidExperienceId ? 'Experience' : 'Company'} targeting`,
       notificationSent: notificationResult,
-      experienceId,
+      experienceId: isValidExperienceId ? experienceId : null,
       companyId,
-      targetingMethod: experienceId ? 'EXPERIENCE_MEMBERS' : 'COMPANY_TEAM',
+      targetingMethod: isValidExperienceId ? 'EXPERIENCE_MEMBERS' : 'COMPANY_TEAM',
       whopUserId,
       sentAt: new Date().toISOString()
     });
