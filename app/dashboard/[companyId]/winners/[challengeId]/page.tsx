@@ -271,6 +271,7 @@ export default function SelectWinnersPage({
           message: message,
           title: `🏆 ${challenge?.title || 'Challenge'} - Winner Announcement`,
           challengeTitle: challenge?.title,
+          challengeId: challengeId,  // ✅ CRITICAL FIX: Pass Challenge ID for Experience targeting
           deepLink: `/challenges/${challengeId}`
         }),
       });
