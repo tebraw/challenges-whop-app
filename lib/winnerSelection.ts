@@ -171,7 +171,7 @@ Best regards,
 Challenge Team`
       };
 
-      const notificationSent = await sendWhopNotification(whopNotification);
+      const notificationSent = await sendWhopNotification(whopNotification, challenge.id);
       
       if (notificationSent) {
         winner.whopUserId = whopUserId;

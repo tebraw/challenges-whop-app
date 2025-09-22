@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { whopAppSdk } from '@/lib/whop-sdk-dual';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +10,7 @@ export async function POST(request: NextRequest) {
       title, 
       deepLink,
       challengeTitle,
+      challengeId,  // ← NEW: Challenge ID to find Experience ID
       // Legacy support for old API format
       recipient,
       userEmail 
@@ -18,7 +20,8 @@ export async function POST(request: NextRequest) {
       whopUserId,
       title: title || 'Challenge Update',
       message: message?.substring(0, 50) + '...',
-      deepLink
+      deepLink,
+      challengeId
     });
 
     // Validate required fields
@@ -27,6 +30,32 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields: whopUserId and message' },
         { status: 400 }
       );
+    }
+
+    // ✅ NEW: Get Experience ID from Challenge (for proper member targeting)
+    let experienceId = null;
+    if (challengeId) {
+      try {
+        console.log('🔍 Looking up Challenge to find Experience ID:', challengeId);
+        
+        const challenge = await prisma.challenge.findUnique({
+          where: { id: challengeId },
+          select: { experienceId: true, title: true }
+        });
+
+        if (challenge?.experienceId) {
+          experienceId = challenge.experienceId;
+          console.log('✅ Found Experience ID for Challenge:', {
+            challengeId,
+            challengeTitle: challenge.title,
+            experienceId
+          });
+        } else {
+          console.warn('⚠️ Challenge not found or missing Experience ID:', challengeId);
+        }
+      } catch (error) {
+        console.error('❌ Error looking up Challenge Experience ID:', error);
+      }
     }
 
     // Enhanced Company ID detection from multiple sources
@@ -74,30 +103,49 @@ export async function POST(request: NextRequest) {
 
     console.log('🏢 Company ID detected:', companyId);
 
-    // Send push notification via Whop SDK - correct Dashboard App format
-    const notificationPayload = {
-      companyTeamId: companyId,  // ← This is the key for Dashboard Apps!
+    // ✅ CORRECTED: Use Experience ID for Challenge Members, Company ID for Company Admins
+    const notificationPayload = experienceId ? {
+      // ✅ EXPERIENCE TARGETING: Send to Challenge Members (Experience participants)
+      experienceId: experienceId,
+      title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
+      content: message,
+      userIds: [whopUserId],  // Target specific member within experience
+      isMention: true  // Ensures immediate mobile push notification
+    } : {
+      // 🔄 FALLBACK: Company targeting if no Experience ID available
+      companyTeamId: companyId,
       title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
       content: message,
       userIds: [whopUserId]  // Target specific user within company
-      // Note: Removed 'data' field as it's not supported by SendNotificationInput
     };
 
-    console.log('📡 Sending via SDK with companyTeamId:', notificationPayload);
+    console.log('📡 Sending Notification:', {
+      method: experienceId ? 'EXPERIENCE TARGETING' : 'COMPANY TARGETING',
+      experienceId,
+      companyId,
+      userIds: [whopUserId],
+      payload: notificationPayload
+    });
 
     // Use the correct SDK method name
     const notificationResult = await whopAppSdk.notifications.sendPushNotification(notificationPayload);
 
     console.log('✅ Whop Push Notification sent successfully:', {
       whopUserId,
+      experienceId,
+      companyId,
       notificationSent: notificationResult,
-      status: 'sent'
+      status: 'sent',
+      targetingMethod: experienceId ? 'EXPERIENCE_MEMBERS' : 'COMPANY_TEAM'
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Push notification sent successfully via Whop',
+      message: `Push notification sent successfully via Whop ${experienceId ? 'Experience' : 'Company'} targeting`,
       notificationSent: notificationResult,
+      experienceId,
+      companyId,
+      targetingMethod: experienceId ? 'EXPERIENCE_MEMBERS' : 'COMPANY_TEAM',
       whopUserId,
       sentAt: new Date().toISOString()
     });

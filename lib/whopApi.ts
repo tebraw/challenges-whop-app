@@ -558,40 +558,42 @@ export async function syncWhopCategories() {
 }
 
 // Send Whop notification/message to user
-export async function sendWhopNotification(notification: WhopNotificationRequest): Promise<boolean> {
+export async function sendWhopNotification(notification: WhopNotificationRequest, challengeId?: string): Promise<boolean> {
   try {
     console.log('🔔 Whop Notification Request:');
     console.log('To User ID:', notification.userId);
     console.log('Title:', notification.title);
     console.log('Message:', notification.message);
-    console.log('WHOP_API_KEY present:', !!WHOP_API_KEY);
+    console.log('Challenge ID:', challengeId);
 
-    // Since Whop doesn't have a direct messaging API endpoint,
-    // we'll use alternative notification methods:
-    
-    // 1. Log the notification for manual processing
-    console.log('📧 WINNER NOTIFICATION:');
-    console.log(`   User: ${notification.userId}`);
-    console.log(`   Title: ${notification.title || 'Winner Announcement'}`);
-    console.log(`   Message: ${notification.message}`);
-    console.log(`   Timestamp: ${new Date().toISOString()}`);
-    
-    // 2. Store in database for dashboard display (could be added later)
-    // await storeNotificationInDatabase(notification);
-    
-    // 3. Alternative: Use email notification system if available
-    // await sendEmailNotification(notification);
-    
-    // 4. Alternative: Use Discord/Telegram webhook if configured
-    // await sendDiscordNotification(notification);
-    
-    // For now, simulate success as the notification is logged
-    console.log('✅ Notification logged successfully - manual processing required');
-    
-    return true;
+    // ✅ NEW: Use real Whop Notifications API via our route
+    const notificationPayload = {
+      whopUserId: notification.userId,
+      title: notification.title,
+      message: notification.message,
+      challengeId: challengeId  // ← NEW: Pass Challenge ID for Experience targeting
+    };
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/whop/notifications`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(notificationPayload)
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      console.log('✅ Whop notification sent successfully:', result);
+      return true;
+    } else {
+      console.error('❌ Failed to send Whop notification:', result);
+      return false;
+    }
 
   } catch (error) {
-    console.error('Failed to process notification:', error);
+    console.error('❌ Error sending Whop notification:', error);
     return false;
   }
 }
