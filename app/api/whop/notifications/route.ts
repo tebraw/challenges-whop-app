@@ -39,6 +39,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Enhanced Company ID detection from multiple sources (declare first)
+    const headers = Object.fromEntries(request.headers.entries());
+    const companyIdFromHeader = request.headers.get('X-Whop-Company-ID') || request.headers.get('x-whop-company-id');
+    
+    // Extract Company ID from referer URL (Dashboard App pattern)
+    const referer = request.headers.get('referer') || '';
+    const companyIdFromUrl = referer.match(/\/dashboard\/([^\/]+)/)?.[1];
+    
+    // Extract from origin if Dashboard App
+    const origin = request.headers.get('origin') || '';
+    const isFromDashboardApp = origin.includes('.apps.whop.com');
+    
+    let companyId = companyIdFromHeader || companyIdFromUrl;
+
     // ✅ NEW: Get Experience ID from Challenge (for proper member targeting)
     let experienceId = null;
     if (challengeId) {
@@ -51,12 +65,29 @@ export async function POST(request: NextRequest) {
         });
 
         if (challenge?.experienceId) {
-          experienceId = challenge.experienceId;
-          console.log('✅ Found Experience ID for Challenge:', {
-            challengeId,
-            challengeTitle: challenge.title,
-            experienceId
-          });
+          // 🔍 SMART DETECTION: Check if experienceId is actually a Company ID
+          const isCompanyId = challenge.experienceId.startsWith('biz_');
+          
+          if (isCompanyId) {
+            // If Challenge stores Company ID as experienceId, use it as Company ID
+            companyId = challenge.experienceId;
+            experienceId = null; // No real Experience ID available
+            console.log('🔄 Challenge experienceId is Company ID - Using Company Targeting:', {
+              challengeId,
+              challengeTitle: challenge.title,
+              companyIdFromChallenge: challenge.experienceId,
+              targetingMethod: 'COMPANY_TEAM'
+            });
+          } else {
+            // Real Experience ID found
+            experienceId = challenge.experienceId;
+            console.log('✅ Found Experience ID for Challenge:', {
+              challengeId,
+              challengeTitle: challenge.title,
+              experienceId,
+              targetingMethod: 'EXPERIENCE'
+            });
+          }
         } else {
           console.warn('⚠️ Challenge not found or missing Experience ID:', challengeId);
         }
@@ -64,20 +95,6 @@ export async function POST(request: NextRequest) {
         console.error('❌ Error looking up Challenge Experience ID:', error);
       }
     }
-
-    // Enhanced Company ID detection from multiple sources
-    const headers = Object.fromEntries(request.headers.entries());
-    const companyIdFromHeader = request.headers.get('X-Whop-Company-ID') || request.headers.get('x-whop-company-id');
-    
-    // Extract Company ID from referer URL (Dashboard App pattern)
-    const referer = request.headers.get('referer') || '';
-    const companyIdFromUrl = referer.match(/\/dashboard\/([^\/]+)/)?.[1];
-    
-    // Extract from origin if Dashboard App
-    const origin = request.headers.get('origin') || '';
-    const isFromDashboardApp = origin.includes('.apps.whop.com');
-    
-    const companyId = companyIdFromHeader || companyIdFromUrl;
     
     console.log('🔍 ENHANCED Company ID Detection:', {
       'Header X-Whop-Company-ID': companyIdFromHeader,
