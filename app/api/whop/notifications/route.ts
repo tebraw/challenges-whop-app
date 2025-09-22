@@ -79,12 +79,8 @@ export async function POST(request: NextRequest) {
       companyTeamId: companyId,  // ← This is the key for Dashboard Apps!
       title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
       content: message,
-      userIds: [whopUserId],  // Target specific user within company
-      data: {
-        deepLink,
-        targetUserId: whopUserId,
-        companyId: companyId  // Include for client filtering
-      }
+      userIds: [whopUserId]  // Target specific user within company
+      // Note: Removed 'data' field as it's not supported by SendNotificationInput
     };
 
     console.log('📡 Sending via SDK with companyTeamId:', notificationPayload);
