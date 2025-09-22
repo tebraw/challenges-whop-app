@@ -72,6 +72,11 @@ export async function POST(
         id: challengeId,
         tenantId: targetTenantId  // 🔒 SECURITY: Only allow access to target tenant
       },
+      select: {
+        id: true,
+        title: true,
+        experienceId: true  // ✅ NEEDED: For Experience-targeted notifications
+      }
     });
 
     if (!challenge) {
@@ -128,6 +133,43 @@ export async function POST(
         });
       })
     );
+
+    // 🔔 CRITICAL FIX: Send notifications to winners with correct Challenge ID
+    if (createdWinners.length > 0) {
+      console.log('🔔 Sending notifications to', createdWinners.length, 'winners for challenge:', challengeId);
+      
+      // Import the notification helper
+      const { sendWhopNotification, getWhopUserIdByEmail } = await import('@/lib/whopApi');
+      
+      // Send notification to each winner directly
+      for (const winner of createdWinners) {
+        try {
+          // Get Whop user ID
+          const whopUserId = await getWhopUserIdByEmail(winner.user.email);
+          
+          if (whopUserId) {
+            const notification = {
+              userId: whopUserId,
+              title: `🏆 ${challenge.title} - Winner Announcement`,
+              message: `🎉 Congratulations! You won ${winner.place === 1 ? '1st Place' : winner.place === 2 ? '2nd Place' : winner.place === 3 ? '3rd Place' : `${winner.place}${winner.place > 3 ? 'th' : ''} Place`} in this challenge!`
+            };
+            
+            // ✅ CRITICAL: Pass Challenge ID for Experience targeting
+            const notificationSent = await sendWhopNotification(notification, challengeId);
+            
+            if (notificationSent) {
+              console.log(`✅ Notification sent to ${winner.user.name} (${whopUserId})`);
+            } else {
+              console.error(`❌ Failed to send notification to ${winner.user.name}`);
+            }
+          } else {
+            console.error(`❌ No Whop user ID found for ${winner.user.email}`);
+          }
+        } catch (notificationError) {
+          console.error(`❌ Error sending notification to ${winner.user.name}:`, notificationError);
+        }
+      }
+    }
 
     return NextResponse.json({
       message: `Successfully saved ${createdWinners.length} winners`,

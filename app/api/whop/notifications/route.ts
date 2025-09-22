@@ -4,6 +4,10 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
+    const requestBody = await request.json();
+    
+    console.log('🔔 FULL Notification Request Body:', requestBody);
+    
     const { 
       whopUserId, 
       message, 
@@ -14,14 +18,17 @@ export async function POST(request: NextRequest) {
       // Legacy support for old API format
       recipient,
       userEmail 
-    } = await request.json();
+    } = requestBody;
 
     console.log('🔔 Sending Whop Push Notification:', {
       whopUserId,
       title: title || 'Challenge Update',
       message: message?.substring(0, 50) + '...',
       deepLink,
-      challengeId
+      challengeId,
+      challengeIdType: typeof challengeId,
+      challengeIdExists: !!challengeId,
+      allKeys: Object.keys(requestBody)
     });
 
     // Validate required fields
