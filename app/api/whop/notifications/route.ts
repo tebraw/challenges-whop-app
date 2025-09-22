@@ -31,10 +31,23 @@ export async function POST(request: NextRequest) {
 
     // Get Company ID from headers (Dashboard App context)
     const companyId = request.headers.get('X-Whop-Company-ID');
+    
+    console.log('🔍 Notification Debug - Headers:', {
+      'X-Whop-Company-ID': companyId,
+      'user-agent': request.headers.get('user-agent'),
+      'origin': request.headers.get('origin'),
+      allHeaders: Object.fromEntries(request.headers.entries())
+    });
+
     if (!companyId) {
       console.error('❌ Missing X-Whop-Company-ID header - Dashboard App required');
+      console.log('📋 Available headers:', Object.fromEntries(request.headers.entries()));
       return NextResponse.json(
-        { error: 'Company ID required for notifications' },
+        { 
+          error: 'Company ID required for notifications',
+          debug: 'Missing X-Whop-Company-ID header - ensure calling from Dashboard App context',
+          availableHeaders: Object.fromEntries(request.headers.entries())
+        },
         { status: 400 }
       );
     }
@@ -49,12 +62,14 @@ export async function POST(request: NextRequest) {
       userIds: [whopUserId],  // Target specific user within company
       data: {
         deepLink,
-        targetUserId: whopUserId
+        targetUserId: whopUserId,
+        companyId: companyId  // Include for client filtering
       }
     };
 
     console.log('📡 Sending via SDK with companyTeamId:', notificationPayload);
 
+    // Use the correct SDK method name
     const notificationResult = await whopAppSdk.notifications.sendPushNotification(notificationPayload);
 
     console.log('✅ Whop Push Notification sent successfully:', {
