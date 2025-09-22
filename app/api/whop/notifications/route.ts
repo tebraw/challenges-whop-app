@@ -152,6 +152,7 @@ export async function POST(request: NextRequest) {
         title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
         content: message,
         userIds: [whopUserId],
+        targets: { experience: true },  // ✅ FIXED: Added required targets field for experience notifications
         isMention: true
       };
       targetingStrategy = 'EXPERIENCE';
@@ -169,6 +170,7 @@ export async function POST(request: NextRequest) {
         title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
         content: message,
         userIds: [whopUserId],
+        targets: { user: true },  // ✅ FIXED: Added required targets field for direct user notifications
         isMention: true
       };
       targetingStrategy = 'DIRECT_USER_EXPERIENCE_MEMBER';
