@@ -184,8 +184,26 @@ export async function POST(request: NextRequest) {
       payload: notificationPayload
     });
 
-    // Use the correct SDK method name
-    const notificationResult = await whopAppSdk.notifications.sendPushNotification(notificationPayload);
+    // ✅ FIXED: Use correct SendNotificationInput structure without targets field
+    let notificationResult;
+    
+    if (isValidExperienceId) {
+      // Experience targeting with experienceId
+      notificationResult = await whopAppSdk.notifications.sendPushNotification({
+        experienceId: experienceId,
+        title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
+        content: message,
+        userIds: [whopUserId]
+      });
+    } else {
+      // Company Team targeting for Experience Members 
+      notificationResult = await whopAppSdk.notifications.sendPushNotification({
+        companyTeamId: companyId,
+        title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
+        content: message,
+        userIds: [whopUserId]
+      });
+    }
 
     console.log('✅ Whop Push Notification sent successfully:', {
       whopUserId,
