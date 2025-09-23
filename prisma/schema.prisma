@@ -34,8 +34,8 @@ model User {
   createdChallenges  Challenge[]            @relation("Creator")
   winnings           ChallengeWinner[]      @relation("Winners")
   enrollments        Enrollment[]
-  conversions        OfferConversion[]      @relation("UserConversions")
   notifications      InternalNotification[] @relation("UserNotifications")
+  conversions        OfferConversion[]      @relation("UserConversions")
   tenant             Tenant                 @relation(fields: [tenantId], references: [id])
   whopProducts       WhopProduct[]          @relation("CreatorProducts")
 
@@ -44,40 +44,40 @@ model User {
 }
 
 model Challenge {
-  id                String            @id @default(cuid())
-  tenantId          String
-  experienceId      String            // ✅ WHOP CORE: Experience isolation
-  title             String
-  description       String?
-  startAt           DateTime
-  endAt             DateTime
-  status            String            @default("ACTIVE") // ACTIVE, COMPLETED, PAUSED
-  companyId         String?           // For tenant isolation
-  requiredProofTypes Json?            // Array of required proof types
-  proofType         ProofType         @default(NONE)
-  cadence           Cadence           @default(DAILY)
-  rules             Json?
-  imageUrl          String?
-  createdAt         DateTime          @default(now())
-  creatorId         String?
-  whopCreatorId     String?
-  whopCategoryId    String?
-  whopCategoryName  String?
-  whopTags          Json?
-  monetizationRules Json?
-  targetAudience    Json?
-  marketingTags     Json?
-  difficulty        String?                 @default("BEGINNER")
-  isPublic          Boolean                 @default(true)
-  featured          Boolean                 @default(false)
-  whopCompanyId     String?
-  creator           User?                   @relation("Creator", fields: [creatorId], references: [id])
-  tenant            Tenant                  @relation(fields: [tenantId], references: [id])
-  challengeOffers   ChallengeOffer[]
-  winners           ChallengeWinner[]
-  enrollments       Enrollment[]
-  conversions       OfferConversion[]       @relation("ChallengeConversions")
-  notifications     InternalNotification[]  @relation("ChallengeNotifications")
+  id                 String                 @id @default(cuid())
+  tenantId           String
+  experienceId       String
+  title              String
+  description        String?
+  startAt            DateTime
+  endAt              DateTime
+  status             String                 @default("ACTIVE")
+  companyId          String?
+  requiredProofTypes Json?
+  proofType          ProofType              @default(NONE)
+  cadence            Cadence                @default(DAILY)
+  rules              Json?
+  imageUrl           String?
+  createdAt          DateTime               @default(now())
+  creatorId          String?
+  whopCreatorId      String?
+  whopCategoryId     String?
+  whopCategoryName   String?
+  whopTags           Json?
+  monetizationRules  Json?
+  targetAudience     Json?
+  marketingTags      Json?
+  difficulty         String?                @default("BEGINNER")
+  isPublic           Boolean                @default(true)
+  featured           Boolean                @default(false)
+  whopCompanyId      String?
+  creator            User?                  @relation("Creator", fields: [creatorId], references: [id])
+  tenant             Tenant                 @relation(fields: [tenantId], references: [id])
+  challengeOffers    ChallengeOffer[]
+  winners            ChallengeWinner[]
+  enrollments        Enrollment[]
+  notifications      InternalNotification[] @relation("ChallengeNotifications")
+  conversions        OfferConversion[]      @relation("ChallengeConversions")
 
   @@index([experienceId])
   @@index([whopCompanyId])
@@ -147,15 +147,15 @@ model OfferConversion {
 }
 
 model Enrollment {
-  id          String    @id @default(cuid())
-  experienceId String   // ✅ WHOP CORE: Experience isolation
-  challengeId String
-  userId      String
-  joinedAt    DateTime  @default(now())
-  checkins    Checkin[]
-  challenge   Challenge @relation(fields: [challengeId], references: [id])
-  user        User      @relation(fields: [userId], references: [id])
-  proofs      Proof[]
+  id           String    @id @default(cuid())
+  experienceId String
+  challengeId  String
+  userId       String
+  joinedAt     DateTime  @default(now())
+  checkins     Checkin[]
+  challenge    Challenge @relation(fields: [challengeId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
+  proofs       Proof[]
 
   @@unique([challengeId, userId])
   @@index([experienceId])
@@ -163,7 +163,7 @@ model Enrollment {
 
 model Proof {
   id           String     @id @default(cuid())
-  experienceId String     // ✅ WHOP CORE: Experience isolation
+  experienceId String
   enrollmentId String
   type         ProofType
   url          String?
@@ -203,18 +203,18 @@ model ChallengeWinner {
 }
 
 model InternalNotification {
-  id          String    @id @default(cuid())
+  id          String     @id @default(cuid())
   userId      String
   challengeId String?
   title       String
   message     String
-  type        String    @default("general") // winner_announcement, challenge_update, etc.
-  metadata    String?   // JSON string for additional data
-  isRead      Boolean   @default(false)
+  type        String     @default("general")
+  metadata    String?
+  isRead      Boolean    @default(false)
   readAt      DateTime?
-  createdAt   DateTime  @default(now())
-  user        User      @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
   challenge   Challenge? @relation("ChallengeNotifications", fields: [challengeId], references: [id], onDelete: Cascade)
+  user        User       @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
   @@index([challengeId])

@@ -14,33 +14,43 @@ export interface InternalNotification {
 
 export async function sendInternalNotification(notification: InternalNotification): Promise<boolean> {
   try {
-    console.log('📱 Sending internal notification:', {
+    console.log('📱 Creating internal notification directly in database:', {
       userId: notification.userId,
       challengeId: notification.challengeId,
       title: notification.title,
       type: notification.type
     });
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/internal/notifications`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(notification)
+    // Import Prisma client directly to avoid HTTP calls in production
+    const { prisma } = await import('@/lib/prisma');
+
+    // Create notification directly in database
+    const createdNotification = await prisma.internalNotification.create({
+      data: {
+        userId: notification.userId,
+        challengeId: notification.challengeId,
+        title: notification.title,
+        message: notification.message,
+        type: notification.type || 'winner_announcement',
+        metadata: notification.metadata ? JSON.stringify(notification.metadata) : null,
+        isRead: false,
+        createdAt: new Date()
+      }
     });
 
-    const result = await response.json();
+    console.log('✅ Internal notification created successfully in database:', {
+      id: createdNotification.id,
+      userId: createdNotification.userId,
+      challengeId: createdNotification.challengeId,
+      title: createdNotification.title,
+      type: createdNotification.type,
+      createdAt: createdNotification.createdAt.toISOString()
+    });
 
-    if (response.ok && result.success) {
-      console.log('✅ Internal notification sent successfully:', result.notificationId);
-      return true;
-    } else {
-      console.error('❌ Failed to send internal notification:', result.error);
-      return false;
-    }
+    return true;
 
   } catch (error) {
-    console.error('❌ Error sending internal notification:', error);
+    console.error('❌ Error creating internal notification in database:', error);
     return false;
   }
 }
