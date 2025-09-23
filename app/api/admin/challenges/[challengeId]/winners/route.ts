@@ -135,39 +135,31 @@ export async function POST(
       })
     );
 
-    // 🔔 CRITICAL FIX: Send notifications to winners with correct Challenge ID
+    // 🔔 CRITICAL UPDATE: Send internal notifications to winners instead of Whop notifications
     if (createdWinners.length > 0) {
-      console.log('🔔 Sending notifications to', createdWinners.length, 'winners for challenge:', challengeId);
+      console.log('🔔 Sending internal notifications to', createdWinners.length, 'winners for challenge:', challengeId);
       
-      // Import the notification helper (remove getWhopUserIdByEmail - not needed anymore)
-      const { sendWhopNotification } = await import('@/lib/whopApi');
+      // Import the internal notification helper
+      const { sendInternalNotification } = await import('@/lib/internalNotifications');
       
-      // Send notification to each winner directly
+      // Send internal notification to each winner
       for (const winner of createdWinners) {
         try {
-          // ✅ CRITICAL FIX: Use whopUserId directly from database instead of email lookup
-          const whopUserId = winner.user.whopUserId;
-          
-          if (whopUserId) {
-            const notification = {
-              userId: whopUserId,
-              title: `🏆 ${challenge.title} - Winner Announcement`,
-              message: `🎉 Congratulations! You won ${winner.place === 1 ? '1st Place' : winner.place === 2 ? '2nd Place' : winner.place === 3 ? '3rd Place' : `${winner.place}${winner.place > 3 ? 'th' : ''} Place`} in this challenge!`
-            };
-            
-            // ✅ CRITICAL: Pass Challenge ID for Experience targeting
-            const notificationSent = await sendWhopNotification(notification, challengeId);
-            
-            if (notificationSent) {
-              console.log(`✅ Notification sent to ${winner.user.name} (${whopUserId})`);
-            } else {
-              console.error(`❌ Failed to send notification to ${winner.user.name}`);
+          await sendInternalNotification({
+            userId: winner.user.id,
+            challengeId: challengeId,
+            type: 'winner_announcement',
+            title: `🏆 ${challenge.title} - Winner Announcement`,
+            message: `🎉 Congratulations! You won ${winner.place === 1 ? '1st Place' : winner.place === 2 ? '2nd Place' : winner.place === 3 ? '3rd Place' : `${winner.place}${winner.place > 3 ? 'th' : ''} Place`} in this challenge!`,
+            metadata: {
+              place: winner.place,
+              challengeTitle: challenge.title
             }
-          } else {
-            console.error(`❌ No Whop user ID found for ${winner.user.email} - whopUserId is null in database`);
-          }
+          });
+          
+          console.log(`✅ Internal notification sent to ${winner.user.name} (${winner.user.id})`);
         } catch (notificationError) {
-          console.error(`❌ Error sending notification to ${winner.user.name}:`, notificationError);
+          console.error(`❌ Error sending internal notification to ${winner.user.name}:`, notificationError);
         }
       }
     }

@@ -18,25 +18,26 @@ model Tenant {
 }
 
 model User {
-  id                 String            @id @default(cuid())
-  email              String            @unique
+  id                 String                 @id @default(cuid())
+  email              String                 @unique
   name               String?
-  role               Role              @default(USER)
-  createdAt          DateTime          @default(now())
+  role               Role                   @default(USER)
+  createdAt          DateTime               @default(now())
   tenantId           String
-  whopUserId         String?           @unique
+  whopUserId         String?                @unique
   whopAffiliateLink  String?
   whopCompanyId      String?
-  isFreeTier         Boolean           @default(true)
+  isFreeTier         Boolean                @default(true)
   membershipId       String?
-  subscriptionStatus String            @default("free")
-  tier               String            @default("free")
-  createdChallenges  Challenge[]       @relation("Creator")
-  winnings           ChallengeWinner[] @relation("Winners")
+  subscriptionStatus String                 @default("free")
+  tier               String                 @default("free")
+  createdChallenges  Challenge[]            @relation("Creator")
+  winnings           ChallengeWinner[]      @relation("Winners")
   enrollments        Enrollment[]
-  conversions        OfferConversion[] @relation("UserConversions")
-  tenant             Tenant            @relation(fields: [tenantId], references: [id])
-  whopProducts       WhopProduct[]     @relation("CreatorProducts")
+  conversions        OfferConversion[]      @relation("UserConversions")
+  notifications      InternalNotification[] @relation("UserNotifications")
+  tenant             Tenant                 @relation(fields: [tenantId], references: [id])
+  whopProducts       WhopProduct[]          @relation("CreatorProducts")
 
   @@index([whopCompanyId])
   @@index([tenantId])
@@ -66,16 +67,17 @@ model Challenge {
   monetizationRules Json?
   targetAudience    Json?
   marketingTags     Json?
-  difficulty        String?           @default("BEGINNER")
-  isPublic          Boolean           @default(true)
-  featured          Boolean           @default(false)
+  difficulty        String?                 @default("BEGINNER")
+  isPublic          Boolean                 @default(true)
+  featured          Boolean                 @default(false)
   whopCompanyId     String?
-  creator           User?             @relation("Creator", fields: [creatorId], references: [id])
-  tenant            Tenant            @relation(fields: [tenantId], references: [id])
+  creator           User?                   @relation("Creator", fields: [creatorId], references: [id])
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id])
   challengeOffers   ChallengeOffer[]
   winners           ChallengeWinner[]
   enrollments       Enrollment[]
-  conversions       OfferConversion[] @relation("ChallengeConversions")
+  conversions       OfferConversion[]       @relation("ChallengeConversions")
+  notifications     InternalNotification[]  @relation("ChallengeNotifications")
 
   @@index([experienceId])
   @@index([whopCompanyId])
@@ -198,6 +200,25 @@ model ChallengeWinner {
   @@unique([challengeId, place])
   @@unique([challengeId, userId])
   @@index([challengeId])
+}
+
+model InternalNotification {
+  id          String    @id @default(cuid())
+  userId      String
+  challengeId String?
+  title       String
+  message     String
+  type        String    @default("general") // winner_announcement, challenge_update, etc.
+  metadata    String?   // JSON string for additional data
+  isRead      Boolean   @default(false)
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+  user        User      @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  challenge   Challenge? @relation("ChallengeNotifications", fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([challengeId])
+  @@index([createdAt])
 }
 
 enum Cadence {

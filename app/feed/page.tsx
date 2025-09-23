@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Calendar, Users, Trophy, Gift } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { prisma } from "@/lib/prisma";
+import CompletedChallengesFeed from "@/components/CompletedChallengesFeed";
 
 // Mark this page as dynamic since it requires authentication
 export const dynamic = 'force-dynamic';
@@ -96,13 +97,14 @@ export default async function FeedPage() {
                 <div className="text-gray-400">Joined Challenges</div>
               </div>
               <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <div className="text-3xl font-bold text-green-400 mb-2">0</div>
-                <div className="text-gray-400">Completed</div>
-              </div>
-              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
                 <div className="text-3xl font-bold text-purple-400 mb-2">0</div>
                 <div className="text-gray-400">Current Streak</div>
               </div>
+            </div>
+
+            {/* Completed Challenges Feed */}
+            <div className="mt-8 max-w-4xl mx-auto">
+              <CompletedChallengesFeed userId={user.id} />
             </div>
           </div>
           
