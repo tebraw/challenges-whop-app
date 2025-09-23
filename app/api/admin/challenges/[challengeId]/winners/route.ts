@@ -142,24 +142,27 @@ export async function POST(
       // Import the internal notification helper
       const { sendInternalNotification } = await import('@/lib/internalNotifications');
       
-      // Send internal notification to each winner
+      // Send internal notification to each winner AND create UserWin entry
       for (const winner of createdWinners) {
         try {
+          // 1. Create internal notification with WIN-compatible type
           await sendInternalNotification({
             userId: winner.user.id,
             challengeId: challengeId,
-            type: 'winner_announcement',
+            type: 'winner_announcement', // ✅ This type is read by Wins API
             title: `🏆 ${challenge.title} - Winner Announcement`,
             message: `🎉 Congratulations! You won ${winner.place === 1 ? '1st Place' : winner.place === 2 ? '2nd Place' : winner.place === 3 ? '3rd Place' : `${winner.place}${winner.place > 3 ? 'th' : ''} Place`} in this challenge!`,
             metadata: {
               place: winner.place,
-              challengeTitle: challenge.title
+              challengeTitle: challenge.title,
+              prize: winner.place === 1 ? '🥇 Gold Medal' : winner.place === 2 ? '🥈 Silver Medal' : winner.place === 3 ? '🥉 Bronze Medal' : '🏆 Achievement',
+              winType: 'Winner'
             }
           });
           
-          console.log(`✅ Internal notification sent to ${winner.user.name} (${winner.user.id})`);
+          console.log(`✅ Internal notification (winner_announcement type) created for ${winner.user.name} - will appear in Wins Modal!`);
         } catch (notificationError) {
-          console.error(`❌ Error sending internal notification to ${winner.user.name}:`, notificationError);
+          console.error(`❌ Error sending notification/creating win for ${winner.user.name}:`, notificationError);
         }
       }
     }
