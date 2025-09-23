@@ -211,7 +211,7 @@ export default function SelectWinnersPage({
       });
 
       if (response.ok) {
-        alert('✅ Winners saved successfully!');
+        alert('✅ Winners saved successfully! All winners have been automatically notified via internal notifications.');
       } else {
         throw new Error('Failed to save winners');
       }
@@ -254,42 +254,9 @@ export default function SelectWinnersPage({
   const sendWhopNotification = async (winner: Winner) => {
     if (!winner.participant) return;
 
-    const notificationKey = `notification-${winner.rank}`;
-    setSendingNotifications(prev => ({ ...prev, [notificationKey]: true }));
-
-    try {
-      const message = winner.customMessage || 
-        `🏆 Congratulations ${winner.participant.name}! You won ${getPlaceText(winner.rank).text}!`;
-
-      const response = await fetch('/api/whop/notifications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          whopUserId: winner.participant.whopUserId,
-          message: message,
-          title: `🏆 ${challenge?.title || 'Challenge'} - Winner Announcement`,
-          challengeTitle: challenge?.title,
-          challengeId: challengeId,  // ✅ CRITICAL FIX: Pass Challenge ID for Experience targeting
-          deepLink: `/challenges/${challengeId}`
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Whop notification sent:', result);
-        alert(`✅ Notification sent to ${winner.participant.name} via Whop!`);
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send notification');
-      }
-    } catch (error) {
-      console.error('❌ Error sending Whop notification:', error);
-      alert(`❌ Failed to send notification: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setSendingNotifications(prev => ({ ...prev, [notificationKey]: false }));
-    }
+    // INFO: Individual notifications are now sent automatically when winners are saved
+    // The Winners API handles internal notifications instead of Whop notifications
+    alert(`ℹ️ Note: Notifications are sent automatically when you save winners. ${winner.participant.name} will be notified via the internal notification system when you click "Save Winners".`);
   };
 
   const downloadImage = async (imageUrl: string, filename?: string) => {
@@ -373,30 +340,9 @@ export default function SelectWinnersPage({
   const sendIndividualNotification = async (winner: Winner) => {
     if (!winner.participant) return;
 
-    try {
-      const response = await fetch('/api/whop/notifications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          recipient: winner.participant.email,
-          message: winner.customMessage,
-          title: `🏆 You won ${getPlaceText(winner.rank).text}!`,
-          type: 'winner_announcement'
-        }),
-      });
-
-      if (response.ok) {
-        alert(`✅ Notification sent to ${winner.participant.name} via Whop!`);
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send notification');
-      }
-    } catch (error) {
-      console.error('Error sending notification:', error);
-      alert(`❌ Error sending notification: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    // INFO: Individual notifications are now sent automatically when winners are saved
+    // The Winners API handles internal notifications instead of Whop notifications
+    alert(`ℹ️ Note: Notifications are sent automatically when you save winners. ${winner.participant.name} will be notified via the internal notification system when you click "Save Winners".`);
   };
 
   const getPlaceIcon = (rank: number) => {
@@ -468,7 +414,7 @@ export default function SelectWinnersPage({
                 className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-black px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
               >
                 <Save className="h-4 w-4" />
-                {saving ? 'Saving...' : 'Save Winners'}
+                {saving ? 'Saving...' : 'Save Winners & Notify'}
               </button>
             </div>
 
@@ -571,7 +517,7 @@ export default function SelectWinnersPage({
                                 </> : 
                                 <>
                                   <Send className="h-4 w-4" />
-                                  Send via Whop
+                                  Auto-notify on Save
                                 </>
                               }
                             </button>
