@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 // import { User } from '@prisma/client';
-import { Calendar, Users, Award, Flame, CheckCircle, Clock, Star, Play, BarChart3 } from 'lucide-react';
+import { Calendar, Users, Award, Flame, CheckCircle, Clock, Star, Play, BarChart3, Trophy } from 'lucide-react';
 import Link from 'next/link';
+import ExperienceWinsModal from '@/components/experiences/ExperienceWinsModal';
 
 interface CustomerChallengesProps {
   experienceId: string;
@@ -45,6 +46,8 @@ interface Challenge {
 export default function CustomerChallenges({ experienceId, user, whopUser }: CustomerChallengesProps) {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
+  const [winsModalOpen, setWinsModalOpen] = useState(false);
+  const [selectedChallengeForWins, setSelectedChallengeForWins] = useState<{id: string, title: string} | null>(null);
 
   useEffect(() => {
     fetchChallenges();
@@ -125,10 +128,26 @@ export default function CustomerChallenges({ experienceId, user, whopUser }: Cus
     <div className="min-h-screen bg-gray-900 text-white pt-20">
       <div className="max-w-4xl mx-auto p-6">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">My Feed</h1>
-          <p className="text-gray-400">
-            Challenges from creators you follow and participate in
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">My Feed</h1>
+              <p className="text-gray-400">
+                Challenges from creators you follow and participate in
+              </p>
+            </div>
+            
+            {/* Global All Wins Button */}
+            <button 
+              onClick={() => {
+                setSelectedChallengeForWins(null);
+                setWinsModalOpen(true);
+              }}
+              className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-yellow-100 px-4 py-2 rounded-lg transition-colors"
+            >
+              <Trophy className="w-4 h-4" />
+              <span>Alle Wins</span>
+            </button>
+          </div>
         </div>
 
         {challenges.length === 0 ? (
@@ -252,6 +271,20 @@ export default function CustomerChallenges({ experienceId, user, whopUser }: Cus
                           </button>
                         </Link>
                         
+                        {/* Wins Button - show for participating users */}
+                        {challenge.userParticipation.isParticipating && (
+                          <button 
+                            onClick={() => {
+                              setSelectedChallengeForWins({id: challenge.id, title: challenge.title});
+                              setWinsModalOpen(true);
+                            }}
+                            className="flex items-center gap-1 bg-yellow-600 hover:bg-yellow-700 text-yellow-100 text-xs px-3 py-1 rounded-lg transition-colors"
+                          >
+                            <Trophy className="w-3 h-3" />
+                            <span>Wins</span>
+                          </button>
+                        )}
+                        
                         {challenge.userParticipation.isParticipating && 
                          challenge.userParticipation.stats?.canCheckInToday && 
                          !challenge.userParticipation.stats?.hasCheckedInToday && (
@@ -272,6 +305,18 @@ export default function CustomerChallenges({ experienceId, user, whopUser }: Cus
           </div>
         )}
       </div>
+      
+      {/* Wins Modal */}
+      <ExperienceWinsModal
+        isOpen={winsModalOpen}
+        onClose={() => {
+          setWinsModalOpen(false);
+          setSelectedChallengeForWins(null);
+        }}
+        experienceId={experienceId}
+        challengeId={selectedChallengeForWins?.id}
+        challengeTitle={selectedChallengeForWins?.title}
+      />
     </div>
   );
 }
