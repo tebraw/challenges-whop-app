@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { whopSdk } from '@/lib/whop-sdk-dual';
+import { whopAppSdk } from '@/lib/whop-sdk-dual';
 
 // API to fetch participant's wins/notifications for challenges in an experience
 export async function GET(
@@ -16,17 +16,16 @@ export async function GET(
     const challengeId = searchParams.get('challengeId'); // Optional: specific challenge
     
     // Verify user token and get user info
-    const headers = Object.fromEntries(request.headers.entries());
-    const userData = await whopSdk.verifyUserToken(headers);
+    const userData = await whopAppSdk.verifyUserToken(request);
     
-    if (!userData.user) {
+    if (!userData.userId) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    const whopUserId = userData.user.id;
+    const whopUserId = userData.userId;
     console.log('🔍 Fetching wins for user:', {
       whopUserId,
       experienceId,
@@ -113,6 +112,8 @@ export async function GET(
     // Group wins by challenge for better organization
     const winsByChallenge = formattedWins.reduce((acc, win) => {
       const challengeId = win.challengeId;
+      if (!challengeId) return acc; // Skip wins without challengeId
+      
       if (!acc[challengeId]) {
         acc[challengeId] = {
           challengeId,
@@ -163,17 +164,16 @@ export async function PATCH(
     const { winIds, markAllAsRead, challengeId } = requestBody;
     
     // Verify user token
-    const headers = Object.fromEntries(request.headers.entries());
-    const userData = await whopSdk.verifyUserToken(headers);
+    const userData = await whopAppSdk.verifyUserToken(request);
     
-    if (!userData.user) {
+    if (!userData.userId) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    const whopUserId = userData.user.id;
+    const whopUserId = userData.userId;
     const dbUser = await prisma.user.findFirst({
       where: { whopUserId }
     });
