@@ -247,7 +247,7 @@ export async function GET(request: NextRequest) {
       console.log(`✅ Found existing tenant with ID: ${tenant.id}`);
     }
 
-    // Step 5: CONTEXT-SCOPED CHALLENGE QUERIES
+    // Step 5: OPTIMIZED CHALLENGE QUERIES (No enrollments/checkins for list view)
     const whereClause = isCompanyOwner 
       ? {
           tenantId: tenant.id
@@ -262,14 +262,12 @@ export async function GET(request: NextRequest) {
       include: {
         _count: {
           select: {
-            enrollments: true
-          }
-        },
-        enrollments: {
-          include: {
-            checkins: true  // 🔥 ADD: Include checkins for fire emoji counting
+            enrollments: true,
+            winners: true
           }
         }
+        // � REMOVED: enrollments.checkins to prevent 5MB response
+        // Note: Individual challenge details load this data separately
       },
       orderBy: {
         createdAt: 'desc'
@@ -281,11 +279,6 @@ export async function GET(request: NextRequest) {
     return createCorsResponse({
       success: true,
       challenges: challenges.map((challenge: any) => {
-        // 🔥 CALCULATE FIRE EMOJI COUNT: Total checkins across all enrollments
-        const totalCheckins = challenge.enrollments.reduce((sum: number, enrollment: any) => {
-          return sum + (enrollment.checkins?.length || 0);
-        }, 0);
-
         return {
           id: challenge.id,
           title: challenge.title,
@@ -296,7 +289,8 @@ export async function GET(request: NextRequest) {
           startDate: challenge.startAt,
           endDate: challenge.endAt,
           enrollmentCount: challenge._count.enrollments,
-          streakCount: totalCheckins, // 🔥 FIRE EMOJI: Show total activity (checkins)
+          winnersCount: challenge._count.winners,
+          streakCount: 0, // Will be calculated in individual challenge view
           isActive: new Date() >= challenge.startAt && new Date() <= challenge.endAt,
           createdAt: challenge.createdAt
         };
