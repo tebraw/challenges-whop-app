@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { whopSdk } from '@/lib/whop-sdk-unified';
 import { prisma } from '@/lib/prisma';
 import CustomerChallenges from './components/CustomerChallenges';
+import NotificationBadge from '@/components/NotificationBadge';
 
 interface Props {
   params: Promise<{
@@ -130,6 +131,29 @@ export default async function ExperiencePage({ params }: Props) {
     
     return (
       <div className="min-h-screen bg-gray-900">
+        {/* Experience Header with Navigation */}
+        <header className="bg-gray-800/50 border-b border-gray-700 sticky top-0 z-40 backdrop-blur-sm">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              {/* Logo/Title */}
+              <div className="flex items-center gap-4">
+                <h1 className="text-xl font-bold text-white">Experience</h1>
+              </div>
+              
+              {/* Navigation Items */}
+              <div className="flex items-center gap-4">
+                {/* Notification Badge */}
+                <NotificationBadge userId={user.id} />
+                
+                {/* User Info */}
+                <div className="text-sm text-gray-300">
+                  {whopUser?.username || whopUser?.name || 'Member'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
         <div className="max-w-6xl mx-auto px-6 py-8">
           {/* Beautiful Header */}
           <div className="mb-10 text-center">

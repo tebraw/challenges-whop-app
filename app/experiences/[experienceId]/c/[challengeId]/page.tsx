@@ -7,6 +7,7 @@ import JoinChallengeButton from '@/components/experiences/JoinChallengeButton';
 import ProofForm from '@/components/user/ProofForm';
 import ChallengeOffers from '@/components/experiences/ChallengeOffers';
 import ChallengeTermsModal from '@/components/experiences/ChallengeTermsModal';
+import NotificationBadge from '@/components/NotificationBadge';
 
 interface PageProps {
   params: Promise<{ experienceId: string; challengeId: string }>;
@@ -225,15 +226,33 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
     
     return (
       <div className="min-h-screen bg-gray-900 text-white">
+        {/* Experience Header with Navigation */}
+        <header className="bg-gray-800/50 border-b border-gray-700 sticky top-0 z-40 backdrop-blur-sm">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              {/* Logo/Title */}
+              <div className="flex items-center gap-4">
+                <Link href={`/experiences/${experienceId}`} className="text-gray-400 hover:text-white transition-colors">
+                  <ArrowLeft className="w-5 h-5" />
+                </Link>
+                <h1 className="text-lg font-semibold text-white">Challenge</h1>
+              </div>
+              
+              {/* Navigation Items */}
+              <div className="flex items-center gap-4">
+                {/* Notification Badge */}
+                <NotificationBadge userId={user.id} />
+                
+                {/* User Info */}
+                <div className="text-sm text-gray-300">
+                  {whopUser?.username || whopUser?.name || 'Member'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-6xl">
-          {/* Back button - Mobile optimized */}
-          <Link href={`/experiences/${experienceId}`}>
-            <button className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 sm:mb-6 transition-colors group touch-target">
-              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-              <span className="text-sm sm:text-base">Back to Challenges</span>
-            </button>
-          </Link>
-          
           {/* Hero Section - Mobile First Design */}
           <div className="bg-gradient-to-br from-purple-600/20 via-blue-600/20 to-indigo-600/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 border border-purple-500/20">
             <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
