@@ -130,6 +130,30 @@ export default async function ExperiencePage({ params }: Props) {
     // Calculate user statistics
     const joinedChallengesCount = challenges.filter((c: any) => c.enrollments && c.enrollments.length > 0).length;
     
+    // Get wins count for this user in this experience
+    const experienceChallenges = await prisma.challenge.findMany({
+      where: { experienceId },
+      select: { id: true }
+    });
+    
+    const winsCount = await prisma.internalNotification.count({
+      where: {
+        userId: user.id,
+        type: {
+          in: ['winner_announcement', 'reward_earned', 'achievement_unlocked']
+        },
+        challengeId: {
+          in: experienceChallenges.map(c => c.id)
+        }
+      }
+    });
+    
+    console.log('🏆 Wins count for user in experience:', {
+      userId: user.id,
+      experienceId,
+      winsCount
+    });
+    
     return (
       <div className="min-h-screen bg-gray-900">
         {/* Experience Header with Navigation */}
@@ -176,7 +200,7 @@ export default async function ExperiencePage({ params }: Props) {
               </div>
               <div className="text-gray-300 font-medium">Active Challenges</div>
             </div>
-            <WinsButton winsCount={0} />
+            <WinsButton winsCount={winsCount} />
             <div className="group bg-gradient-to-br from-purple-500/10 to-purple-600/10 border border-purple-500/20 rounded-2xl p-6 text-center hover:border-purple-400/40 transition-all duration-300">
               <div className="text-4xl mb-3">🔥</div>
               <div className="text-3xl font-bold text-purple-400 mb-2">0</div>
