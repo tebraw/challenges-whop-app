@@ -152,23 +152,6 @@ export async function GET(
       include: {
         tenant: true,
         creator: true,
-        enrollments: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                whopUserId: true
-              }
-            },
-            proofs: {
-              orderBy: {
-                createdAt: 'asc'
-              }
-            }
-          },
-        },
         winners: true,
         challengeOffers: true,
         _count: {
@@ -183,6 +166,31 @@ export async function GET(
     if (!challenge) {
       return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
     }
+
+    // 🚀 OPTIMIZED: Get enrollments with limited data (no proofs in main query)
+    const enrollments = await prisma.enrollment.findMany({
+      where: {
+        challengeId: challengeId,
+      },
+      select: {
+        id: true,
+        joinedAt: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            whopUserId: true
+          }
+        },
+        _count: {
+          select: {
+            proofs: true  // Just count proofs, don't load all data
+          }
+        }
+      },
+      take: 100  // Limit to first 100 participants for dashboard performance
+    });
 
     // Count actual check-ins (proof submissions)
     const checkinCount = await prisma.proof.count({
@@ -225,16 +233,17 @@ export async function GET(
     }
 
     // 🎯 FETCH REAL USERNAMES: Get all whopUserIds and fetch real usernames from Whop
-    const whopUserIds = challenge.enrollments
+    const whopUserIds = enrollments
       .map(enrollment => enrollment.user.whopUserId)
       .filter(id => id) as string[];
     
     const realUsernames = await getBatchRealWhopUsernames(whopUserIds);
     console.log(`📋 Fetched ${realUsernames.size} real usernames from Whop API for challenge detail`);
 
-    // Generate leaderboard from the challenge enrollments (already includes proofs)
-    const leaderboardData: LeaderboardEntry[] = challenge.enrollments.map((enrollment: EnrollmentWithUserAndProofs) => {
-      const completedCheckIns = calculateCompletedCheckIns(enrollment.proofs, challenge.cadence);
+    // Generate leaderboard from the enrollments (optimized - without proofs)
+    const leaderboardData: LeaderboardEntry[] = enrollments.map((enrollment) => {
+      // For now, use proof count only (no detailed analysis to save performance)
+      const completedCheckIns = enrollment._count.proofs;
       const completionRate = maxCheckIns > 0 ? completedCheckIns / maxCheckIns : 0;
       return {
         id: enrollment.user.id,
@@ -258,10 +267,10 @@ export async function GET(
       })
       .slice(0, 10); // Top 10 participants
 
-    // Calculate average completion rate
+    // Calculate average completion rate (optimized)
     let avgCompletionRate = 0;
-    challenge.enrollments.forEach((enrollment: EnrollmentWithUserAndProofs) => {
-      const completedCheckIns = calculateCompletedCheckIns(enrollment.proofs, challenge.cadence);
+    enrollments.forEach((enrollment) => {
+      const completedCheckIns = enrollment._count.proofs;
       const completionRate = maxCheckIns > 0 ? completedCheckIns / maxCheckIns : 0;
       avgCompletionRate += completionRate;
     });
@@ -311,7 +320,7 @@ export async function GET(
               new Date() > challenge.endAt ? 'ENDED' : 'ACTIVE',
       participants: challenge._count.enrollments,
       checkIns: checkinCount,
-      avgCompletionRate: challenge.enrollments.length > 0 ? avgCompletionRate / challenge.enrollments.length : 0,
+      avgCompletionRate: enrollments.length > 0 ? avgCompletionRate / enrollments.length : 0,
       leaderboard: transformedLeaderboard,
       // Handle different data structures in rules field
       rewards: (() => {
@@ -341,6 +350,7 @@ export async function GET(
         id: challenge.tenant.id,
         name: challenge.tenant.name,
       },
+      enrollments: enrollments,  // Add enrollments back to response
     };
 
     return NextResponse.json(transformedChallenge);
