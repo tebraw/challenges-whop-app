@@ -3,10 +3,15 @@ import { whopAppSdk } from '@/lib/whop-sdk-dual';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
+  console.log('=== 🔔 WHOP NOTIFICATION API CALLED ===');
+  console.log('📅 Timestamp:', new Date().toISOString());
+  console.log('🌐 Request Method:', request.method);
+  console.log('📍 Request URL:', request.url);
+  
   try {
     const requestBody = await request.json();
     
-    console.log('🔔 FULL Notification Request Body:', requestBody);
+    console.log('� FULL Notification Request Body:', JSON.stringify(requestBody, null, 2));
     
     const { 
       whopUserId, 
@@ -53,11 +58,80 @@ export async function POST(request: NextRequest) {
     
     let companyId = companyIdFromHeader || companyIdFromUrl;
 
-    // ✅ NEW: Get Experience ID from Challenge (for proper member targeting)
+    // 🎯 ENHANCED: Get REAL Experience ID from User's membership via headers
     let experienceId = null;
+    let userRealExperienceId = null;
+    
+    // First: Try to get Experience ID from request headers (most reliable)
+    const headerExperienceId = request.headers.get('X-Experience-ID') || 
+                              request.headers.get('x-experience-id') ||
+                              request.headers.get('x-whop-experience-id');
+    
+    if (headerExperienceId && headerExperienceId.startsWith('exp_')) {
+      userRealExperienceId = headerExperienceId;
+      console.log('✅ Found real Experience ID from headers:', {
+        experienceId: userRealExperienceId,
+        source: 'request headers'
+      });
+    }
+    
+    // Second: Try to extract Experience ID from referer URL pattern
+    if (!userRealExperienceId) {
+      const referer = request.headers.get('referer') || '';
+      const experienceMatch = referer.match(/\/experiences\/([^\/]+)/);
+      if (experienceMatch && experienceMatch[1].startsWith('exp_')) {
+        userRealExperienceId = experienceMatch[1];
+        console.log('✅ Found real Experience ID from referer URL:', {
+          experienceId: userRealExperienceId,
+          referer: referer,
+          source: 'URL parsing'
+        });
+      }
+    }
+    
+    // Third: Try to get user's Experience membership via Whop SDK
+    if (!userRealExperienceId) {
+      try {
+        console.log('🔍 Checking user Experience access via Whop SDK:', whopUserId);
+        
+        // Check if user has access to known experiences
+        const commonExperienceIds = [
+          'exp_3qrneD6jdqZOTm', // Common pattern from logs
+          companyId?.replace('biz_', 'exp_') // Try converting Company ID to Experience ID pattern
+        ].filter(Boolean);
+        
+        for (const testExpId of commonExperienceIds) {
+          if (!testExpId) continue; // Skip undefined/null values
+          
+          try {
+            const hasAccess = await whopAppSdk.access.checkIfUserHasAccessToExperience({
+              userId: whopUserId,
+              experienceId: testExpId
+            });
+            
+            if (hasAccess) {
+              userRealExperienceId = testExpId;
+              console.log('✅ Found user real Experience ID via access check:', {
+                userId: whopUserId,
+                experienceId: testExpId,
+                hasAccess: true,
+                source: 'SDK access check'
+              });
+              break;
+            }
+          } catch (accessError) {
+            console.log('❌ No access to experience:', testExpId);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error checking user Experience access:', error);
+      }
+    }
+    
+    // Fourth: Get Challenge's stored experienceId (might be Company ID)
     if (challengeId) {
       try {
-        console.log('🔍 Looking up Challenge to find Experience ID:', challengeId);
+        console.log('🔍 Looking up Challenge to find stored Experience ID:', challengeId);
         
         const challenge = await prisma.challenge.findUnique({
           where: { id: challengeId },
@@ -70,22 +144,22 @@ export async function POST(request: NextRequest) {
           
           if (isCompanyId) {
             // 🚨 CRITICAL: Challenge stores Company ID as experienceId
-            // But user is Experience Member, NOT Company Team Member!
-            // Need to find the real Experience ID or use direct targeting
+            // Use user's REAL Experience ID instead!
             companyId = challenge.experienceId;
-            experienceId = null; // No real Experience ID available
-            console.log('� PROBLEM DETECTED: Challenge experienceId is Company ID but user is Experience Member:', {
+            experienceId = userRealExperienceId; // Use user's real Experience ID!
+            console.log('🎯 SOLUTION: Using user real Experience ID instead of Company ID:', {
               challengeId,
               challengeTitle: challenge.title,
-              storedAsExperienceId: challenge.experienceId,
-              actualType: 'Company ID',
-              userType: 'Experience Member (Challenge participant)',
-              issue: 'Company Team targeting will fail - user not in Company Team'
+              challengeStoredId: challenge.experienceId,
+              challengeStoredType: 'Company ID',
+              userRealExperienceId: userRealExperienceId,
+              usingExperienceId: experienceId,
+              targetingMethod: experienceId ? 'REAL_EXPERIENCE' : 'COMPANY_FALLBACK'
             });
           } else {
-            // Real Experience ID found
+            // Real Experience ID found in Challenge
             experienceId = challenge.experienceId;
-            console.log('✅ Found Experience ID for Challenge:', {
+            console.log('✅ Found valid Experience ID in Challenge:', {
               challengeId,
               challengeTitle: challenge.title,
               experienceId,
@@ -94,10 +168,17 @@ export async function POST(request: NextRequest) {
           }
         } else {
           console.warn('⚠️ Challenge not found or missing Experience ID:', challengeId);
+          // Use user's real Experience ID as fallback
+          experienceId = userRealExperienceId;
         }
       } catch (error) {
         console.error('❌ Error looking up Challenge Experience ID:', error);
+        // Use user's real Experience ID as fallback
+        experienceId = userRealExperienceId;
       }
+    } else {
+      // No Challenge ID provided, use user's real Experience ID
+      experienceId = userRealExperienceId;
     }
     
     console.log('🔍 ENHANCED Company ID Detection:', {
@@ -196,13 +277,22 @@ export async function POST(request: NextRequest) {
         userIds: [whopUserId]
       });
     } else {
-      // Company Team targeting for Experience Members 
+      // 🎯 EXPERIENCE MEMBER ACCESS: User is Challenge participant
+      // Challenge stores Company ID as experienceId, but user has Experience Member access
+      // Need to use Experience ID targeting even though it's stored as Company ID
+      
+      console.log('🎯 Experience Member Targeting: Challenge participant needs Experience access');
+      console.log('📝 Challenge stores Company ID as experienceId - converting to Experience targeting');
+      
+      // Try Experience ID targeting using the Company ID (stored as experienceId in Challenge)
       notificationResult = await whopAppSdk.notifications.sendPushNotification({
-        companyTeamId: companyId,
+        experienceId: companyId,  // ← Use Company ID as Experience ID (how Challenge stores it)
         title: title || `🏆 ${challengeTitle || 'Challenge'} Update`,
         content: message,
         userIds: [whopUserId]
       });
+      
+      targetingStrategy = 'EXPERIENCE_MEMBER_VIA_COMPANY_ID';
     }
 
     console.log('✅ Whop Push Notification sent successfully:', {
