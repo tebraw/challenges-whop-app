@@ -265,9 +265,17 @@ export async function GET(request: NextRequest) {
             enrollments: true,
             winners: true
           }
+        },
+        // 🔧 FIX: Include enrollments with proofs count for check-ins calculation
+        enrollments: {
+          include: {
+            _count: {
+              select: {
+                proofs: true  // Count proofs per enrollment (= check-ins)
+              }
+            }
+          }
         }
-        // � REMOVED: enrollments.checkins to prevent 5MB response
-        // Note: Individual challenge details load this data separately
       },
       orderBy: {
         createdAt: 'desc'
@@ -279,6 +287,11 @@ export async function GET(request: NextRequest) {
     return createCorsResponse({
       success: true,
       challenges: challenges.map((challenge: any) => {
+        // 🔧 FIX: Calculate total check-ins across all enrollments
+        const totalCheckIns = challenge.enrollments?.reduce((sum: number, enrollment: any) => {
+          return sum + (enrollment._count?.proofs || 0);
+        }, 0) || 0;
+        
         return {
           id: challenge.id,
           title: challenge.title,
@@ -292,7 +305,8 @@ export async function GET(request: NextRequest) {
           endAt: challenge.endAt,        // Keep for backwards compatibility
           enrollmentCount: challenge._count.enrollments,
           winnersCount: challenge._count.winners,
-          streakCount: 0, // Will be calculated in individual challenge view
+          streakCount: totalCheckIns, // 🔧 FIX: Real check-ins count instead of 0
+          totalCheckIns: totalCheckIns, // 🔧 FIX: Also provide as alternative field name
           isActive: new Date() >= challenge.startAt && new Date() <= challenge.endAt,
           createdAt: challenge.createdAt,
           rules: challenge.rules  // 🔧 FIX: Include rules for monetization status
