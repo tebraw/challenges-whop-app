@@ -417,6 +417,32 @@ function WinCard({ win, onMarkAsRead }: { win: Win; onMarkAsRead: (winIds: strin
     });
   };
 
+  // Function to make links clickable in win messages
+  const renderMessageWithLinks = (message: string) => {
+    // Regular expression to detect URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = message.split(urlRegex);
+    
+    return parts.map((part, index) => {
+      if (urlRegex.test(part)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline break-all inline-flex items-center gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+          </a>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
+
   return (
     <div 
       className={`p-4 rounded-lg border transition-colors ${
@@ -444,7 +470,9 @@ function WinCard({ win, onMarkAsRead }: { win: Win; onMarkAsRead: (winIds: strin
           </div>
           
           <h4 className="font-semibold text-sm mb-1">{win.title}</h4>
-          <p className="text-sm text-gray-300 mb-2">{win.message}</p>
+          <div className="text-sm text-gray-300 mb-2">
+            {renderMessageWithLinks(win.message)}
+          </div>
           
           {/* Metadata display */}
           {win.metadata && (
