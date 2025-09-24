@@ -286,13 +286,16 @@ export async function GET(request: NextRequest) {
           imageUrl: challenge.imageUrl,
           category: challenge.whopCategoryName || 'general',
           difficulty: (challenge.rules as any)?.difficulty || 'BEGINNER',
-          startAt: challenge.startAt,
-          endAt: challenge.endAt,
+          startDate: challenge.startAt,  // 🔧 FIX: Map to startDate (expected by frontend)
+          endDate: challenge.endAt,      // 🔧 FIX: Map to endDate (expected by frontend)
+          startAt: challenge.startAt,    // Keep for backwards compatibility
+          endAt: challenge.endAt,        // Keep for backwards compatibility
           enrollmentCount: challenge._count.enrollments,
           winnersCount: challenge._count.winners,
           streakCount: 0, // Will be calculated in individual challenge view
           isActive: new Date() >= challenge.startAt && new Date() <= challenge.endAt,
-          createdAt: challenge.createdAt
+          createdAt: challenge.createdAt,
+          rules: challenge.rules  // 🔧 FIX: Include rules for monetization status
         };
       }),
       context: {
