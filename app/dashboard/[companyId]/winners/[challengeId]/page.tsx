@@ -199,7 +199,8 @@ export default function SelectWinnersPage({
         .map(w => ({
           challengeId,
           participantId: w.participant!.id,
-          rank: w.rank
+          rank: w.rank,
+          customMessage: w.customMessage // ✅ FIX: Include custom message from admin
         }));
 
       const response = await fetch(`/api/admin/challenges/${challengeId}/winners`, {

@@ -115,7 +115,7 @@ export async function POST(
           throw new Error(`User ${winner.participantId} is not enrolled in this challenge`);
         }
 
-        return prisma.challengeWinner.create({
+        const createdWinner = await prisma.challengeWinner.create({
           data: {
             challengeId: challengeId,
             userId: winner.participantId,
@@ -132,6 +132,12 @@ export async function POST(
             },
           },
         });
+
+        // ✅ FIX: Attach custom message to created winner for notification use
+        return {
+          ...createdWinner,
+          customMessage: winner.customMessage
+        };
       })
     );
 
@@ -145,13 +151,16 @@ export async function POST(
       // Send internal notification to each winner AND create UserWin entry
       for (const winner of createdWinners) {
         try {
+          // ✅ FIX: Use custom message from admin instead of hardcoded message
+          const customMessage = winner.customMessage || `🎉 Congratulations! You won ${winner.place === 1 ? '1st Place' : winner.place === 2 ? '2nd Place' : winner.place === 3 ? '3rd Place' : `${winner.place}${winner.place > 3 ? 'th' : ''} Place`} in this challenge!`;
+          
           // 1. Create internal notification with WIN-compatible type
           await sendInternalNotification({
             userId: winner.user.id,
             challengeId: challengeId,
             type: 'winner_announcement', // ✅ This type is read by Wins API
             title: `🏆 ${challenge.title} - Winner Announcement`,
-            message: `🎉 Congratulations! You won ${winner.place === 1 ? '1st Place' : winner.place === 2 ? '2nd Place' : winner.place === 3 ? '3rd Place' : `${winner.place}${winner.place > 3 ? 'th' : ''} Place`} in this challenge!`,
+            message: customMessage, // ✅ FIX: Use admin's custom message instead of hardcoded
             metadata: {
               place: winner.place,
               challengeTitle: challenge.title,
