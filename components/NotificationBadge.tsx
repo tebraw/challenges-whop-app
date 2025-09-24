@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bell, X, Check, Trophy, Gift, Copy, CheckCircle } from 'lucide-react';
 
 interface Notification {
@@ -28,6 +28,7 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Load notifications
   const loadNotifications = async () => {
@@ -161,6 +162,20 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
     return () => clearInterval(interval);
   }, [userId]);
 
+  // Handle click outside to close panel
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        setShowPanel(false);
+      }
+    };
+
+    if (showPanel) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showPanel]);
+
   return (
     <div className={`relative ${className}`}>
       {/* Notification Bell Button */}
@@ -181,10 +196,13 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
 
       {/* Notification Panel */}
       {showPanel && (
-        <div className="absolute right-0 top-full mt-2 w-96 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
+        <div 
+          ref={panelRef}
+          className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 sm:w-96 sm:right-0 max-sm:-right-2 max-sm:w-[calc(100vw-3rem)]"
+        >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-700">
-            <h3 className="font-semibold text-white">Notifications</h3>
+          <div className="flex items-center justify-between p-4 sm:p-4 border-b border-gray-700">
+            <h3 className="font-semibold text-white text-lg sm:text-base">Notifications</h3>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <button
@@ -222,7 +240,7 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
                   <div
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
-                    className={`p-4 hover:bg-gray-750 transition-colors cursor-pointer ${
+                    className={`p-3 sm:p-4 hover:bg-gray-750 transition-colors cursor-pointer ${
                       !notification.isRead ? 'bg-blue-900/20 border-l-4 border-l-blue-500' : ''
                     }`}
                   >
@@ -284,13 +302,20 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
 
       {/* Notification Detail Modal */}
       {showDetailModal && selectedNotification && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-2xl max-w-lg w-full mx-4 shadow-2xl">
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowDetailModal(false);
+            }
+          }}
+        >
+          <div className="bg-gray-800 rounded-2xl max-w-lg w-full mx-auto shadow-2xl max-h-[90vh] overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-700">
               <div className="flex items-center gap-3">
                 {getNotificationIcon(selectedNotification.type)}
-                <h2 className="text-xl font-bold text-white">Notification Details</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-white">Notification Details</h2>
               </div>
               <button
                 onClick={() => setShowDetailModal(false)}
@@ -301,7 +326,7 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
             </div>
 
             {/* Modal Content */}
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <h3 className="text-lg font-semibold text-white mb-4">
                 {selectedNotification.title}
               </h3>
