@@ -162,24 +162,62 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
     return () => clearInterval(interval);
   }, [userId]);
 
-  // Handle click outside to close panel
+  // Handle click outside to close panel - Enhanced for iFrame compatibility
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+      console.log('Click detected outside check', {
+        panelExists: !!panelRef.current,
+        target: event.target,
+        showPanel
+      });
+      
+      if (panelRef.current && event.target && !panelRef.current.contains(event.target as Node)) {
         console.log('Click outside panel detected, closing panel');
         setShowPanel(false);
       }
     };
 
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showPanel) {
+        console.log('Escape key pressed, closing panel');
+        setShowPanel(false);
+      }
+    };
+
     if (showPanel) {
-      console.log('Adding click outside listener for panel');
-      document.addEventListener('mousedown', handleClickOutside);
+      console.log('Adding click outside and escape listeners for panel');
+      // Use both document and window for better iFrame compatibility
+      document.addEventListener('mousedown', handleClickOutside, true);
+      document.addEventListener('keydown', handleEscapeKey);
+      window.addEventListener('mousedown', handleClickOutside, true);
+      
       return () => {
-        console.log('Removing click outside listener for panel');
-        document.removeEventListener('mousedown', handleClickOutside);
+        console.log('Removing click outside and escape listeners for panel');
+        document.removeEventListener('mousedown', handleClickOutside, true);
+        document.removeEventListener('keydown', handleEscapeKey);
+        window.removeEventListener('mousedown', handleClickOutside, true);
       };
     }
   }, [showPanel]);
+
+  // Handle escape key and click outside for modal
+  useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showDetailModal) {
+        console.log('Escape key pressed, closing modal');
+        setShowDetailModal(false);
+      }
+    };
+
+    if (showDetailModal) {
+      console.log('Adding escape key listener for modal');
+      document.addEventListener('keydown', handleEscapeKey);
+      return () => {
+        console.log('Removing escape key listener for modal');
+        document.removeEventListener('keydown', handleEscapeKey);
+      };
+    }
+  }, [showDetailModal]);
 
   return (
     <div className={`relative ${className}`}>
@@ -305,10 +343,32 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
         </div>
       )}
 
-      {/* Notification Detail Modal */}
+      {/* Notification Detail Modal - Enhanced iFrame compatibility */}
       {showDetailModal && selectedNotification && (
         <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6"
+          className="fixed z-[9999] bg-black/50 backdrop-blur-sm"
+          style={{ 
+            position: 'fixed',
+            top: '0px',
+            left: '0px',
+            width: '100vw',
+            height: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+          onMouseDown={(e) => {
+            console.log('Modal backdrop mousedown', { 
+              target: e.target, 
+              currentTarget: e.currentTarget,
+              isBackdrop: e.target === e.currentTarget 
+            });
+            if (e.target === e.currentTarget) {
+              console.log('Closing modal due to backdrop mousedown');
+              setShowDetailModal(false);
+            }
+          }}
           onClick={(e) => {
             console.log('Modal backdrop clicked', e.target, e.currentTarget);
             if (e.target === e.currentTarget) {
@@ -317,7 +377,16 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
             }
           }}
         >
-          <div className="bg-gray-800 rounded-2xl max-w-lg w-full mx-auto shadow-2xl max-h-[90vh] overflow-y-auto transform transition-all duration-200 scale-100 opacity-100">
+          <div 
+            className="bg-gray-800 rounded-2xl shadow-2xl relative"
+            style={{
+              maxWidth: '32rem',
+              width: '100%',
+              maxHeight: 'calc(100vh - 2rem)',
+              overflowY: 'auto',
+              transform: 'translate(0, 0)'
+            }}
+          >
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-700">
               <div className="flex items-center gap-3">
