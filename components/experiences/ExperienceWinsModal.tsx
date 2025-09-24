@@ -229,22 +229,30 @@ export default function ExperienceWinsModal({
 
   // Function to make links clickable in notification messages
   const renderMessageWithLinks = (message: string) => {
-    // Regular expression to detect URLs
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    if (!message) return null;
+    
+    // Enhanced regex to detect more URL formats
+    const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/g;
     const parts = message.split(urlRegex);
     
     return parts.map((part, index) => {
-      if (urlRegex.test(part)) {
+      // Test if this part is a URL
+      if (part.match(urlRegex)) {
+        // Clean URL - remove trailing punctuation that might not be part of URL
+        const cleanUrl = part.replace(/[.,;!?]+$/, '');
         return (
           <a
             key={index}
-            href={part}
+            href={cleanUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 underline break-all inline-flex items-center gap-1"
-            onClick={(e) => e.stopPropagation()}
+            className="text-blue-400 hover:text-blue-300 underline break-all inline-flex items-center gap-1 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('🔗 Notification link clicked:', cleanUrl);
+            }}
           >
-            {part}
+            {cleanUrl}
             <ExternalLink className="w-3 h-3 flex-shrink-0" />
           </a>
         );
@@ -339,6 +347,12 @@ export default function ExperienceWinsModal({
                           <div className="text-gray-300 mb-3 leading-relaxed">
                             {renderMessageWithLinks(notification.message)}
                           </div>
+                          {/* DEBUG: Show raw message content */}
+                          {process.env.NODE_ENV === 'development' && (
+                            <div className="text-xs text-gray-500 mb-2 p-2 bg-gray-800 rounded border">
+                              <strong>DEBUG Notification Message:</strong> "{notification.message}"
+                            </div>
+                          )}
                           {notification.challengeTitle && (
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">
@@ -419,22 +433,30 @@ function WinCard({ win, onMarkAsRead }: { win: Win; onMarkAsRead: (winIds: strin
 
   // Function to make links clickable in win messages
   const renderMessageWithLinks = (message: string) => {
-    // Regular expression to detect URLs
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    if (!message) return null;
+    
+    // Enhanced regex to detect more URL formats
+    const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/g;
     const parts = message.split(urlRegex);
     
     return parts.map((part, index) => {
-      if (urlRegex.test(part)) {
+      // Test if this part is a URL
+      if (part.match(urlRegex)) {
+        // Clean URL - remove trailing punctuation that might not be part of URL
+        const cleanUrl = part.replace(/[.,;!?]+$/, '');
         return (
           <a
             key={index}
-            href={part}
+            href={cleanUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 underline break-all inline-flex items-center gap-1"
-            onClick={(e) => e.stopPropagation()}
+            className="text-blue-400 hover:text-blue-300 underline break-all inline-flex items-center gap-1 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('🔗 Link clicked:', cleanUrl);
+            }}
           >
-            {part}
+            {cleanUrl}
             <ExternalLink className="w-3 h-3 flex-shrink-0" />
           </a>
         );
@@ -473,6 +495,12 @@ function WinCard({ win, onMarkAsRead }: { win: Win; onMarkAsRead: (winIds: strin
           <div className="text-sm text-gray-300 mb-2">
             {renderMessageWithLinks(win.message)}
           </div>
+          {/* DEBUG: Show raw message content */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="text-xs text-gray-500 mb-2 p-1 bg-gray-800 rounded border">
+              <strong>DEBUG Win Message:</strong> "{win.message}"
+            </div>
+          )}
           
           {/* Metadata display */}
           {win.metadata && (
