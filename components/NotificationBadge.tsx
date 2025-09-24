@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, X, Check, Trophy, Gift } from 'lucide-react';
+import { Bell, X, Check, Trophy, Gift, Copy, CheckCircle } from 'lucide-react';
 
 interface Notification {
   id: string;
@@ -25,6 +25,9 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
   const [unreadCount, setUnreadCount] = useState(0);
   const [showPanel, setShowPanel] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // Load notifications
   const loadNotifications = async () => {
@@ -120,6 +123,33 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
     return `${diffDays}d ago`;
   };
 
+  // Handle notification click
+  const handleNotificationClick = (notification: Notification) => {
+    setSelectedNotification(notification);
+    setShowDetailModal(true);
+    setShowPanel(false);
+    
+    // Mark as read if not already read
+    if (!notification.isRead) {
+      markAsRead(notification.id);
+    }
+  };
+
+  // Copy notification text
+  const copyNotificationText = async () => {
+    if (!selectedNotification) return;
+    
+    const textToCopy = `${selectedNotification.title}\n\n${selectedNotification.message}`;
+    
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text:', err);
+    }
+  };
+
   // Load notifications on mount
   useEffect(() => {
     loadNotifications();
@@ -191,7 +221,8 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-4 hover:bg-gray-750 transition-colors ${
+                    onClick={() => handleNotificationClick(notification)}
+                    className={`p-4 hover:bg-gray-750 transition-colors cursor-pointer ${
                       !notification.isRead ? 'bg-blue-900/20 border-l-4 border-l-blue-500' : ''
                     }`}
                   >
@@ -206,7 +237,7 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
                         <h4 className="font-medium text-white text-sm mb-1">
                           {notification.title}
                         </h4>
-                        <p className="text-gray-300 text-sm mb-2 leading-relaxed">
+                        <p className="text-gray-300 text-sm mb-2 leading-relaxed line-clamp-2">
                           {notification.message}
                         </p>
                         
@@ -224,13 +255,9 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
                           </span>
                           
                           {!notification.isRead && (
-                            <button
-                              onClick={() => markAsRead(notification.id)}
-                              className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                            >
-                              <Check className="h-3 w-3" />
-                              Mark read
-                            </button>
+                            <span className="text-xs bg-blue-600 px-2 py-1 rounded-full">
+                              New
+                            </span>
                           )}
                         </div>
                       </div>
@@ -252,6 +279,72 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Notification Detail Modal */}
+      {showDetailModal && selectedNotification && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl max-w-lg w-full mx-4 shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+              <div className="flex items-center gap-3">
+                {getNotificationIcon(selectedNotification.type)}
+                <h2 className="text-xl font-bold text-white">Notification Details</h2>
+              </div>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="text-gray-400 hover:text-white transition-colors p-1"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">
+                {selectedNotification.title}
+              </h3>
+              
+              <div className="bg-gray-900 rounded-lg p-4 mb-4">
+                <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">
+                  {selectedNotification.message}
+                </p>
+              </div>
+
+              {selectedNotification.challengeTitle && (
+                <div className="mb-4">
+                  <p className="text-sm text-gray-400">
+                    <span className="font-medium">Challenge:</span> {selectedNotification.challengeTitle}
+                  </p>
+                </div>
+              )}
+
+              <div className="mb-6">
+                <p className="text-sm text-gray-500">
+                  {formatTimeAgo(selectedNotification.createdAt)}
+                </p>
+              </div>
+
+              {/* Copy Button */}
+              <button
+                onClick={copyNotificationText}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                {copySuccess ? (
+                  <>
+                    <CheckCircle className="h-5 w-5" />
+                    Copied to clipboard!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-5 w-5" />
+                    Copy notification text
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
