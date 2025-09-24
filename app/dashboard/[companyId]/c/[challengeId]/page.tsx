@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { ArrowLeft, Users, Calendar, Trophy, Settings, Eye, BarChart3, Flame, Camera, Zap, Target, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Users, Calendar, Trophy, Settings, Eye, BarChart3, Flame, Camera, Zap, Target, Pencil, Trash2, Bell, Send } from "lucide-react";
 import EditChallengeModal from "@/components/admin/EditChallengeModal";
 // import UnifiedMarketingMonetization from "@/components/admin/UnifiedMarketingMonetization";
 
@@ -96,6 +96,52 @@ export default function AdminChallengeDetailPage({
   const [companyId, setCompanyId] = useState<string>("");
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [notifyModalOpen, setNotifyModalOpen] = useState(false);
+  const [notificationTitle, setNotificationTitle] = useState("");
+  const [notificationMessage, setNotificationMessage] = useState("");
+  const [sendingNotification, setSendingNotification] = useState(false);
+
+  // Send notification to all participants
+  const sendNotificationToParticipants = async () => {
+    if (!notificationTitle.trim() || !notificationMessage.trim()) {
+      alert("Please fill in both title and message");
+      return;
+    }
+
+    setSendingNotification(true);
+    try {
+      const response = await fetch(`/api/admin/challenges/${challengeId}/notify-participants`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: notificationTitle.trim(),
+          message: notificationMessage.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send notifications');
+      }
+
+      const result = await response.json();
+      
+      // Close modal and reset form
+      setNotifyModalOpen(false);
+      setNotificationTitle("");
+      setNotificationMessage("");
+      
+      alert(`✅ Successfully sent notifications to ${result.count} participants!`);
+      
+    } catch (error) {
+      console.error('Error sending notifications:', error);
+      alert(`❌ Error sending notifications: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSendingNotification(false);
+    }
+  };
 
   useEffect(() => {
     async function loadChallenge() {
@@ -275,6 +321,13 @@ export default function AdminChallengeDetailPage({
             }`}>
               {challenge.status}
             </span>
+            <Button
+              onClick={() => setNotifyModalOpen(true)}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <Bell className="h-4 w-4 mr-2" />
+              Notify Participants
+            </Button>
             <Button
               onClick={() => setEditModalOpen(true)}
               className="bg-blue-600 hover:bg-blue-700"
@@ -483,6 +536,95 @@ export default function AdminChallengeDetailPage({
                     {deleting ? 'Deleting...' : 'Delete Challenge'}
                   </Button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notify Participants Modal */}
+        {notifyModalOpen && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-lg border border-gray-700">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                  <Bell className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    Notify All Participants
+                  </h3>
+                  <p className="text-gray-400 text-sm">
+                    Send motivation message to {challenge?.participants || 0} participants
+                  </p>
+                </div>
+              </div>
+              
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Notification Title
+                  </label>
+                  <input
+                    type="text"
+                    value={notificationTitle}
+                    onChange={(e) => setNotificationTitle(e.target.value)}
+                    placeholder="e.g., Great Progress Everyone! 🎉"
+                    className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
+                    maxLength={100}
+                  />
+                  <div className="text-xs text-gray-500 mt-1">
+                    {notificationTitle.length}/100 characters
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Message
+                  </label>
+                  <textarea
+                    value={notificationMessage}
+                    onChange={(e) => setNotificationMessage(e.target.value)}
+                    placeholder="Keep up the amazing work! As a special reward, use promo code CHAMP25 for 25% off your next purchase. You're doing great! 💪"
+                    rows={4}
+                    className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none resize-none"
+                    maxLength={500}
+                  />
+                  <div className="text-xs text-gray-500 mt-1">
+                    {notificationMessage.length}/500 characters
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    setNotifyModalOpen(false);
+                    setNotificationTitle("");
+                    setNotificationMessage("");
+                  }}
+                  variant="outline"
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                  disabled={sendingNotification}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={sendNotificationToParticipants}
+                  disabled={sendingNotification || !notificationTitle.trim() || !notificationMessage.trim()}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
+                >
+                  {sendingNotification ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      Send to All
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </div>

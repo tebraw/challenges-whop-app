@@ -8,6 +8,7 @@ import ProofForm from '@/components/user/ProofForm';
 import ChallengeOffers from '@/components/experiences/ChallengeOffers';
 import ChallengeTermsModal from '@/components/experiences/ChallengeTermsModal';
 import NotificationBadge from '@/components/NotificationBadge';
+import WinsCard from '@/components/experiences/WinsCard';
 
 interface PageProps {
   params: Promise<{ experienceId: string; challengeId: string }>;
@@ -543,6 +544,13 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
               </div>
             </div>
           )}
+
+          {/* Challenge Winners Section - Show winners and achievements */}
+          <WinsCard 
+            challengeId={challengeId}
+            experienceId={experienceId}
+            userId={user.id}
+          />
 
           {/* Challenge Offers Section - Show special offers based on user progress */}
           {isParticipating && (
