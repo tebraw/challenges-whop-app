@@ -200,7 +200,7 @@ export default async function ExperiencePage({ params }: Props) {
               </div>
               <div className="text-gray-300 font-medium">Active Challenges</div>
             </div>
-            <WinsButton winsCount={winsCount} />
+            <WinsButton winsCount={winsCount} experienceId={experienceId} />
             <div className="group bg-gradient-to-br from-purple-500/10 to-purple-600/10 border border-purple-500/20 rounded-2xl p-6 text-center hover:border-purple-400/40 transition-all duration-300">
               <div className="text-4xl mb-3">🔥</div>
               <div className="text-3xl font-bold text-purple-400 mb-2">0</div>
