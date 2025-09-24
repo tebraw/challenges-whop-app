@@ -80,21 +80,28 @@ export default function ExperienceWinsModal({
   const fetchWins = async () => {
     setLoading(true);
     try {
-      const url = challengeId 
-        ? `/api/experiences/${experienceId}/wins?challengeId=${challengeId}`
-        : `/api/experiences/${experienceId}/wins`;
-        
-      const response = await fetch(url);
+      // SAME API CALL AS NOTIFICATION BELL - just different display
+      const response = await fetch(`/api/experiences/${experienceId}/wins`);
       const data = await response.json();
 
       if (data.success) {
-        setWins(data.wins || []);
+        // All notifications from bell become our data
         setNotifications(data.notifications || []);
-        setWinsByChallenge(data.winsByChallenge || []);
-        setTotalWins(data.totalWins || 0);
-        setTotalNotifications(data.totalNotifications || 0);
-        setUnreadWins(data.unreadWins || 0);
-        setUnreadNotifications(data.unreadNotifications || 0);
+        setTotalNotifications(data.totalCount || 0);
+        setUnreadNotifications(data.unreadCount || 0);
+        
+        // Group by challenge for display
+        const grouped = (data.notifications || []).reduce((acc: any, notification: any) => {
+          const challengeTitle = notification.challenge?.title || 'Allgemeine Benachrichtigungen';
+          if (!acc[challengeTitle]) {
+            acc[challengeTitle] = { wins: [], notifications: [] };
+          }
+          acc[challengeTitle].notifications.push(notification);
+          return acc;
+        }, {});
+        
+        setWinsByChallenge(grouped);
+        console.log('🎉 Loaded same data as notification bell:', data.notifications?.length, 'items');
       } else {
         console.error('Failed to fetch wins:', data.error);
       }
@@ -254,213 +261,89 @@ export default function ExperienceWinsModal({
               {/* Summary Stats & Tabs */}
               <div className="mt-4">
                 <div className="flex gap-4 text-sm text-gray-400 mb-3">
-                  <span>🏆 Gewinne: {totalWins} {unreadWins > 0 && `(${unreadWins} neu)`}</span>
                   <span>🔔 Benachrichtigungen: {totalNotifications} {unreadNotifications > 0 && `(${unreadNotifications} neu)`}</span>
-                </div>
-                
-                {/* Tab Navigation */}
-                <div className="flex space-x-1 bg-gray-800 p-1 rounded-lg">
-                  <button
-                    onClick={() => setActiveTab('all')}
-                    className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                      activeTab === 'all' 
-                        ? 'bg-blue-600 text-white' 
-                        : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                    }`}
-                  >
-                    Alle ({totalWins + totalNotifications})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('wins')}
-                    className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                      activeTab === 'wins' 
-                        ? 'bg-yellow-600 text-white' 
-                        : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                    }`}
-                  >
-                    🏆 Gewinne ({totalWins})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('notifications')}
-                    className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                      activeTab === 'notifications' 
-                        ? 'bg-blue-600 text-white' 
-                        : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                    }`}
-                  >
-                    🔔 Benachrichtigungen ({totalNotifications})
-                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Content */}
+            {/* Content - Same data as notification bell, just prettier display */}
             <div className="p-4 max-h-96 overflow-y-auto">
               {loading ? (
                 <div className="flex justify-center items-center h-32">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                 </div>
-              ) : (
-                <>
-                  {/* Wins Section */}
-                  {(activeTab === 'all' || activeTab === 'wins') && (
-                    <>
-                      {Object.keys(winsByChallenge).length > 0 ? (
-                        Object.entries(winsByChallenge).map(([challenge, data]) => (
-                          <div key={challenge} className="mb-6">
-                            <div className="flex items-center gap-2 mb-3">
-                              <Trophy className="w-4 h-4 text-yellow-400" />
-                              <h3 className="text-lg font-semibold text-yellow-400">
-                                {challenge} ({data.wins.length} Gewinne)
-                              </h3>
-                            </div>
-                            <div className="space-y-2">
-                              {data.wins.map((win) => (
-                                <div
-                                  key={win.id}
-                                  className={`p-3 rounded-lg border transition-all duration-200 ${
-                                    win.isRead
-                                      ? 'bg-gray-800 border-gray-700'
-                                      : 'bg-blue-900/30 border-blue-600 shadow-md'
-                                  }`}
-                                >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-2">
-                                        <Gift className="w-4 h-4 text-yellow-400" />
-                                        <span className="text-sm font-medium">
-                                          {formatWinType(win.type)}
-                                        </span>
-                                        {!win.isRead && (
-                                          <span className="bg-blue-600 text-xs px-2 py-0.5 rounded-full">
-                                            NEU
-                                          </span>
-                                        )}
-                                      </div>
-                                      <p className="text-gray-300 text-sm mb-2">
-                                        {win.description || 'Glückwunsch zu deinem Gewinn!'}
-                                      </p>
-                                      <p className="text-xs text-gray-500">
-                                        {formatTimeAgo(new Date(win.createdAt))}
-                                      </p>
-                                    </div>
-                                    {!win.isRead && (
-                                      <button
-                                        onClick={() => markWinsAsRead(win.id)}
-                                        className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded transition-colors"
-                                      >
-                                        Als gelesen markieren
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+              ) : notifications.length > 0 ? (
+                <div className="space-y-3">
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-4 rounded-lg border transition-all duration-200 ${
+                        notification.isRead
+                          ? 'bg-gray-800 border-gray-700'
+                          : 'bg-blue-900/30 border-blue-600 shadow-lg'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            {notification.type === 'winner_announcement' ? (
+                              <Trophy className="w-5 h-5 text-yellow-400" />
+                            ) : notification.type === 'challenge_update' ? (
+                              <RefreshCw className="w-5 h-5 text-blue-400" />
+                            ) : (
+                              <Bell className="w-5 h-5 text-gray-400" />
+                            )}
+                            <span className="text-sm font-medium text-gray-300">
+                              {notification.type === 'winner_announcement' 
+                                ? '🏆 Gewinner Ankündigung'
+                                : notification.type === 'challenge_update'
+                                ? '📋 Challenge Update'
+                                : '🔔 Benachrichtigung'
+                              }
+                            </span>
+                            {!notification.isRead && (
+                              <span className="bg-blue-600 text-xs px-2 py-1 rounded-full font-medium">
+                                NEU
+                              </span>
+                            )}
                           </div>
-                        ))
-                      ) : (
-                        activeTab === 'wins' && (
-                          <div className="text-center py-8 text-gray-400">
-                            <Trophy className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                            <p>Noch keine Gewinne vorhanden</p>
-                          </div>
-                        )
-                      )}
-                    </>
-                  )}
-
-                  {/* Notifications Section */}
-                  {(activeTab === 'all' || activeTab === 'notifications') && (
-                    <>
-                      {notifications.length > 0 ? (
-                        <div className="mb-6">
-                          {activeTab === 'all' && Object.keys(winsByChallenge).length > 0 && (
-                            <div className="flex items-center gap-2 mb-3 mt-6 pt-6 border-t border-gray-700">
-                              <Bell className="w-4 h-4 text-blue-400" />
-                              <h3 className="text-lg font-semibold text-blue-400">
-                                Benachrichtigungen ({notifications.length})
-                              </h3>
+                          <h4 className="font-semibold text-white mb-2 text-lg">
+                            {notification.title}
+                          </h4>
+                          <p className="text-gray-300 mb-3 leading-relaxed">
+                            {notification.message}
+                          </p>
+                          {notification.challengeTitle && (
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">
+                                {notification.challengeTitle}
+                              </span>
                             </div>
                           )}
-                          <div className="space-y-2">
-                            {notifications.map((notification) => (
-                              <div
-                                key={notification.id}
-                                className={`p-3 rounded-lg border transition-all duration-200 ${
-                                  notification.isRead
-                                    ? 'bg-gray-800 border-gray-700'
-                                    : 'bg-blue-900/30 border-blue-600 shadow-md'
-                                }`}
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      {notification.type === 'winner_announcement' ? (
-                                        <Trophy className="w-4 h-4 text-yellow-400" />
-                                      ) : notification.type === 'challenge_update' ? (
-                                        <RefreshCw className="w-4 h-4 text-blue-400" />
-                                      ) : (
-                                        <Bell className="w-4 h-4 text-gray-400" />
-                                      )}
-                                      <span className="text-sm font-medium">
-                                        {notification.type === 'winner_announcement' 
-                                          ? 'Gewinner Ankündigung'
-                                          : notification.type === 'challenge_update'
-                                          ? 'Challenge Update'
-                                          : 'Allgemeine Benachrichtigung'
-                                        }
-                                      </span>
-                                      {!notification.isRead && (
-                                        <span className="bg-blue-600 text-xs px-2 py-0.5 rounded-full">
-                                          NEU
-                                        </span>
-                                      )}
-                                    </div>
-                                    <h4 className="font-medium text-white mb-1">
-                                      {notification.title}
-                                    </h4>
-                                    <p className="text-gray-300 text-sm mb-2">
-                                      {notification.message}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      {formatTimeAgo(new Date(notification.createdAt))}
-                                    </p>
-                                  </div>
-                                  {!notification.isRead && (
-                                    <button
-                                      onClick={() => markNotificationAsRead(notification.id)}
-                                      className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded transition-colors"
-                                    >
-                                      Als gelesen markieren
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                          <p className="text-xs text-gray-500">
+                            {formatTimeAgo(new Date(notification.createdAt))}
+                          </p>
                         </div>
-                      ) : (
-                        activeTab === 'notifications' && (
-                          <div className="text-center py-8 text-gray-400">
-                            <Bell className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                            <p>Keine Benachrichtigungen vorhanden</p>
-                          </div>
-                        )
-                      )}
-                    </>
-                  )}
-
-                  {/* No content at all */}
-                  {Object.keys(winsByChallenge).length === 0 && notifications.length === 0 && (
-                    <div className="text-center py-8 text-gray-400">
-                      <div className="flex justify-center gap-2 mb-3">
-                        <Trophy className="w-8 h-8 opacity-50" />
-                        <Bell className="w-8 h-8 opacity-50" />
+                        {!notification.isRead && (
+                          <button
+                            onClick={() => markNotificationAsRead(notification.id)}
+                            className="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded transition-colors flex-shrink-0"
+                          >
+                            Als gelesen markieren
+                          </button>
+                        )}
                       </div>
-                      <p>Noch keine Gewinne oder Benachrichtigungen</p>
                     </div>
-                  )}
-                </>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-400">
+                  <Bell className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">Keine Benachrichtigungen</h3>
+                  <p className="text-sm">
+                    Sobald du an Challenges teilnimmst oder Erfolge erzielst, erscheinen hier deine Benachrichtigungen.
+                  </p>
+                </div>
               )}
             </div>
           </div>
