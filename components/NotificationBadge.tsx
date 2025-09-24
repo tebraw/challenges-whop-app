@@ -116,10 +116,28 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
             href={cleanUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 underline break-all inline-flex items-center gap-1 cursor-pointer"
+            className="text-blue-400 hover:text-blue-300 underline break-all inline-flex items-center gap-1 cursor-pointer touch-manipulation"
+            style={{ WebkitTapHighlightColor: 'rgba(59, 130, 246, 0.3)' }}
+            onTouchStart={(e) => {
+              // Prevent modal from interfering on mobile
+              e.stopPropagation();
+            }}
             onClick={(e) => {
               e.stopPropagation();
               console.log('🔗 Notification link clicked:', cleanUrl);
+              
+              // Mobile fallback: Force navigation if default doesn't work
+              if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                // Small delay to ensure click is registered
+                setTimeout(() => {
+                  try {
+                    window.open(cleanUrl, '_blank', 'noopener,noreferrer');
+                  } catch (err) {
+                    console.warn('🔗 Mobile fallback failed, trying location:', err);
+                    window.location.href = cleanUrl;
+                  }
+                }, 50);
+              }
             }}
           >
             {cleanUrl}
