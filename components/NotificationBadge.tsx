@@ -166,13 +166,18 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        console.log('Click outside panel detected, closing panel');
         setShowPanel(false);
       }
     };
 
     if (showPanel) {
+      console.log('Adding click outside listener for panel');
       document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      return () => {
+        console.log('Removing click outside listener for panel');
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
     }
   }, [showPanel]);
 
@@ -305,12 +310,14 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
         <div 
           className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6"
           onClick={(e) => {
+            console.log('Modal backdrop clicked', e.target, e.currentTarget);
             if (e.target === e.currentTarget) {
+              console.log('Closing modal due to backdrop click');
               setShowDetailModal(false);
             }
           }}
         >
-          <div className="bg-gray-800 rounded-2xl max-w-lg w-full mx-auto shadow-2xl max-h-[90vh] overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-200">
+          <div className="bg-gray-800 rounded-2xl max-w-lg w-full mx-auto shadow-2xl max-h-[90vh] overflow-y-auto transform transition-all duration-200 scale-100 opacity-100">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-700">
               <div className="flex items-center gap-3">
