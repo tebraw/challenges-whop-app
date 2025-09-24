@@ -227,6 +227,32 @@ export default function ExperienceWinsModal({
     });
   };
 
+  // Function to make links clickable in notification messages
+  const renderMessageWithLinks = (message: string) => {
+    // Regular expression to detect URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = message.split(urlRegex);
+    
+    return parts.map((part, index) => {
+      if (urlRegex.test(part)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline break-all inline-flex items-center gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+          </a>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
+
   return (
     <>
       {isOpen && (
@@ -310,9 +336,9 @@ export default function ExperienceWinsModal({
                           <h4 className="font-semibold text-white mb-2 text-lg">
                             {notification.title}
                           </h4>
-                          <p className="text-gray-300 mb-3 leading-relaxed">
-                            {notification.message}
-                          </p>
+                          <div className="text-gray-300 mb-3 leading-relaxed">
+                            {renderMessageWithLinks(notification.message)}
+                          </div>
                           {notification.challengeTitle && (
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">

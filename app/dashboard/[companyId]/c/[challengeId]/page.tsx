@@ -321,13 +321,7 @@ export default function AdminChallengeDetailPage({
             }`}>
               {challenge.status}
             </span>
-            <Button
-              onClick={() => setNotifyModalOpen(true)}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              <Bell className="h-4 w-4 mr-2" />
-              Notify Participants
-            </Button>
+
             <Button
               onClick={() => setEditModalOpen(true)}
               className="bg-blue-600 hover:bg-blue-700"
@@ -422,6 +416,79 @@ export default function AdminChallengeDetailPage({
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Notify Participants Section */}
+        <Card className="p-6 mb-8 bg-gray-800 border-gray-700">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+              <Bell className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-white">
+                Notify All Participants
+              </h3>
+              <p className="text-gray-400 text-sm">
+                Send motivation message to {challenge?.participants || 0} participants
+              </p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Notification Title
+              </label>
+              <input
+                type="text"
+                value={notificationTitle}
+                onChange={(e) => setNotificationTitle(e.target.value)}
+                placeholder="e.g., Great Progress Everyone! 🎉"
+                className="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
+                maxLength={100}
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                {notificationTitle.length}/100 characters
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Message
+              </label>
+              <textarea
+                value={notificationMessage}
+                onChange={(e) => setNotificationMessage(e.target.value)}
+                placeholder="Keep up the amazing work! As a special reward, use promo code CHAMP25 for 25% off your next purchase. You're doing great! 💪"
+                rows={3}
+                className="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none resize-none"
+                maxLength={500}
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                {notificationMessage.length}/500 characters
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <Button
+                onClick={sendNotificationToParticipants}
+                disabled={sendingNotification || !notificationTitle.trim() || !notificationMessage.trim()}
+                className="bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
+              >
+                {sendingNotification ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send to All Participants
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </Card>
