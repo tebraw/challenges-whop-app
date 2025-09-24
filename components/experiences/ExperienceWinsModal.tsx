@@ -146,24 +146,24 @@ export default function ExperienceWinsModal({
     const diffInDays = diffInHours / 24;
 
     if (diffInHours < 1) {
-      return 'vor wenigen Minuten';
+      return 'a few minutes ago';
     } else if (diffInHours < 24) {
-      return `vor ${Math.floor(diffInHours)} Stunden`;
+      return `${Math.floor(diffInHours)} hours ago`;
     } else if (diffInDays < 7) {
-      return `vor ${Math.floor(diffInDays)} Tagen`;
+      return `${Math.floor(diffInDays)} days ago`;
     } else {
-      return date.toLocaleDateString('de-DE');
+      return date.toLocaleDateString('en-US');
     }
   };
 
   const formatWinType = (type: string) => {
     switch (type) {
       case 'Winner':
-        return 'Gewinner';
+        return 'Winner';
       case 'Reward':
-        return 'Belohnung';
+        return 'Reward';
       case 'Achievement':
-        return 'Erfolg';
+        return 'Achievement';
       default:
         return type;
     }
@@ -237,7 +237,7 @@ export default function ExperienceWinsModal({
                 <div className="flex items-center gap-3">
                   <Trophy className="w-6 h-6 text-yellow-400" />
                   <h2 className="text-xl font-bold">
-                    {challengeId ? `Wins & Notifications: ${challengeTitle}` : 'Meine Gewinne & Benachrichtigungen'}
+                    {challengeId ? `Wins & Notifications: ${challengeTitle}` : 'My Wins & Notifications'}
                   </h2>
                 </div>
                 <div className="flex items-center gap-2">
@@ -246,7 +246,7 @@ export default function ExperienceWinsModal({
                       onClick={() => markWinsAsRead(undefined, true)}
                       className="text-xs bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded transition-colors"
                     >
-                      Alle als gelesen markieren
+                      Mark all as read
                     </button>
                   )}
                   <button
@@ -261,7 +261,7 @@ export default function ExperienceWinsModal({
               {/* Summary Stats & Tabs */}
               <div className="mt-4">
                 <div className="flex gap-4 text-sm text-gray-400 mb-3">
-                  <span>🔔 Benachrichtigungen: {totalNotifications} {unreadNotifications > 0 && `(${unreadNotifications} neu)`}</span>
+                  <span>🔔 Notifications: {totalNotifications} {unreadNotifications > 0 && `(${unreadNotifications} new)`}</span>
                 </div>
               </div>
             </div>
@@ -295,10 +295,10 @@ export default function ExperienceWinsModal({
                             )}
                             <span className="text-sm font-medium text-gray-300">
                               {notification.type === 'winner_announcement' 
-                                ? '🏆 Gewinner Ankündigung'
+                                ? '🏆 Winner Announcement'
                                 : notification.type === 'challenge_update'
                                 ? '📋 Challenge Update'
-                                : '🔔 Benachrichtigung'
+                                : '🔔 Notification'
                               }
                             </span>
                             {!notification.isRead && (
@@ -329,7 +329,7 @@ export default function ExperienceWinsModal({
                             onClick={() => markNotificationAsRead(notification.id)}
                             className="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded transition-colors flex-shrink-0"
                           >
-                            Als gelesen markieren
+                            Mark as read
                           </button>
                         )}
                       </div>
@@ -341,7 +341,7 @@ export default function ExperienceWinsModal({
                   <Bell className="w-16 h-16 mx-auto mb-4 opacity-50" />
                   <h3 className="text-lg font-medium mb-2">Keine Benachrichtigungen</h3>
                   <p className="text-sm">
-                    Sobald du an Challenges teilnimmst oder Erfolge erzielst, erscheinen hier deine Benachrichtigungen.
+                    When you participate in challenges or achieve milestones, your notifications will appear here.
                   </p>
                 </div>
               )}
@@ -444,7 +444,7 @@ function WinCard({ win, onMarkAsRead }: { win: Win; onMarkAsRead: (winIds: strin
                 onClick={() => onMarkAsRead([win.id])}
                 className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
               >
-                Als gelesen markieren
+                Mark as read
               </button>
             )}
             {win.isRead && (
