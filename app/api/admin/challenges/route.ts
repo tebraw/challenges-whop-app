@@ -286,8 +286,8 @@ export async function GET(request: NextRequest) {
           imageUrl: challenge.imageUrl,
           category: challenge.whopCategoryName || 'general',
           difficulty: (challenge.rules as any)?.difficulty || 'BEGINNER',
-          startDate: challenge.startAt,
-          endDate: challenge.endAt,
+          startAt: challenge.startAt,
+          endAt: challenge.endAt,
           enrollmentCount: challenge._count.enrollments,
           winnersCount: challenge._count.winners,
           streakCount: 0, // Will be calculated in individual challenge view

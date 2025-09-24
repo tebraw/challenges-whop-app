@@ -389,9 +389,12 @@ export default function SelectWinnersPage({
       <div className="mx-auto max-w-7xl px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Link href="/admin" className="text-gray-400 hover:text-white transition-colors">
+          <button 
+            onClick={() => window.history.back()} 
+            className="text-gray-400 hover:text-white transition-colors"
+          >
             <ArrowLeft className="h-6 w-6" />
-          </Link>
+          </button>
           <div>
             <h1 className="text-3xl font-bold">Select Challenge Winners</h1>
             <p className="text-gray-400">{challenge?.title}</p>
