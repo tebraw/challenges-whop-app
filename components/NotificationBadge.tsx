@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell, X, Check, Trophy, Gift, Copy, CheckCircle } from 'lucide-react';
+import { Bell, X, Check, Trophy, Gift, Copy, CheckCircle, ExternalLink } from 'lucide-react';
 
 interface Notification {
   id: string;
@@ -95,6 +95,40 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
     }
+  };
+
+  // Function to make links clickable in notification messages
+  const renderMessageWithLinks = (message: string) => {
+    if (!message) return null;
+    
+    // Enhanced regex to detect more URL formats
+    const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/g;
+    const parts = message.split(urlRegex);
+    
+    return parts.map((part, index) => {
+      // Test if this part is a URL
+      if (part.match(urlRegex)) {
+        // Clean URL - remove trailing punctuation that might not be part of URL
+        const cleanUrl = part.replace(/[.,;!?]+$/, '');
+        return (
+          <a
+            key={index}
+            href={cleanUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline break-all inline-flex items-center gap-1 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('🔗 Notification link clicked:', cleanUrl);
+            }}
+          >
+            {cleanUrl}
+            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+          </a>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
   };
 
   // Get notification icon
@@ -298,9 +332,9 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
                         <h4 className="font-medium text-white text-sm mb-1">
                           {notification.title}
                         </h4>
-                        <p className="text-gray-300 text-sm mb-2 leading-relaxed line-clamp-2">
-                          {notification.message}
-                        </p>
+                        <div className="text-gray-300 text-sm mb-2 leading-relaxed line-clamp-2">
+                          {renderMessageWithLinks(notification.message)}
+                        </div>
                         
                         {/* Challenge info */}
                         {notification.challengeTitle && (
@@ -408,9 +442,9 @@ export default function NotificationBadge({ userId, className = '' }: Notificati
               </h3>
               
               <div className="bg-gray-900 rounded-lg p-4 mb-4">
-                <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {selectedNotification.message}
-                </p>
+                <div className="text-gray-300 leading-relaxed whitespace-pre-wrap">
+                  {renderMessageWithLinks(selectedNotification.message)}
+                </div>
               </div>
 
               {selectedNotification.challengeTitle && (
