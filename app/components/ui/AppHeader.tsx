@@ -8,7 +8,16 @@ export default function AppHeader() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <a href="/" className="flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-growth.png" alt="growth" className="h-8 md:h-9" />
+          <img
+            src="/neu.png"
+            alt="growth"
+            className="h-8 md:h-9"
+            onError={(e) => {
+              const target = e.currentTarget as HTMLImageElement;
+              target.onerror = null;
+              target.src = "/logo-growth.png";
+            }}
+          />
         </a>
       </div>
     </header>
