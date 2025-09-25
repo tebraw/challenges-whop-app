@@ -242,6 +242,44 @@ export default function AdminChallengeDetailPage({
     })();
   }, [companyId]);
 
+  // Load Access Tier (Dashboard iFrame compatible API)
+  useEffect(() => {
+    (async () => {
+      if (!companyId) return;
+      setAccessTierLoading(true);
+      setAccessTierError(null);
+      try {
+        const res = await fetch(`/api/admin/access-tier?debug=1`, {
+          // Avoid any caching to always reflect latest permissions
+          cache: 'no-store',
+          headers: {
+            'x-whop-company-id': companyId,
+          },
+        });
+        if (!res.ok) {
+          // If unauthorized in client context, gracefully default to Basic
+          const text = await res.text();
+          console.warn('Access tier fetch failed:', res.status, text);
+          setAccessTier('Basic');
+          setAccessTierError(`Access tier unavailable (${res.status})`);
+        } else {
+          const data = await res.json();
+          if (data?.tier === 'Plus' || data?.tier === 'ProPlus' || data?.tier === 'Basic') {
+            setAccessTier(data.tier);
+          } else {
+            setAccessTier('Basic');
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load access tier', e);
+        setAccessTier('Basic');
+        setAccessTierError('Network error');
+      } finally {
+        setAccessTierLoading(false);
+      }
+    })();
+  }, [companyId]);
+
   async function handleDeleteChallenge() {
     if (!challengeId || deleting) return;
     
