@@ -38,6 +38,10 @@ export const challengeAdminSchema = z
     category: z.string().optional(),
     monetization: z.object({
       enabled: z.boolean().default(false),
+      // Paid entry controls
+      entryPriceCents: z.number().int().positive().optional(),
+      entryCurrency: z.enum(["USD", "EUR", "GBP"]).optional(),
+      // Legacy/marketing offers
       completionOffer: z.string().optional(),
       milestoneOffers: z.array(z.object({
         milestone: z.string(),

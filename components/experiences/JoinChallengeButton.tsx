@@ -65,6 +65,21 @@ export default function JoinChallengeButton({
         throw new Error(data?.error || `Error ${res.status}: Could not join challenge`);
       }
       
+      // Handle paid entry flow
+      if (data?.requirePayment) {
+        // Professional UX: brief toast-like alert before redirect
+        // In Whop iFrame, open in same tab to keep context
+        const url = data.checkoutUrl as string | undefined;
+        if (url) {
+          alert('You’ll be redirected to secure Whop checkout to pay the entry fee. After payment, you will be enrolled automatically.');
+          window.location.href = url;
+          return;
+        }
+        // Fallback: if no URL, show graceful message
+        alert('Payment required to join this challenge. Please try again in a moment.');
+        return;
+      }
+      
       // Success! Show brief success feedback then redirect
       setShowSuccess(true);
       

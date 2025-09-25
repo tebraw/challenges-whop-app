@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { whopSdk, whopAppSdk } from '@/lib/whop-sdk-unified';
+import { whopAppSdk } from '@/lib/whop-sdk-unified';
+import { whopPaymentService } from '@/lib/whop-payments';
 
 export async function POST(
   req: NextRequest,
@@ -40,6 +41,7 @@ export async function POST(
         startAt: true,
         endAt: true,
         experienceId: true,
+        monetizationRules: true,
         _count: {
           select: { enrollments: true }
         }
@@ -72,7 +74,45 @@ export async function POST(
       return NextResponse.json({ error: 'Already enrolled in this challenge' }, { status: 400 });
     }
 
-    // Create enrollment
+    // Enforce paid entry if monetization is enabled
+    const monetization = (challenge.monetizationRules as any) || {};
+    const paidEnabled = !!monetization.enabled;
+    const entryPriceCents = Number(monetization.entryPriceCents) || 0;
+    const entryCurrency = (monetization.entryCurrency || 'USD') as 'USD' | 'EUR' | 'GBP';
+
+    if (paidEnabled) {
+      if (!entryPriceCents || entryPriceCents <= 0) {
+        return NextResponse.json({ error: 'Paid challenge is misconfigured (price missing).' }, { status: 400 });
+      }
+
+      // Initiate Whop payment per guidelines (server-side charge + iFrame checkout)
+      const paymentResult = await whopPaymentService.initiatePayment(user.whopUserId || user.id, {
+        amount: entryPriceCents,
+        currency: entryCurrency.toLowerCase() as 'usd' | 'eur' | 'gbp',
+        productName: `Challenge Entry: ${challenge.title}`,
+        productDescription: `Entry fee for challenge: ${challenge.title}`,
+        metadata: {
+          type: 'challenge_entry',
+          challengeId: challenge.id,
+          experienceId: challenge.experienceId,
+          // for reconciliation
+          appEntity: 'challenge_enrollment',
+        }
+      });
+
+      if (!paymentResult.success) {
+        return NextResponse.json({ error: paymentResult.error || 'Failed to initiate payment' }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        requirePayment: true,
+        checkoutUrl: paymentResult.checkoutUrl,
+        checkoutSessionId: paymentResult.checkoutSessionId,
+        message: 'Payment required to join this challenge.'
+      });
+    }
+
+    // Create enrollment (free challenge)
     const enrollment = await prisma.enrollment.create({
       data: {
         userId: user.id,

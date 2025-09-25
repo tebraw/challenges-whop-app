@@ -477,6 +477,12 @@ export default async function ExperienceChallengePage({ params }: PageProps) {
                     <p className="text-gray-400 text-sm sm:text-base">
                       {Math.ceil((new Date(challenge.endAt).getTime() - new Date(challenge.startAt).getTime()) / (1000 * 60 * 60 * 24))} days • {challenge._count.enrollments} participants
                     </p>
+                    {/* Paid entry hint */}
+                    {Boolean((challenge as any)?.rules?.monetization?.enabled || (challenge as any)?.monetizationRules?.enabled) && (
+                      <p className="text-yellow-400 text-sm sm:text-base mt-2">
+                        This is a paid challenge. An entry fee applies.
+                      </p>
+                    )}
                   </div>
                 </div>
                 

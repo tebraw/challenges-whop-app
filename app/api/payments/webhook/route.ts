@@ -40,6 +40,14 @@ export async function POST(request: NextRequest) {
         paymentId,
         amount || 0
       );
+    } else if (metadata?.type === 'challenge_entry') {
+      await processChallengeEntryPayment(
+        userId,
+        metadata.challengeId,
+        metadata.experienceId,
+        paymentId,
+        amount || 0
+      );
     } else if (metadata?.type === 'subscription') {
       await processSubscriptionPayment(
         userId,
@@ -86,6 +94,68 @@ async function processPremiumChallengePayment(
     
   } catch (error) {
     console.error('Failed to process premium challenge payment:', error);
+    throw error;
+  }
+}
+
+/**
+ * Process paid challenge entry: enroll user after successful payment
+ */
+async function processChallengeEntryPayment(
+  whopUserId: string,
+  challengeId: string,
+  experienceId: string,
+  paymentId: string,
+  amount: number
+) {
+  try {
+    // Resolve local user by whopUserId
+    const user = await prisma.user.findFirst({ where: { whopUserId } });
+    if (!user) {
+      console.warn('Webhook: No local user for whopUserId', whopUserId);
+      return;
+    }
+
+    // Ensure challenge exists and belongs to same experience
+    const challenge = await prisma.challenge.findUnique({ where: { id: challengeId } });
+    if (!challenge) {
+      console.warn('Webhook: Challenge not found for entry payment', challengeId);
+      return;
+    }
+
+    // Idempotent: create enrollment if not exists
+    const existing = await prisma.enrollment.findUnique({
+      where: { challengeId_userId: { challengeId, userId: user.id } },
+    });
+    if (existing) {
+      return;
+    }
+
+    await prisma.enrollment.create({
+      data: {
+        userId: user.id,
+        challengeId,
+        experienceId: challenge.experienceId || experienceId,
+        joinedAt: new Date(),
+      },
+    });
+
+    // Optionally, record conversion for revenue tracking
+    await prisma.offerConversion.create({
+      data: {
+        challengeOfferId: 'challenge_entry', // placeholder category
+        userId: user.id,
+        challengeId,
+        conversionType: 'paid_entry',
+        whopCheckoutUrl: undefined,
+        revenue: amount ? amount / 100 : undefined,
+        metadata: JSON.stringify({ paymentId, type: 'challenge_entry' }),
+      },
+    }).catch(() => void 0);
+
+    console.log(`🎯 Auto-enrolled user ${user.id} to challenge ${challengeId} after payment ${paymentId}`);
+  } catch (error) {
+    console.error('Failed to process challenge entry payment:', error);
     throw error;
   }
 }

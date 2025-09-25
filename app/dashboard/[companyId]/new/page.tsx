@@ -57,6 +57,28 @@ function NewChallengePageContent() {
     policy: DEFAULT_POLICY_TEXT
   });
 
+  // Monetization (Paid Challenge) state
+  const [accessTier, setAccessTier] = useState<'Basic' | 'Plus' | 'ProPlus'>('Basic');
+  const [canCreatePaid, setCanCreatePaid] = useState(false);
+  const [paidEntry, setPaidEntry] = useState(false);
+  const [entryPrice, setEntryPrice] = useState<number | ''>(''); // USD dollars
+
+  // Fetch access tier for gating
+  useState(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/access-tier', { headers: { 'x-whop-company-id': companyId as string } });
+        if (res.ok) {
+          const data = await res.json();
+          setAccessTier(data.tier || 'Basic');
+          setCanCreatePaid(Boolean(data.canCreatePaidChallenges));
+        }
+      } catch (e) {
+        console.warn('Failed to load access tier', e);
+      }
+    })();
+  });
+
   const handleSubmit = async () => {
     // Convert to the correct schema format
     const challengeData: Partial<ChallengeAdminInput> = {
@@ -70,7 +92,14 @@ function NewChallengePageContent() {
       rewards: form.rewards,
       policy: form.policy,
       imageUrl: form.imageUrl,
-      difficulty: form.difficulty as "BEGINNER" | "INTERMEDIATE" | "ADVANCED"
+      difficulty: form.difficulty as "BEGINNER" | "INTERMEDIATE" | "ADVANCED",
+      // Persist minimal monetization rules
+      monetization: {
+        enabled: Boolean(paidEntry),
+        // store cents to avoid float issues; server stores under monetizationRules JSON
+        entryPriceCents: typeof entryPrice === 'number' ? Math.round(entryPrice * 100) : undefined,
+        entryCurrency: 'USD'
+      } as any
     };
 
     console.log("Submitting challenge data:", challengeData);
@@ -327,6 +356,47 @@ function NewChallengePageContent() {
                     maxParticipants: e.target.value ? Number(e.target.value) : undefined 
                   })}
                 />
+              </div>
+
+              {/* Paid Challenge */}
+              <div className="mt-6 border-t pt-6">
+                <h3 className="text-md font-semibold mb-2">Paid Challenge (entry fee)</h3>
+                {!canCreatePaid ? (
+                  <div className="p-4 rounded-lg bg-yellow-50 text-yellow-800 text-sm">
+                    Paid challenges are available on Plus and ProPlus plans. Upgrade to unlock this feature.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={paidEntry}
+                        onChange={(e) => setPaidEntry(e.target.checked)}
+                      />
+                      <span>Charge an entry fee to join this challenge</span>
+                    </label>
+
+                    {paidEntry && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="md:col-span-1">
+                          <label className="block text-sm font-medium mb-2">Entry Price (USD)</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            placeholder="e.g. 9.99"
+                            value={entryPrice}
+                            onChange={(e) => setEntryPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="md:col-span-2 text-sm text-gray-600 flex items-end">
+                          You set the price. We take 10% platform fee (after Whop fees).
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

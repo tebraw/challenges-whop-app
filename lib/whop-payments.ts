@@ -19,6 +19,7 @@ export interface PaymentRequest {
 export interface PaymentInitResponse {
   success: boolean;
   checkoutSessionId?: string;
+  checkoutUrl?: string;
   status?: string;
   error?: string;
 }
@@ -45,7 +46,8 @@ class WhopPaymentService {
       const paymentResult = await whopSdk.payments.chargeUser({
         userId,
         amount: paymentRequest.amount,
-        currency: paymentRequest.currency,
+        // Ensure lowercase currency per Whop API ('usd' | 'eur' | 'gbp')
+        currency: (paymentRequest.currency?.toLowerCase?.() as 'usd' | 'eur' | 'gbp') ?? 'usd',
         metadata: paymentRequest.metadata
       });
 
@@ -56,10 +58,16 @@ class WhopPaymentService {
         };
       }
 
+      // Best-effort extraction of checkout URL/ID based on SDK return shape
+      // Supports both direct `checkoutUrl` and nested `inAppPurchase` shapes
+      const checkoutUrl = (paymentResult as any).checkoutUrl || (paymentResult as any).inAppPurchase?.checkoutUrl;
+      const checkoutSessionId = (paymentResult as any).id || (paymentResult as any).inAppPurchase?.id;
+
       return {
         success: true,
-        checkoutSessionId: paymentResult.inAppPurchase?.id,
-        status: paymentResult.status
+        checkoutSessionId,
+        checkoutUrl,
+        status: (paymentResult as any).status || 'pending'
       };
 
     } catch (error) {
