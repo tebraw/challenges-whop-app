@@ -9,13 +9,13 @@ export default function AppHeader() {
         <a href="/" className="flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/neu.png"
+            src="/neu.png?v=20250925-1"
             alt="growth"
             className="h-8 md:h-9"
             onError={(e) => {
               const target = e.currentTarget as HTMLImageElement;
               target.onerror = null;
-              target.src = "/logo-growth.png";
+              target.src = "/logo-wordmark.png?v=20250925-1";
             }}
           />
         </a>
