@@ -35,24 +35,55 @@ export async function GET(request: NextRequest) {
 
     console.log('🎯 Marketing & Monetization API called for challenge:', challengeId);
 
-    // Get Whop headers for company identification
-    const companyId = request.headers.get('x-whop-company-id');
-    console.log('🏢 Company ID from headers:', companyId);
+    // Get Whop headers for company identification with robust fallbacks
+    let companyId = request.headers.get('x-whop-company-id') || request.headers.get('x-company-id');
+    // Fallback 1: Parse from Whop app-config cookie (JWT-like)
+    if (!companyId) {
+      try {
+        const appConfigCookie = request.cookies.get('whop.app-config')?.value;
+        if (appConfigCookie) {
+          const payload = JSON.parse(Buffer.from(appConfigCookie.split('.')[1] || '', 'base64').toString('utf-8'));
+          let extracted = payload?.did as string | undefined;
+          if (extracted) {
+            if (!extracted.startsWith('biz_')) extracted = `biz_${extracted}`;
+            if (extracted.startsWith('biz_') && extracted.length > 10) {
+              companyId = extracted;
+            }
+          }
+        }
+      } catch (e) {
+        console.log('⚠️ Could not parse app-config cookie for company ID');
+      }
+    }
+    // Fallback 2: Extract from referer URL (whop.com/dashboard/biz_...)
+    if (!companyId) {
+      const referer = request.headers.get('referer') || '';
+      const m = referer.match(/whop\.com\/dashboard\/(biz_[^\/?#]+)/i);
+      if (m) companyId = m[1];
+    }
+    console.log('🏢 Resolved Company ID:', companyId);
 
     if (!companyId) {
       console.log('❌ No company ID found in headers');
       return NextResponse.json({ error: 'Company ID required' }, { status: 400 });
     }
 
-    // Verify user token
-    const userToken = request.headers.get('x-whop-user-token');
+    // Verify user token (header, cookie, or bearer)
+    const headerToken = request.headers.get('x-whop-user-token');
+    const cookieToken = request.cookies.get('whop_user_token')?.value;
+    const bearerToken = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+    const userToken = headerToken || cookieToken || bearerToken;
     if (!userToken) {
       console.log('❌ No user token found');
       return NextResponse.json({ error: 'User token required' }, { status: 401 });
     }
 
     console.log('🔐 Verifying user token...');
-    const userVerification = await whopAppSdk.verifyUserToken(request.headers as any);
+    const headersForVerify = new Headers(request.headers);
+    if (!headersForVerify.get('x-whop-user-token')) {
+      headersForVerify.set('x-whop-user-token', userToken);
+    }
+    const userVerification = await whopAppSdk.verifyUserToken(headersForVerify as any);
     
     if (!userVerification || !userVerification.userId) {
       console.log('❌ User token verification failed');
@@ -268,12 +299,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user token and company access (same as GET)
-    const userToken = request.headers.get('x-whop-user-token');
+    const headerToken = request.headers.get('x-whop-user-token');
+    const cookieToken = request.cookies.get('whop_user_token')?.value;
+    const bearerToken = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+    const userToken = headerToken || cookieToken || bearerToken;
     if (!userToken) {
       return NextResponse.json({ error: 'User token required' }, { status: 401 });
     }
 
-    const userVerification = await whopAppSdk.verifyUserToken(request.headers as any);
+    const headersForVerify = new Headers(request.headers);
+    if (!headersForVerify.get('x-whop-user-token')) {
+      headersForVerify.set('x-whop-user-token', userToken);
+    }
+    const userVerification = await whopAppSdk.verifyUserToken(headersForVerify as any);
     if (!userVerification || !userVerification.userId) {
       return NextResponse.json({ error: 'Invalid user token' }, { status: 401 });
     }
