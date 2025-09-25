@@ -18,7 +18,7 @@ export default function BasicTierOnboardingPopup({
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="relative bg-gradient-to-br from-indigo-900 via-purple-900 to-violet-900 rounded-3xl max-w-5xl w-full border border-purple-400/50 shadow-[0_0_50px_rgba(168,85,247,0.4)] animate-pulse-glow">
+      <div className="relative bg-gradient-to-br from-indigo-900 via-purple-900 to-violet-900 rounded-3xl max-w-4xl w-full border border-purple-400/50 shadow-[0_0_50px_rgba(168,85,247,0.4)] animate-pulse-glow">
         
         {/* Animated Border Glow */}
         <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 rounded-3xl opacity-20 blur animate-pulse"></div>
@@ -46,7 +46,7 @@ export default function BasicTierOnboardingPopup({
             </h1>
             
             <p className="text-xl text-gray-300 max-w-3xl mx-auto font-medium">
-              Join thousands of creators earning $10K+ monthly with ProPlus
+              Create Paid Challenges with GROWTH
             </p>
           </div>
 
@@ -59,7 +59,7 @@ export default function BasicTierOnboardingPopup({
                   <TrendingUp className="text-white" size={28} />
                 </div>
                 <h3 className="text-white font-bold text-lg mb-2">+300% Engagement</h3>
-                <p className="text-gray-300 text-sm">Members become addicted to your challenges</p>
+                <p className="text-gray-300 text-sm">Transform passive followers into active participants. Challenges create daily touchpoints that keep your community engaged and coming back for more.</p>
               </div>
             </div>
 
@@ -70,7 +70,7 @@ export default function BasicTierOnboardingPopup({
                   <Megaphone className="text-white" size={28} />
                 </div>
                 <h3 className="text-white font-bold text-lg mb-2">Free Marketing</h3>
-                <p className="text-gray-300 text-sm">Discover page brings new customers</p>
+                <p className="text-gray-300 text-sm">Your challenges appear on our discover page, attracting qualified prospects to your community. Turn visibility into automatic member acquisition.</p>
               </div>
             </div>
 
@@ -81,7 +81,7 @@ export default function BasicTierOnboardingPopup({
                   <Gift className="text-white" size={28} />
                 </div>
                 <h3 className="text-white font-bold text-lg mb-2">Smart Offers</h3>
-                <p className="text-gray-300 text-sm">Targeted promo codes during peaks</p>
+                <p className="text-gray-300 text-sm">Create time-sensitive discount codes that activate when members hit milestones. Convert engagement momentum into immediate revenue.</p>
               </div>
             </div>
 
@@ -92,7 +92,7 @@ export default function BasicTierOnboardingPopup({
                   <Users className="text-white" size={28} />
                 </div>
                 <h3 className="text-white font-bold text-lg mb-2">Higher Retention</h3>
-                <p className="text-gray-300 text-sm">Top performers stay longer, buy more</p>
+                <p className="text-gray-300 text-sm">Challenge winners become your biggest advocates and highest-value customers. Recognition drives loyalty and repeat purchases.</p>
               </div>
             </div>
           </div>
@@ -111,8 +111,8 @@ export default function BasicTierOnboardingPopup({
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-4xl font-black text-yellow-400">$10K+</div>
-                <div className="text-gray-300 font-medium">Monthly Revenue</div>
+                <div className="text-4xl font-black text-yellow-400">∞</div>
+                <div className="text-gray-300 font-medium">Revenue Potential</div>
               </div>
             </div>
           </div>
@@ -120,7 +120,7 @@ export default function BasicTierOnboardingPopup({
           {/* CTA Section */}
           <div className="text-center">
             <h2 className="text-white font-black text-3xl mb-4">
-              Ready to <span className="text-transparent bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text">10X Your Revenue?</span>
+              Ready to <span className="text-transparent bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text">Unlock Growth?</span>
             </h2>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -137,7 +137,7 @@ export default function BasicTierOnboardingPopup({
             </div>
             
             <p className="text-gray-400 text-sm mt-4 font-medium">
-              30-Day Money-Back Guarantee • No Risk • Cancel Anytime
+              7-Day Free Trial • No Risk • Cancel Anytime
             </p>
           </div>
         </div>
