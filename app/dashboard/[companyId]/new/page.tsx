@@ -208,11 +208,11 @@ function NewChallengePageContent() {
       <div className="max-w-4xl mx-auto p-6">
         <div className="mb-8">
           <button
-            onClick={() => router.push("/admin")}
+            onClick={() => router.push(`/dashboard/${companyId}`)}
             className="flex items-center gap-2 text-sm text-muted hover:text-foreground mb-6 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Admin
+            Back to Dashboard
           </button>
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">Create New Challenge</h1>
