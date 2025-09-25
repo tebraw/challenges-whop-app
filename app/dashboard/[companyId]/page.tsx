@@ -11,6 +11,7 @@ import ChallengeCountdown from "@/components/ui/ChallengeCountdown";
 import EditChallengeModal from "@/components/admin/EditChallengeModal";
 import PlanSelectionModal from "@/components/dashboard/PlanSelectionModal";
 import UsageStats from "@/components/dashboard/UsageStats";
+import BasicTierOnboardingPopup from "@/components/dashboard/BasicTierOnboardingPopup";
 
 type Challenge = {
   imageUrl: any;
@@ -70,6 +71,8 @@ function DashboardContent() {
   const [accessTierError, setAccessTierError] = useState<string | null>(null);
   // Plan selection modal state
   const [planModalOpen, setPlanModalOpen] = useState(false);
+  // Basic tier onboarding popup state
+  const [onboardingPopupOpen, setOnboardingPopupOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -175,6 +178,13 @@ function DashboardContent() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
+
+  // Show onboarding popup for Basic tier users
+  useEffect(() => {
+    if (!accessTierLoading && accessTier === 'Basic') {
+      setOnboardingPopupOpen(true);
+    }
+  }, [accessTier, accessTierLoading]);
 
   async function onDelete(id: string) {
     if (!confirm("Really delete challenge?")) return;
@@ -569,6 +579,16 @@ function DashboardContent() {
         onClose={() => setPlanModalOpen(false)}
         currentTier={accessTier}
         onPlanSelect={handlePlanSelect}
+      />
+
+      {/* Basic Tier Onboarding Popup */}
+      <BasicTierOnboardingPopup
+        isOpen={onboardingPopupOpen}
+        onClose={() => setOnboardingPopupOpen(false)}
+        onUpgradeClick={() => {
+          setOnboardingPopupOpen(false);
+          setPlanModalOpen(true);
+        }}
       />
     </div>
   );
