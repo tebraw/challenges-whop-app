@@ -10,9 +10,11 @@ interface PlanSelectionModalProps {
   onPlanSelect: (planId: string, tierName: string) => void;
 }
 
+// KORREKTE WHOP PLAN IDS - diese müssen in Whop Dashboard eingerichtet werden
 const PLANS = [
   {
-    id: 'prod_YByUE3J5oT4Fq',
+    id: process.env.NEXT_PUBLIC_BASIC_PLAN_ID || 'plan_basic_placeholder',
+    accessPassId: process.env.NEXT_PUBLIC_BASIC_ACCESS_PASS_ID || 'pass_basic_placeholder',
     name: 'Basic',
     price: 'FREE',
     description: 'Perfect for getting started',
@@ -28,7 +30,8 @@ const PLANS = [
     ]
   },
   {
-    id: 'prod_3lTSwjRreFDwP',
+    id: process.env.NEXT_PUBLIC_PLUS_PLAN_ID || 'plan_plus_placeholder',
+    accessPassId: process.env.NEXT_PUBLIC_PLUS_ACCESS_PASS_ID || 'pass_plus_placeholder',
     name: 'Plus',
     price: '$19.90',
     priceDetail: '/month',
@@ -48,7 +51,8 @@ const PLANS = [
     ]
   },
   {
-    id: 'prod_9YkNJGjxSgRyE',
+    id: process.env.NEXT_PUBLIC_PROPLUS_PLAN_ID || 'plan_proplus_placeholder',
+    accessPassId: process.env.NEXT_PUBLIC_PROPLUS_ACCESS_PASS_ID || 'pass_proplus_placeholder',
     name: 'ProPlus',
     price: '$49.90',
     priceDetail: '/month',

@@ -214,17 +214,23 @@ function DashboardContent() {
     }
   }
 
-  // Handle plan selection and upgrade via Whop iFrame Purchase
+  // Handle plan selection and upgrade via KORREKTE Whop iFrame Purchase API
   const handlePlanSelect = async (planId: string, tierName: string) => {
     try {
-      // Check if Whop iFrame SDK is available
-      if (typeof window !== 'undefined' && (window as any).iframeSdk) {
-        const iframeSdk = (window as any).iframeSdk;
+      console.log('🛒 Starting plan purchase:', { planId, tierName });
+      
+      // KORREKTE Whop iFrame SDK API Usage (wie in der Dokumentation)
+      if (typeof window !== 'undefined' && (window as any).whopIframeSdk) {
+        const iframeSdk = (window as any).whopIframeSdk;
         
-        // Use Whop iFrame Purchase API for seamless plan upgrade
-        const purchaseResult = await iframeSdk.inAppPurchase({ planId });
+        console.log('📱 Using Whop iFrame SDK for purchase...');
         
-        if (purchaseResult.success) {
+        // Verwende die KORREKTE iFrame Purchase API aus der Dokumentation
+        const result = await iframeSdk.inAppPurchase({ planId });
+        
+        console.log('💳 Purchase result:', result);
+        
+        if (result.status === 'ok') {
           // Update local state immediately for better UX
           setAccessTier(tierName as 'Basic' | 'Plus' | 'ProPlus');
           setPlanModalOpen(false);
@@ -232,24 +238,29 @@ function DashboardContent() {
           // Show success message
           alert(`Successfully upgraded to ${tierName}! Your new features are now available.`);
           
-          // Optionally reload access tier to confirm change
+          // Reload to confirm change
           setTimeout(() => {
             window.location.reload();
-          }, 1000);
+          }, 1500);
         } else {
-          console.error('Purchase failed:', purchaseResult.error);
-          alert('Purchase was not completed. Please try again.');
+          console.error('❌ Purchase failed:', result.error);
+          alert(`Purchase was not completed: ${result.error || 'Unknown error'}`);
         }
       } else {
-        // Fallback for non-iFrame contexts (shouldn't happen in Dashboard App)
-        console.warn('Whop iFrame SDK not available, using fallback');
+        // iFrame SDK nicht verfügbar - zeige Debugging Info
+        console.error('❌ Whop iFrame SDK not available!');
+        console.log('Available window objects:', Object.keys(window));
+        
+        // Direkter Checkout Link als Fallback (für Debugging)
         const checkoutUrl = `https://whop.com/checkout/${planId}`;
+        console.log('🔗 Fallback checkout URL:', checkoutUrl);
+        alert(`iFrame SDK not available. Please use this checkout link: ${checkoutUrl}`);
         window.open(checkoutUrl, '_blank');
         setPlanModalOpen(false);
       }
     } catch (error) {
-      console.error('Error during plan selection:', error);
-      alert('An error occurred during the purchase. Please try again.');
+      console.error('💥 Error during plan selection:', error);
+      alert(`An error occurred during the purchase: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
