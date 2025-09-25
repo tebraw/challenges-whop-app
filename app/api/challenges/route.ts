@@ -6,6 +6,7 @@ import { challengeAdminSchema } from '@/lib/adminSchema';
 import { headers } from 'next/headers';
 import { whopSdk, whopAppSdk } from '@/lib/whop-sdk-unified';
 import { getExperienceContext } from '@/lib/whop-experience';
+import { canCreateChallenge } from '@/lib/tierLimits';
 
 // Generate simple ID - we'll use the built-in cuid() from Prisma
 function generateId() {
@@ -269,6 +270,69 @@ export async function POST(request: NextRequest) {
 
     // 🎯 Use NEW clean auto-creation system - supports both modes!
     const user = await autoCreateOrUpdateUser(userId, experienceId || tenantId, headerCompanyId || null);
+
+    // 🔒 CHECK TIER LIMITS (only for Company Owners - Experience Members unlimited via admin)
+    if (isCompanyOwner && headerCompanyId) {
+      try {
+        // Get current access tier
+        const accessTierResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/admin/access-tier`, {
+          method: 'GET',
+          headers: {
+            'x-whop-company-id': headerCompanyId,
+            'cache-control': 'no-store'
+          }
+        });
+        
+        if (accessTierResponse.ok) {
+          const { tier } = await accessTierResponse.json();
+          console.log('🎯 Access tier check for challenge creation:', tier);
+          
+          // Check if user can create challenge based on tier limits
+          const limitCheck = await canCreateChallenge(headerCompanyId, tenant.id, tier);
+          
+          if (!limitCheck.allowed) {
+            console.log('❌ Challenge creation blocked by tier limits:', limitCheck);
+            return NextResponse.json({
+              error: 'Challenge limit reached',
+              message: limitCheck.reason,
+              tierLimits: {
+                currentCount: limitCheck.currentCount,
+                limit: limitCheck.limit,
+                tier: tier
+              }
+            }, { status: 403 });
+          }
+          
+          console.log('✅ Challenge creation allowed:', {
+            tier,
+            currentCount: limitCheck.currentCount,
+            limit: limitCheck.limit
+          });
+          
+          // 💰 CHECK PAID CHALLENGE PERMISSIONS
+          if (challengeData.monetization?.enabled && challengeData.monetization?.entryPriceCents) {
+            const { canCreatePaidChallenge } = await import('@/lib/tierLimits');
+            
+            if (!canCreatePaidChallenge(tier)) {
+              console.log('❌ Paid challenge creation blocked for tier:', tier);
+              return NextResponse.json({
+                error: 'Paid challenges not allowed',
+                message: 'Paid challenges are only available on ProPlus plan. Upgrade to unlock this feature.',
+                tierRequired: 'ProPlus',
+                currentTier: tier
+              }, { status: 403 });
+            }
+            
+            console.log('✅ Paid challenge creation allowed for tier:', tier);
+          }
+        } else {
+          console.warn('Could not verify access tier, allowing creation');
+        }
+      } catch (error) {
+        console.error('Error checking tier limits:', error);
+        // Allow creation on error, but log it
+      }
+    }
 
     // Create challenge (EXPERIENCE-SCOPED OR COMPANY-SCOPED)
     const newChallenge = await prisma.challenge.create({

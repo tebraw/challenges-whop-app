@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
 
     const caps: TierCaps = {
       tier,
-      canCreatePaidChallenges: tier !== 'Basic', // Paid challenges for Plus and ProPlus
+      canCreatePaidChallenges: tier === 'ProPlus', // Paid challenges only for ProPlus
       canSetCustomEntryPrice: true, // Company owner sets entry price freely
       revenueSharePercent: 10, // 10% platform fee (assumed on net, see docs)
     };

@@ -363,7 +363,7 @@ function NewChallengePageContent() {
                 <h3 className="text-md font-semibold mb-2">Paid Challenge (entry fee)</h3>
                 {!canCreatePaid ? (
                   <div className="p-4 rounded-lg bg-yellow-50 text-yellow-800 text-sm">
-                    Paid challenges are available on Plus and ProPlus plans. Upgrade to unlock this feature.
+                    Paid challenges are only available on ProPlus plan. Upgrade to unlock this feature.
                   </div>
                 ) : (
                   <div className="space-y-3">

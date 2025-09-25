@@ -6,9 +6,12 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
-import { Copy, Trash2, Pencil, BarChart3, Users, TrendingUp, DollarSign, Trophy } from "lucide-react";
+import { Copy, Trash2, Pencil, BarChart3, Users, TrendingUp, DollarSign, Trophy, Settings } from "lucide-react";
 import ChallengeCountdown from "@/components/ui/ChallengeCountdown";
 import EditChallengeModal from "@/components/admin/EditChallengeModal";
+import PlanSelectionModal from "@/components/dashboard/PlanSelectionModal";
+import NewInstallerWelcome from "@/components/dashboard/NewInstallerWelcome";
+import UsageStats from "@/components/dashboard/UsageStats";
 
 type Challenge = {
   imageUrl: any;
@@ -66,6 +69,10 @@ function DashboardContent() {
   const [accessTier, setAccessTier] = useState<'Basic' | 'Plus' | 'ProPlus'>("Basic");
   const [accessTierLoading, setAccessTierLoading] = useState<boolean>(true);
   const [accessTierError, setAccessTierError] = useState<string | null>(null);
+  // Plan selection modal state
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+  // Welcome experience state
+  const [welcomeVisible, setWelcomeVisible] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -129,13 +136,22 @@ function DashboardContent() {
         console.warn('Failed to load access tier', e);
         setAccessTier('Basic');
         setAccessTierError('Network error');
-      } finally {
-        setAccessTierLoading(false);
-      }
-    })();
-  }, [companyId]);
+        } finally {
+          setAccessTierLoading(false);
+        }
+      })();
+    }, [companyId]);
 
-  // 🔧 FIX: Force reload when returning from challenge creation (refresh URL param)
+  // Show welcome experience for Basic tier users (new installers)
+  useEffect(() => {
+    if (!accessTierLoading && accessTier === 'Basic') {
+      // Check if user has dismissed welcome before (localStorage)
+      const dismissed = localStorage.getItem('welcome-dismissed');
+      if (!dismissed) {
+        setWelcomeVisible(true);
+      }
+    }
+  }, [accessTier, accessTierLoading]);  // 🔧 FIX: Force reload when returning from challenge creation (refresh URL param)
   useEffect(() => {
     const refreshParam = searchParams?.get('refresh');
     if (refreshParam) {
@@ -198,6 +214,56 @@ function DashboardContent() {
     }
   }
 
+  // Handle plan selection and upgrade via Whop iFrame Purchase
+  const handlePlanSelect = async (planId: string, tierName: string) => {
+    try {
+      // Check if Whop iFrame SDK is available
+      if (typeof window !== 'undefined' && (window as any).iframeSdk) {
+        const iframeSdk = (window as any).iframeSdk;
+        
+        // Use Whop iFrame Purchase API for seamless plan upgrade
+        const purchaseResult = await iframeSdk.inAppPurchase({ planId });
+        
+        if (purchaseResult.success) {
+          // Update local state immediately for better UX
+          setAccessTier(tierName as 'Basic' | 'Plus' | 'ProPlus');
+          setPlanModalOpen(false);
+          
+          // Show success message
+          alert(`Successfully upgraded to ${tierName}! Your new features are now available.`);
+          
+          // Optionally reload access tier to confirm change
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          console.error('Purchase failed:', purchaseResult.error);
+          alert('Purchase was not completed. Please try again.');
+        }
+      } else {
+        // Fallback for non-iFrame contexts (shouldn't happen in Dashboard App)
+        console.warn('Whop iFrame SDK not available, using fallback');
+        const checkoutUrl = `https://whop.com/checkout/${planId}`;
+        window.open(checkoutUrl, '_blank');
+        setPlanModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Error during plan selection:', error);
+      alert('An error occurred during the purchase. Please try again.');
+    }
+  };
+
+  // Handle welcome experience actions
+  const handleWelcomeDismiss = () => {
+    setWelcomeVisible(false);
+    localStorage.setItem('welcome-dismissed', 'true');
+  };
+
+  const handleWelcomeUpgrade = () => {
+    setWelcomeVisible(false);
+    setPlanModalOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <main className="mx-auto max-w-6xl px-4 sm:px-6 pb-12 pt-24 space-y-6">
@@ -205,28 +271,98 @@ function DashboardContent() {
           <div>
             <div className="flex items-center gap-4 mb-2">
               <h1 className="text-2xl sm:text-3xl font-bold text-white">Challenge Dashboard</h1>
-              {/* Access Tier badge */}
-              <span
-                title={accessTierError || undefined}
-                className={`px-3 py-1 rounded-full text-sm font-medium border ${
-                  accessTier === 'ProPlus'
-                    ? 'bg-purple-700/30 text-purple-200 border-purple-600'
-                    : accessTier === 'Plus'
-                    ? 'bg-blue-700/30 text-blue-200 border-blue-600'
-                    : 'bg-gray-700/50 text-gray-200 border-gray-600'
-                }`}
-              >
-                {accessTierLoading ? 'Tier: …' : `Tier: ${accessTier}`}
-              </span>
+              <div className="flex items-center gap-2">
+                {/* Access Tier badge */}
+                <span
+                  title={accessTierError || undefined}
+                  className={`px-3 py-1 rounded-full text-sm font-medium border ${
+                    accessTier === 'ProPlus'
+                      ? 'bg-purple-700/30 text-purple-200 border-purple-600'
+                      : accessTier === 'Plus'
+                      ? 'bg-blue-700/30 text-blue-200 border-blue-600'
+                      : 'bg-gray-700/50 text-gray-200 border-gray-600'
+                  }`}
+                >
+                  {accessTierLoading ? 'Tier: …' : `Tier: ${accessTier}`}
+                </span>
+                {/* Manage Plans button */}
+                <button
+                  onClick={() => setPlanModalOpen(true)}
+                  className="flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-blue-600/20 text-blue-200 border border-blue-600 hover:bg-blue-600/30 transition-colors"
+                  title="Manage subscription plans"
+                >
+                  <Settings size={14} />
+                  Manage Plans
+                </button>
+              </div>
             </div>
             <p className="text-gray-400 text-sm sm:text-base">Manage your challenges and track performance</p>
           </div>
-          <Link href={`/dashboard/${companyId}/new`}>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
-              + New Challenge
+          {/* New Challenge Button with Tier Limits */}
+          {accessTier === 'Basic' && items.length >= 3 ? (
+            <Button 
+              onClick={() => setPlanModalOpen(true)}
+              className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors"
+            >
+              Upgrade to Create More
             </Button>
-          </Link>
+          ) : (
+            <Link href={`/dashboard/${companyId}/new`}>
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
+                + New Challenge
+                {accessTier === 'Basic' && (
+                  <span className="ml-2 text-xs opacity-75">
+                    ({items.length}/3)
+                  </span>
+                )}
+              </Button>
+            </Link>
+          )}
         </div>
+
+        {/* New Installer Welcome Experience */}
+        <NewInstallerWelcome
+          isVisible={welcomeVisible}
+          onDismiss={handleWelcomeDismiss}
+          onUpgrade={handleWelcomeUpgrade}
+          currentTier={accessTier}
+          stats={{
+            challengesCreated: items.length,
+            totalParticipants: items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0),
+            totalCheckins: items.reduce((sum, c) => sum + (c.streakCount ?? 0), 0)
+          }}
+        />
+
+        {/* Welcome Experience for Basic Users */}
+        {welcomeVisible && (
+          <NewInstallerWelcome
+            isVisible={welcomeVisible}
+            onDismiss={() => {
+              setWelcomeVisible(false);
+              localStorage.setItem('welcome-dismissed', 'true');
+            }}
+            onUpgrade={() => setPlanModalOpen(true)}
+            currentTier={accessTier}
+            stats={{
+              challengesCreated: items.length,
+              totalParticipants: items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0),
+              totalCheckins: items.reduce((sum, c) => sum + (c.streakCount ?? 0), 0)
+            }}
+          />
+        )}
+
+        {/* Usage Stats for Basic and Plus Users */}
+        {(accessTier === 'Basic' || accessTier === 'Plus') && !accessTierLoading && (
+          <UsageStats
+            currentTier={accessTier}
+            stats={{
+              challengesCreated: items.length,
+              totalParticipants: items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0),
+              totalCheckins: items.reduce((sum, c) => sum + (c.streakCount ?? 0), 0)
+            }}
+            onUpgrade={() => setPlanModalOpen(true)}
+          />
+        )}
 
         {/* Quick Stats */}
         {!loading && items.length > 0 && (
@@ -285,6 +421,19 @@ function DashboardContent() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Usage Statistics and Upgrade Encouragement */}
+        {!loading && !welcomeVisible && (
+          <UsageStats
+            currentTier={accessTier}
+            stats={{
+              challengesCreated: items.length,
+              totalParticipants: items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0),
+              totalCheckins: items.reduce((sum, c) => sum + (c.streakCount ?? 0), 0)
+            }}
+            onUpgrade={() => setPlanModalOpen(true)}
+          />
         )}
 
         {loading ? (
@@ -452,6 +601,14 @@ function DashboardContent() {
           }}
         />
       )}
+
+      {/* Plan Selection Modal */}
+      <PlanSelectionModal
+        isOpen={planModalOpen}
+        onClose={() => setPlanModalOpen(false)}
+        currentTier={accessTier}
+        onPlanSelect={handlePlanSelect}
+      />
     </div>
   );
 }
