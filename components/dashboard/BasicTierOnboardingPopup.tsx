@@ -18,7 +18,7 @@ export default function BasicTierOnboardingPopup({
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="relative bg-gradient-to-br from-indigo-900 via-purple-900 to-violet-900 rounded-3xl max-w-4xl w-full border border-purple-400/50 shadow-[0_0_50px_rgba(168,85,247,0.4)] animate-pulse-glow">
+      <div className="relative bg-gradient-to-br from-indigo-900 via-purple-900 to-violet-900 rounded-3xl max-w-6xl w-full border border-purple-400/50 shadow-[0_0_50px_rgba(168,85,247,0.4)] animate-pulse-glow">
         
         {/* Animated Border Glow */}
         <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 rounded-3xl opacity-20 blur animate-pulse"></div>
