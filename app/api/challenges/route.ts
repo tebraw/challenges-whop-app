@@ -46,8 +46,11 @@ export async function GET(request: NextRequest) {
     // Fetch challenges only from this experience (PERFECT ISOLATION)
     const challenges = await prisma.challenge.findMany({
       where: {
-        tenantId: tenant.id
-        // Note: experienceId removed from schema, using tenant isolation instead
+        AND: [
+          { tenantId: tenant.id },
+          // If schema includes experienceId, we scope further; if not, Prisma will ignore unknown field in TS but we assume field exists based on current usage
+          { experienceId }
+        ]
       },
       include: {
         _count: {

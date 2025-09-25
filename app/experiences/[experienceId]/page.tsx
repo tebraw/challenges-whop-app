@@ -86,13 +86,14 @@ export default async function ExperiencePage({ params }: Props) {
       whopCompanyId: user.tenant?.whopCompanyId
     });
     
-    // Filter challenges by the user's tenant/company
-    // This ensures members see challenges from their own community
+    // Filter challenges by the user's tenant/company AND this specific experience
+    // This ensures members see only challenges from the current experience context
     // Exclude challenges that have already ended
     const challenges = await prisma.challenge.findMany({
       where: {
         AND: [
           { tenantId: user.tenantId },  // Show challenges from user's tenant/company
+          { experienceId },             // Limit to current experience only
           {
             endAt: {
               gt: new Date()  // Only show challenges that haven't ended yet
@@ -123,7 +124,8 @@ export default async function ExperiencePage({ params }: Props) {
     console.log('📊 Found challenges for user:', {
       challengeCount: challenges.length,
       userTenantId: user.tenantId,
-      challengeTenantIds: challenges.map(c => ({ id: c.id, title: c.title, tenantId: c.tenantId }))
+      experienceId,
+      challengeTenantIds: challenges.map(c => ({ id: c.id, title: c.title, tenantId: c.tenantId, experienceId: (c as any).experienceId }))
     });
     
     // Calculate user statistics
