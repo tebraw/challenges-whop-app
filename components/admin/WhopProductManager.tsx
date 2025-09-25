@@ -89,10 +89,10 @@ export default function WhopProductManager({ challengeId, onProductSelected }: W
       <Card className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 className="text-xl font-semibold text-white">
               Your Whop Products
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-sm text-gray-400 mt-1">
               Select products to use in special offers for this challenge
             </p>
           </div>
@@ -119,12 +119,12 @@ export default function WhopProductManager({ challengeId, onProductSelected }: W
         </div>
 
         {/* Status indicator */}
-        <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+        <div className="mt-4 p-3 rounded-lg bg-blue-900/20">
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${
               dataSource === 'whop_api' ? 'bg-green-500' : 'bg-yellow-500'
             }`}></div>
-            <span className="text-sm text-blue-700 dark:text-blue-300">
+            <span className="text-sm text-blue-300">
               {dataSource === 'whop_api' 
                 ? 'Connected to your Whop products' 
                 : 'Using demo products - Connect your Whop account to load real products'
@@ -132,7 +132,7 @@ export default function WhopProductManager({ challengeId, onProductSelected }: W
             </span>
           </div>
           {message && (
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">{message}</p>
+            <p className="text-xs text-blue-400 mt-1">{message}</p>
           )}
         </div>
       </Card>
@@ -143,7 +143,7 @@ export default function WhopProductManager({ challengeId, onProductSelected }: W
           <Card key={product.id} className="p-4 hover:shadow-md transition-shadow">
             <div className="flex flex-col h-full">
               {/* Product Image */}
-              <div className="aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg mb-4 flex items-center justify-center">
+              <div className="aspect-video bg-gray-800 rounded-lg mb-4 flex items-center justify-center">
                 {product.imageUrl ? (
                   <img 
                     src={product.imageUrl} 
@@ -160,12 +160,12 @@ export default function WhopProductManager({ challengeId, onProductSelected }: W
 
               {/* Product Info */}
               <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                <h3 className="font-semibold text-white mb-2">
                   {product.name}
                 </h3>
                 
                 {product.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                  <p className="text-sm text-gray-400 mb-3 line-clamp-2">
                     {product.description}
                   </p>
                 )}
@@ -174,7 +174,7 @@ export default function WhopProductManager({ challengeId, onProductSelected }: W
                   <span className="text-lg font-bold text-green-600">
                     ${product.price} {product.currency}
                   </span>
-                  <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full">
+                  <span className="text-xs px-2 py-1 bg-gray-700 rounded-full">
                     {product.type}
                   </span>
                 </div>
@@ -204,10 +204,10 @@ export default function WhopProductManager({ challengeId, onProductSelected }: W
       {products.length === 0 && (
         <Card className="p-12 text-center">
           <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          <h3 className="text-lg font-medium text-white mb-2">
             No Products Found
           </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
+          <p className="text-gray-400 mb-6">
             Connect your Whop account to load your products, or create products on Whop first.
           </p>
           <Button onClick={connectWhopAccount}>
@@ -225,7 +225,7 @@ export default function WhopProductManager({ challengeId, onProductSelected }: W
           title="Manage Whop Products"
         >
           <div className="space-y-4">
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-gray-400">
               Product management coming soon. For now, manage your products directly on Whop.
             </p>
             

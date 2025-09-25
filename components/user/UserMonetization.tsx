@@ -324,7 +324,7 @@ export default function UserMonetization({
               </div>
             </div>
             
-            <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-700">
               <div className="flex items-center gap-1 text-xs text-muted">
                 <Star className="h-3 w-3" />
                 Based on your performance
@@ -367,7 +367,7 @@ export default function UserMonetization({
             </div>
             
             {selectedOffer.urgency && (
-              <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+              <div className="p-3 bg-orange-900/20 rounded-lg">
                 <div className="flex items-center gap-2 text-orange-600">
                   <Clock className="h-4 w-4" />
                   <span className="text-sm font-medium">{selectedOffer.urgency}</span>

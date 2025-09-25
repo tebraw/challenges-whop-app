@@ -336,11 +336,11 @@ export default function WhopPromoForm({
         </div>
 
         {/* Challenge-specific Info Box */}
-        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <h5 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+        <div className="p-4 bg-blue-900/20 rounded-lg">
+          <h5 className="font-medium text-blue-100 mb-2">
             Challenge Integration
           </h5>
-          <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+          <ul className="text-sm text-blue-300 space-y-1">
             {type === 'completion' ? (
               <>
                 <li>• Automatically given to challenge winners</li>

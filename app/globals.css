@@ -3,24 +3,7 @@
 @tailwind utilities;
 
 :root {
-  /* Light theme colors */
-  --background: #ffffff;
-  --foreground: #1f2937;
-  --panel: #f8fafc;
-  --border: #e2e8f0;
-  --muted: #64748b;
-  --brand: #3b82f6;
-  --brand-foreground: #ffffff;
-  
-  /* Input specific colors */
-  --input-bg: #ffffff;
-  --input-border: #d1d5db;
-  --input-placeholder: #9ca3af;
-  --ring: #3b82f6;
-}
-
-[data-theme="dark"], .dark {
-  /* Dark theme colors */
+  /* Always use dark theme colors - no light mode */
   --background: #0f172a;
   --foreground: #f1f5f9;
   --panel: #1e293b;
@@ -29,7 +12,7 @@
   --brand: #60a5fa;
   --brand-foreground: #0f172a;
   
-  /* Input specific colors for dark mode */
+  /* Input specific colors - always dark */
   --input-bg: #1e293b;
   --input-border: #334155;
   --input-placeholder: #64748b;
