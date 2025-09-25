@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { X, TrendingUp, Users, Megaphone, Gift, DollarSign, Zap } from 'lucide-react';
+import { X, TrendingUp, Users, Megaphone, Gift, DollarSign, Zap, Crown, Rocket } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
 interface BasicTierOnboardingPopupProps {
@@ -18,167 +17,128 @@ export default function BasicTierOnboardingPopup({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-purple-500/30 shadow-2xl">
-        {/* Close Button */}
-        <div className="flex justify-end p-6 pb-0">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div className="relative bg-gradient-to-br from-indigo-900 via-purple-900 to-violet-900 rounded-3xl max-w-5xl w-full border border-purple-400/50 shadow-[0_0_50px_rgba(168,85,247,0.4)] animate-pulse-glow">
+        
+        {/* Animated Border Glow */}
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 rounded-3xl opacity-20 blur animate-pulse"></div>
+        
+        <div className="relative bg-gradient-to-br from-slate-900 via-purple-900/80 to-indigo-900 rounded-3xl p-8">
+          {/* Close Button */}
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+            className="absolute top-6 right-6 text-gray-400 hover:text-white transition-all duration-300 p-2 hover:bg-white/10 rounded-xl group"
           >
-            <X size={24} />
+            <X size={28} className="group-hover:rotate-90 transition-transform duration-300" />
           </button>
-        </div>
 
-        {/* Header */}
-        <div className="px-8 pb-6">
+          {/* Header Section */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-full text-sm font-semibold mb-4">
-              <Zap size={16} />
-              UNLOCK YOUR COMMUNITY'S POTENTIAL
+            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-black px-6 py-3 rounded-full text-lg font-bold mb-6 shadow-lg transform hover:scale-105 transition-all duration-300">
+              <Crown size={24} />
+              UNLOCK UNLIMITED POTENTIAL
             </div>
-            <h1 className="text-4xl font-bold text-white mb-4">
-              Turn Your Community Into A 
-              <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                {" "}Revenue Machine
-              </span>
+            
+            <h1 className="text-5xl md:text-6xl font-black text-transparent bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-text mb-4 leading-tight">
+              Turn Challenges Into
+              <br />
+              <span className="text-6xl md:text-7xl">REVENUE</span>
             </h1>
-            <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-              Wöchentliche Challenges sind der Schlüssel zu explosivem Community-Wachstum und nachhaltigen Einnahmen
+            
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto font-medium">
+              Join thousands of creators earning $10K+ monthly with ProPlus
             </p>
           </div>
 
-          {/* Features Grid */}
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            {/* Community Engagement */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-purple-500/20">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-purple-600 rounded-lg">
-                  <TrendingUp className="text-white" size={24} />
+          {/* Feature Cards Grid */}
+          <div className="grid md:grid-cols-4 gap-4 mb-8">
+            {/* Engagement */}
+            <div className="group bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-sm rounded-2xl p-5 border border-purple-500/30 hover:border-purple-400/60 transition-all duration-300 hover:scale-105 hover:shadow-lg">
+              <div className="text-center">
+                <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl mx-auto w-fit mb-3">
+                  <TrendingUp className="text-white" size={28} />
                 </div>
-                <div>
-                  <h3 className="text-white font-semibold text-lg mb-2">
-                    Community Engagement Explosion
-                  </h3>
-                  <p className="text-gray-300">
-                    Regelmäßige Challenges steigern das Engagement um durchschnittlich <span className="text-purple-400 font-bold">300%</span>. 
-                    Deine Member werden süchtig nach den nächsten Herausforderungen.
-                  </p>
-                </div>
+                <h3 className="text-white font-bold text-lg mb-2">+300% Engagement</h3>
+                <p className="text-gray-300 text-sm">Members become addicted to your challenges</p>
               </div>
             </div>
 
-            {/* Member Motivation */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-blue-500/20">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-blue-600 rounded-lg">
-                  <Users className="text-white" size={24} />
+            {/* Discover Page */}
+            <div className="group bg-gradient-to-br from-green-600/20 to-emerald-600/20 backdrop-blur-sm rounded-2xl p-5 border border-green-500/30 hover:border-green-400/60 transition-all duration-300 hover:scale-105 hover:shadow-lg">
+              <div className="text-center">
+                <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl mx-auto w-fit mb-3">
+                  <Megaphone className="text-white" size={28} />
                 </div>
-                <div>
-                  <h3 className="text-white font-semibold text-lg mb-2">
-                    Motiviere zu Höchstleistungen
-                  </h3>
-                  <p className="text-gray-300">
-                    Gamification durch Challenges motiviert Member zu kontinuierlichen Verbesserungen. 
-                    <span className="text-blue-400 font-bold"> Top-Performer bleiben länger</span> und kaufen mehr.
-                  </p>
-                </div>
+                <h3 className="text-white font-bold text-lg mb-2">Free Marketing</h3>
+                <p className="text-gray-300 text-sm">Discover page brings new customers</p>
               </div>
             </div>
 
-            {/* Discover Page Marketing */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-green-500/20">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-green-600 rounded-lg">
-                  <Megaphone className="text-white" size={24} />
+            {/* Smart Targeting */}
+            <div className="group bg-gradient-to-br from-orange-600/20 to-red-600/20 backdrop-blur-sm rounded-2xl p-5 border border-orange-500/30 hover:border-orange-400/60 transition-all duration-300 hover:scale-105 hover:shadow-lg">
+              <div className="text-center">
+                <div className="p-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl mx-auto w-fit mb-3">
+                  <Gift className="text-white" size={28} />
                 </div>
-                <div>
-                  <h3 className="text-white font-semibold text-lg mb-2">
-                    Kostenlose Werbung für deine Community
-                  </h3>
-                  <p className="text-gray-300">
-                    Deine Challenges erscheinen in der <span className="text-green-400 font-bold">Discover Page</span> - 
-                    auch für Nicht-Member sichtbar. Perfekte Akquise neuer Kunden!
-                  </p>
-                </div>
+                <h3 className="text-white font-bold text-lg mb-2">Smart Offers</h3>
+                <p className="text-gray-300 text-sm">Targeted promo codes during peaks</p>
               </div>
             </div>
 
-            {/* Notification Marketing */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-orange-500/20">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-orange-600 rounded-lg">
-                  <Gift className="text-white" size={24} />
+            {/* Retention */}
+            <div className="group bg-gradient-to-br from-blue-600/20 to-cyan-600/20 backdrop-blur-sm rounded-2xl p-5 border border-blue-500/30 hover:border-blue-400/60 transition-all duration-300 hover:scale-105 hover:shadow-lg">
+              <div className="text-center">
+                <div className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl mx-auto w-fit mb-3">
+                  <Users className="text-white" size={28} />
                 </div>
-                <div>
-                  <h3 className="text-white font-semibold text-lg mb-2">
-                    Smart Notification Marketing
-                  </h3>
-                  <p className="text-gray-300">
-                    Sende während Challenges gezielte <span className="text-orange-400 font-bold">Promo Codes & Produktangebote</span>. 
-                    Nutze den Momentum für maximale Conversions.
-                  </p>
-                </div>
+                <h3 className="text-white font-bold text-lg mb-2">Higher Retention</h3>
+                <p className="text-gray-300 text-sm">Top performers stay longer, buy more</p>
               </div>
             </div>
           </div>
 
-          {/* ROI Highlight */}
-          <div className="bg-gradient-to-r from-yellow-500/20 to-red-500/20 rounded-xl p-6 border border-yellow-500/30 mb-8">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="p-3 bg-yellow-600 rounded-lg">
-                <DollarSign className="text-white" size={28} />
-              </div>
-              <div>
-                <h3 className="text-white font-bold text-2xl">
-                  ROI Game-Changer: Paid Challenges
-                </h3>
-                <p className="text-yellow-200 text-lg">
-                  Nur für ProPlus verfügbar - aber es lohnt sich!
-                </p>
-              </div>
-            </div>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-gray-200 mb-2">
-                  <span className="text-yellow-400 font-bold">Eine einzige Paid Challenge pro Monat</span> kann bereits 
-                  die kompletten Kosten deines ProPlus Plans decken.
-                </p>
-                <p className="text-gray-300">
-                  Top-motivierte Member zahlen gerne für exklusive Herausforderungen mit wertvollen Preisen.
-                </p>
-              </div>
-              <div className="bg-black/30 rounded-lg p-4">
-                <div className="text-center">
-                  <div className="text-yellow-400 font-bold text-2xl">1 Paid Challenge</div>
-                  <div className="text-gray-300 text-sm mb-2">pro Monat</div>
-                  <div className="text-green-400 font-bold text-lg">= ProPlus bezahlt sich selbst</div>
+          {/* ROI Showcase */}
+          <div className="bg-gradient-to-r from-yellow-600/30 via-orange-600/30 to-red-600/30 rounded-2xl p-6 border border-yellow-500/40 mb-8 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-red-500/10 animate-pulse"></div>
+            <div className="relative flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl">
+                  <DollarSign className="text-black" size={32} />
                 </div>
+                <div>
+                  <h3 className="text-white font-black text-2xl">GAME CHANGER</h3>
+                  <p className="text-yellow-200 text-lg font-semibold">1 Paid Challenge = Entire Plan Cost Covered</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-4xl font-black text-yellow-400">$10K+</div>
+                <div className="text-gray-300 font-medium">Monthly Revenue</div>
               </div>
             </div>
           </div>
 
-          {/* Call to Action */}
+          {/* CTA Section */}
           <div className="text-center">
-            <h2 className="text-white font-bold text-2xl mb-4">
-              Bereit, deine Community auf das nächste Level zu bringen?
+            <h2 className="text-white font-black text-3xl mb-4">
+              Ready to <span className="text-transparent bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text">10X Your Revenue?</span>
             </h2>
-            <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
-              Mit ProPlus verwandelst du Challenges von einem netten Feature in deine 
-              <span className="text-purple-400 font-bold"> profitabelste Marketing-Strategie</span>.
-            </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button
                 onClick={onUpgradeClick}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+                className="group bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 hover:from-yellow-400 hover:via-orange-400 hover:to-red-400 text-black font-black text-xl px-12 py-4 rounded-2xl shadow-[0_0_30px_rgba(251,191,36,0.5)] hover:shadow-[0_0_40px_rgba(251,191,36,0.7)] transition-all duration-300 transform hover:scale-110 border-2 border-yellow-400/50"
               >
-                🚀 Upgrade zu ProPlus - Jetzt starten!
+                <span className="flex items-center gap-3">
+                  <Rocket size={24} className="group-hover:animate-bounce" />
+                  UPGRADE TO PROPLUS NOW
+                  <Rocket size={24} className="group-hover:animate-bounce" />
+                </span>
               </Button>
-              <div className="text-gray-400 text-sm">
-                30 Tage Geld-zurück-Garantie
-              </div>
             </div>
+            
+            <p className="text-gray-400 text-sm mt-4 font-medium">
+              30-Day Money-Back Guarantee • No Risk • Cancel Anytime
+            </p>
           </div>
         </div>
       </div>
