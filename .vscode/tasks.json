@@ -44,6 +44,16 @@
 			"label": "Build",
 			"type": "shell",
 			"command": "pnpm build"
+		},
+		{
+			"label": "Build",
+			"type": "shell",
+			"command": "pnpm build"
+		},
+		{
+			"label": "Build",
+			"type": "shell",
+			"command": "pnpm build"
 		}
 	]
 }
