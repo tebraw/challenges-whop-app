@@ -14,7 +14,7 @@ interface UsageStatsProps {
 
 const TIER_LIMITS = {
   Basic: {
-    challenges: 3,
+    challenges: 1, // 1 challenge lifetime (not per month)
     features: ['Basic analytics', 'Email support', 'Community access']
   },
   Plus: {

@@ -22,11 +22,7 @@ const PLANS = [
     textColor: 'text-gray-900',
     buttonColor: 'bg-gray-600 hover:bg-gray-700',
     features: [
-      'Create up to 3 challenges',
-      'Basic analytics',
-      'Community access',
-      'Email support',
-      'Standard templates'
+      'Create ONE Challenge for FREE'
     ]
   },
   {
@@ -41,13 +37,9 @@ const PLANS = [
     buttonColor: 'bg-blue-600 hover:bg-blue-700',
     popular: true,
     features: [
-      'Unlimited challenges',
-      'Advanced analytics & insights',
-      'Priority community access',
-      'Priority email support',
-      'Premium templates',
-      'Custom branding options',
-      'Member engagement tools'
+      '✅ Unlimited challenges',
+      '❌ Paid challenges',
+      '✅ Priority email support'
     ]
   },
   {
@@ -61,15 +53,9 @@ const PLANS = [
     textColor: 'text-purple-900',
     buttonColor: 'bg-purple-600 hover:bg-purple-700',
     features: [
-      'Everything in Plus',
-      'White-label solutions',
-      'Advanced API access',
-      'Custom integrations',
-      'Dedicated account manager',
-      'Priority phone support',
-      'Advanced member segmentation',
-      'Revenue sharing features',
-      'Enterprise-grade security'
+      '✅ Unlimited challenges',
+      '✅ Paid challenges',
+      '✅ Priority email support'
     ]
   }
 ];

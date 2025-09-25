@@ -15,8 +15,8 @@ Checkouts funktionieren nicht, weil wir **Product IDs** statt **Plan IDs** und *
 #### Basic Access Pass
 1. Klicke **"Create Access Pass"**
 2. **Name**: `Basic Challenge Plan`
-3. **Description**: `Erstelle bis zu 3 Challenges pro Monat`
-4. **Price**: `€9.99/Monat`
+3. **Description**: `Eine Challenge kostenlos erstellen (lifetime)`
+4. **Price**: `FREE`
 5. **Settings**:
    - Recurring: ✅ Monthly
    - Stock: Unlimited
