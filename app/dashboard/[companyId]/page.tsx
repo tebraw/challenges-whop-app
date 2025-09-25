@@ -287,7 +287,7 @@ function DashboardContent() {
             <p className="text-gray-400 text-sm sm:text-base">Manage your challenges and track performance</p>
           </div>
           {/* New Challenge Button with Tier Limits */}
-          {accessTier === 'Basic' && items.length >= 3 ? (
+          {accessTier === 'Basic' && items.length >= 1 ? (
             <Button 
               onClick={() => setPlanModalOpen(true)}
               className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors"
@@ -298,11 +298,6 @@ function DashboardContent() {
             <Link href={`/dashboard/${companyId}/new`}>
               <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors">
                 + New Challenge
-                {accessTier === 'Basic' && (
-                  <span className="ml-2 text-xs opacity-75">
-                    ({items.length}/3)
-                  </span>
-                )}
               </Button>
             </Link>
           )}
@@ -311,78 +306,6 @@ function DashboardContent() {
 
 
 
-
-        {/* Quick Stats */}
-        {!loading && items.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gray-800 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-600 rounded-lg">
-                  <BarChart3 className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-white">{items.length}</div>
-                  <div className="text-sm text-gray-400">Total Challenges</div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-gray-800 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-600 rounded-lg">
-                  <Users className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-white">
-                    {items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0)}
-                  </div>
-                  <div className="text-sm text-gray-400">Total Participants</div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-gray-800 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-600 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-white">
-                    {items.reduce((sum, c) => sum + (c.streakCount ?? 0), 0)}
-                  </div>
-                  <div className="text-sm text-gray-400">Total Check-ins</div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-gray-800 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-600 rounded-lg">
-                  <DollarSign className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-white">
-                    {Math.round(items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0) * 0.12)}
-                  </div>
-                  <div className="text-sm text-gray-400">Conversion Potential</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Usage Statistics and Upgrade Encouragement */}
-        {!loading && !accessTierLoading && (
-          <UsageStats
-            currentTier={accessTier}
-            stats={{
-              challengesCreated: items.length,
-              totalParticipants: items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0),
-              totalCheckins: items.reduce((sum, c) => sum + (c.streakCount ?? 0), 0)
-            }}
-            onUpgrade={() => setPlanModalOpen(true)}
-          />
-        )}
 
         {loading ? (
           <div className="text-center py-12">
@@ -394,20 +317,109 @@ function DashboardContent() {
             Error: {error}
           </div>
         ) : items.length === 0 ? (
-          <div className="bg-gray-800 rounded-xl p-12 text-center">
-            <div className="text-6xl mb-4">🎯</div>
-            <h3 className="text-xl font-semibold text-white mb-2">No challenges created yet</h3>
-            <p className="text-gray-400 mb-6">
-              Create your first challenge to start engaging your community and building your brand.
-            </p>
-            <Link href={`/dashboard/${companyId}/new`}>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors">
-                Create Your First Challenge
-              </Button>
-            </Link>
-          </div>
+          <>
+            {/* No Challenges Message - Now FIRST */}
+            <div className="bg-gray-800 rounded-xl p-12 text-center">
+              <div className="text-6xl mb-4">🎯</div>
+              <h3 className="text-xl font-semibold text-white mb-2">No challenges created yet</h3>
+              <p className="text-gray-400 mb-6">
+                Create your first challenge to start engaging your community and building your brand.
+              </p>
+              <Link href={`/dashboard/${companyId}/new`}>
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors">
+                  Create Your First Challenge
+                </Button>
+              </Link>
+            </div>
+
+            {/* Usage Statistics - Now SECOND (even when no challenges) */}
+            {!accessTierLoading && (
+              <UsageStats
+                currentTier={accessTier}
+                stats={{
+                  challengesCreated: 0,
+                  totalParticipants: 0,
+                  totalCheckins: 0
+                }}
+                onUpgrade={() => setPlanModalOpen(true)}
+              />
+            )}
+          </>
         ) : (
-          <div className="space-y-4">
+          <>
+            {/* Quick Stats - When challenges exist */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-gray-800 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-600 rounded-lg">
+                    <BarChart3 className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{items.length}</div>
+                    <div className="text-sm text-gray-400">Total Challenges</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gray-800 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-600 rounded-lg">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">
+                      {items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0)}
+                    </div>
+                    <div className="text-sm text-gray-400">Total Participants</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gray-800 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-600 rounded-lg">
+                    <TrendingUp className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">
+                      {items.reduce((sum, c) => sum + (c.streakCount ?? 0), 0)}
+                    </div>
+                    <div className="text-sm text-gray-400">Total Check-ins</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gray-800 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-600 rounded-lg">
+                    <DollarSign className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">
+                      {Math.round(items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0) * 0.12)}
+                    </div>
+                    <div className="text-sm text-gray-400">Conversion Potential</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Usage Statistics - When challenges exist */}
+            {!accessTierLoading && (
+              <UsageStats
+                currentTier={accessTier}
+                stats={{
+                  challengesCreated: items.length,
+                  totalParticipants: items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0),
+                  totalCheckins: items.reduce((sum, c) => sum + (c.streakCount ?? 0), 0)
+                }}
+                onUpgrade={() => setPlanModalOpen(true)}
+              />
+            )}
+
+            {/* Challenge List */}
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold text-white mb-4">Your Challenges</h2>
             {items.map((c) => {
               const rules = (c.rules ?? {}) as any;
               const img: string | undefined = rules.imageUrl || c.imageUrl;
@@ -531,7 +543,8 @@ function DashboardContent() {
                 </div>
               );
             })}
-          </div>
+            </div>
+          </>
         )}
       </main>
 
