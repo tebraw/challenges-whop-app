@@ -76,16 +76,16 @@ export default async function ExperiencePage({ params }: Props) {
     });
     
     // Filter challenges by the user's tenant/company AND this specific experience
-    // This ensures members see only challenges from the current experience context
+    // Transitional support: also include tenant challenges that don't yet have an experienceId set (null)
     // Exclude challenges that have already ended
-    const challenges = await prisma.challenge.findMany({
+    let challenges = await prisma.challenge.findMany({
       where: {
         AND: [
           { tenantId: user.tenantId },  // Show challenges from user's tenant/company
-          { experienceId },             // Limit to current experience only
+          { experienceId: { equals: experienceId } }, // Limit to current experience only
           {
             endAt: {
-              gt: new Date()  // Only show challenges that haven't ended yet
+              gt: new Date()            // Only show challenges that haven't ended yet
             }
           }
         ]
@@ -109,6 +109,25 @@ export default async function ExperiencePage({ params }: Props) {
         createdAt: 'desc'
       }
     });
+
+    // Fallback: if none found for this experience, show tenant-wide active challenges (transitional support)
+    if (challenges.length === 0) {
+      console.log('⚠️ No challenges found for experience; falling back to tenant-only active challenges');
+      challenges = await prisma.challenge.findMany({
+        where: {
+          tenantId: user.tenantId,
+          endAt: { gt: new Date() }
+        },
+        include: {
+          _count: { select: { enrollments: true } },
+          enrollments: {
+            where: { userId: user.id },
+            select: { id: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+    }
     
     console.log('📊 Found challenges for user:', {
       challengeCount: challenges.length,
