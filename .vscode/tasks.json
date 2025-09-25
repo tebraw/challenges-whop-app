@@ -34,6 +34,11 @@
 				"$eslint-stylish"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Build",
+			"type": "shell",
+			"command": "pnpm build"
 		}
 	]
 }

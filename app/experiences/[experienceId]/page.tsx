@@ -54,29 +54,18 @@ export default async function ExperiencePage({ params }: Props) {
     
     console.log('✅ Experience access verified for user:', userId);
     
-    // Get or create user in our system
-    let user = await prisma.user.findUnique({
+    // Always sync user to current experience/company context
+    const { autoCreateOrUpdateUser } = await import('@/lib/auto-company-extraction');
+    await autoCreateOrUpdateUser(userId, experienceId, null);
+
+    // Fetch the complete user with relations (post-sync)
+    const user = await prisma.user.findUnique({
       where: { whopUserId: userId },
       include: { tenant: true }
     });
-    
+
     if (!user) {
-      console.log('👤 Creating new user for experience:', userId);
-      
-      // 🚨 USE AUTOMATIC COMPANY ID EXTRACTION - NO FALLBACKS!
-      // Get or create user in our system with auto-extracted company ID
-      const { autoCreateOrUpdateUser } = await import('@/lib/auto-company-extraction');
-      const createdUser = await autoCreateOrUpdateUser(userId, experienceId, null);
-      
-      // Fetch the complete user with relations
-      user = await prisma.user.findUnique({
-        where: { whopUserId: userId },
-        include: { tenant: true }
-      });
-      
-      if (!user) {
-        throw new Error('Failed to create or find user');
-      }
+      throw new Error('Failed to create or find user after sync');
     }
     
     // Get the user's tenant/company ID for proper challenge filtering

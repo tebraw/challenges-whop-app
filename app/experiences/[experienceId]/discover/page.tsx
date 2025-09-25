@@ -64,22 +64,15 @@ export default async function DiscoverExperiencePage({ params }: Props) {
       );
     }
     
-    // Get the user's tenant info for proper challenge categorization
-    let user = await prisma.user.findUnique({
+    // Always sync user to current experience/company context
+    const { autoCreateOrUpdateUser } = await import('@/lib/auto-company-extraction');
+    await autoCreateOrUpdateUser(userId, experienceId, null);
+
+    // Fetch the user's tenant info for proper challenge categorization
+    const user = await prisma.user.findUnique({
       where: { whopUserId: userId },
       include: { tenant: true }
     });
-
-    if (!user) {
-      // Auto-create user if not exists
-      const { autoCreateOrUpdateUser } = await import('@/lib/auto-company-extraction');
-      await autoCreateOrUpdateUser(userId, experienceId, null);
-      
-      user = await prisma.user.findUnique({
-        where: { whopUserId: userId },
-        include: { tenant: true }
-      });
-    }
 
     console.log('🔍 Discover - User tenant info:', {
       userId: user?.id,
