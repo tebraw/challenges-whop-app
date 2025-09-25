@@ -10,7 +10,6 @@ import { Copy, Trash2, Pencil, BarChart3, Users, TrendingUp, DollarSign, Trophy,
 import ChallengeCountdown from "@/components/ui/ChallengeCountdown";
 import EditChallengeModal from "@/components/admin/EditChallengeModal";
 import PlanSelectionModal from "@/components/dashboard/PlanSelectionModal";
-import NewInstallerWelcome from "@/components/dashboard/NewInstallerWelcome";
 import UsageStats from "@/components/dashboard/UsageStats";
 
 type Challenge = {
@@ -71,8 +70,6 @@ function DashboardContent() {
   const [accessTierError, setAccessTierError] = useState<string | null>(null);
   // Plan selection modal state
   const [planModalOpen, setPlanModalOpen] = useState(false);
-  // Welcome experience state
-  const [welcomeVisible, setWelcomeVisible] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -142,16 +139,7 @@ function DashboardContent() {
       })();
     }, [companyId]);
 
-  // Show welcome experience for Basic tier users (new installers)
-  useEffect(() => {
-    if (!accessTierLoading && accessTier === 'Basic') {
-      // Check if user has dismissed welcome before (localStorage)
-      const dismissed = localStorage.getItem('welcome-dismissed');
-      if (!dismissed) {
-        setWelcomeVisible(true);
-      }
-    }
-  }, [accessTier, accessTierLoading]);  // 🔧 FIX: Force reload when returning from challenge creation (refresh URL param)
+  // 🔧 FIX: Force reload when returning from challenge creation (refresh URL param)
   useEffect(() => {
     const refreshParam = searchParams?.get('refresh');
     if (refreshParam) {
@@ -264,17 +252,6 @@ function DashboardContent() {
     }
   };
 
-  // Handle welcome experience actions
-  const handleWelcomeDismiss = () => {
-    setWelcomeVisible(false);
-    localStorage.setItem('welcome-dismissed', 'true');
-  };
-
-  const handleWelcomeUpgrade = () => {
-    setWelcomeVisible(false);
-    setPlanModalOpen(true);
-  };
-
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <main className="mx-auto max-w-6xl px-4 sm:px-6 pb-12 pt-24 space-y-6">
@@ -331,49 +308,9 @@ function DashboardContent() {
           )}
         </div>
 
-        {/* New Installer Welcome Experience */}
-        <NewInstallerWelcome
-          isVisible={welcomeVisible}
-          onDismiss={handleWelcomeDismiss}
-          onUpgrade={handleWelcomeUpgrade}
-          currentTier={accessTier}
-          stats={{
-            challengesCreated: items.length,
-            totalParticipants: items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0),
-            totalCheckins: items.reduce((sum, c) => sum + (c.streakCount ?? 0), 0)
-          }}
-        />
 
-        {/* Welcome Experience for Basic Users */}
-        {welcomeVisible && (
-          <NewInstallerWelcome
-            isVisible={welcomeVisible}
-            onDismiss={() => {
-              setWelcomeVisible(false);
-              localStorage.setItem('welcome-dismissed', 'true');
-            }}
-            onUpgrade={() => setPlanModalOpen(true)}
-            currentTier={accessTier}
-            stats={{
-              challengesCreated: items.length,
-              totalParticipants: items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0),
-              totalCheckins: items.reduce((sum, c) => sum + (c.streakCount ?? 0), 0)
-            }}
-          />
-        )}
 
-        {/* Usage Stats for Basic and Plus Users */}
-        {(accessTier === 'Basic' || accessTier === 'Plus') && !accessTierLoading && (
-          <UsageStats
-            currentTier={accessTier}
-            stats={{
-              challengesCreated: items.length,
-              totalParticipants: items.reduce((sum, c) => sum + (c.enrollmentCount ?? 0), 0),
-              totalCheckins: items.reduce((sum, c) => sum + (c.streakCount ?? 0), 0)
-            }}
-            onUpgrade={() => setPlanModalOpen(true)}
-          />
-        )}
+
 
         {/* Quick Stats */}
         {!loading && items.length > 0 && (
@@ -435,7 +372,7 @@ function DashboardContent() {
         )}
 
         {/* Usage Statistics and Upgrade Encouragement */}
-        {!loading && !welcomeVisible && (
+        {!loading && !accessTierLoading && (
           <UsageStats
             currentTier={accessTier}
             stats={{
