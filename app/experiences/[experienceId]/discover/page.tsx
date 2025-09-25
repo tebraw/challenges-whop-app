@@ -80,12 +80,14 @@ export default async function DiscoverExperiencePage({ params }: Props) {
       whopCompanyId: user?.tenant?.whopCompanyId
     });
 
-    // Get ALL public challenges from ALL communities (including own community)
+    // Get ALL public challenges from OTHER communities (exclude own tenant)
     // Exclude challenges that have already ended
     const allChallenges = await prisma.challenge.findMany({
       where: {
         AND: [
-          { isPublic: true },  // Show ALL public challenges
+          { isPublic: true },  // Show public challenges only
+          // Exclude challenges from the user's own community/tenant
+          ...(user?.tenantId ? [{ tenantId: { not: user.tenantId } }] : []),
           {
             endAt: {
               gt: new Date()  // Only show challenges that haven't ended yet
