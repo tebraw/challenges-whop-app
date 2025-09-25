@@ -100,6 +100,10 @@ export default function AdminChallengeDetailPage({
   const [notificationTitle, setNotificationTitle] = useState("");
   const [notificationMessage, setNotificationMessage] = useState("");
   const [sendingNotification, setSendingNotification] = useState(false);
+  // Access tier state (Basic | Plus | ProPlus)
+  const [accessTier, setAccessTier] = useState<'Basic' | 'Plus' | 'ProPlus'>("Basic");
+  const [accessTierLoading, setAccessTierLoading] = useState<boolean>(true);
+  const [accessTierError, setAccessTierError] = useState<string | null>(null);
 
   // Send notification to all participants
   const sendNotificationToParticipants = async () => {
@@ -199,6 +203,44 @@ export default function AdminChallengeDetailPage({
 
     loadChallenge();
   }, [params]);
+
+  // Load Access Tier (Dashboard iFrame compatible API)
+  useEffect(() => {
+    (async () => {
+      if (!companyId) return;
+      setAccessTierLoading(true);
+      setAccessTierError(null);
+      try {
+        const res = await fetch(`/api/admin/access-tier?debug=1`, {
+          // Avoid any caching to always reflect latest permissions
+          cache: 'no-store',
+          headers: {
+            'x-whop-company-id': companyId,
+          },
+        });
+        if (!res.ok) {
+          // If unauthorized in client context, gracefully default to Basic
+          const text = await res.text();
+          console.warn('Access tier fetch failed:', res.status, text);
+          setAccessTier('Basic');
+          setAccessTierError(`Access tier unavailable (${res.status})`);
+        } else {
+          const data = await res.json();
+          if (data?.tier === 'Plus' || data?.tier === 'ProPlus' || data?.tier === 'Basic') {
+            setAccessTier(data.tier);
+          } else {
+            setAccessTier('Basic');
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load access tier', e);
+        setAccessTier('Basic');
+        setAccessTierError('Network error');
+      } finally {
+        setAccessTierLoading(false);
+      }
+    })();
+  }, [companyId]);
 
   async function handleDeleteChallenge() {
     if (!challengeId || deleting) return;
@@ -312,6 +354,19 @@ export default function AdminChallengeDetailPage({
           </Button>
           
           <div className="flex items-center gap-3">
+            {/* Access Tier badge */}
+            <span
+              title={accessTierError || undefined}
+              className={`px-3 py-1 rounded-full text-sm font-medium border ${
+                accessTier === 'ProPlus'
+                  ? 'bg-purple-700/30 text-purple-200 border-purple-600'
+                  : accessTier === 'Plus'
+                  ? 'bg-blue-700/30 text-blue-200 border-blue-600'
+                  : 'bg-gray-700/50 text-gray-200 border-gray-600'
+              }`}
+            >
+              {accessTierLoading ? 'Tier: …' : `Tier: ${accessTier}`}
+            </span>
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
               challenge.status === "Live" 
                 ? "bg-green-600 text-green-100" 
