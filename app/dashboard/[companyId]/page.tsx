@@ -62,6 +62,10 @@ function DashboardContent() {
   const [error, setError] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editChallengeId, setEditChallengeId] = useState<string | null>(null);
+  // Access tier state (Basic | Plus | ProPlus)
+  const [accessTier, setAccessTier] = useState<'Basic' | 'Plus' | 'ProPlus'>("Basic");
+  const [accessTierLoading, setAccessTierLoading] = useState<boolean>(true);
+  const [accessTierError, setAccessTierError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -91,6 +95,45 @@ function DashboardContent() {
   useEffect(() => {
     load();
   }, []);
+
+  // Load Access Tier (Dashboard iFrame compatible API)
+  useEffect(() => {
+    (async () => {
+      if (!companyId || companyId === 'unknown') return;
+      setAccessTierLoading(true);
+      setAccessTierError(null);
+      try {
+        const res = await fetch(`/api/admin/access-tier?debug=1`, {
+          // Avoid any caching to always reflect latest permissions
+          cache: 'no-store',
+          headers: {
+            'x-whop-company-id': companyId,
+          },
+        });
+        if (!res.ok) {
+          // If unauthorized in client context, gracefully default to Basic
+          const text = await res.text();
+          console.warn('Access tier fetch failed:', res.status, text);
+          setAccessTier('Basic');
+          setAccessTierError(`Access tier unavailable (${res.status})`);
+        } else {
+          const data = await res.json();
+          if (data?.tier === 'Plus' || data?.tier === 'ProPlus' || data?.tier === 'Basic') {
+            setAccessTier(data.tier);
+            console.log('🎯 Access Tier loaded:', data.tier);
+          } else {
+            setAccessTier('Basic');
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load access tier', e);
+        setAccessTier('Basic');
+        setAccessTierError('Network error');
+      } finally {
+        setAccessTierLoading(false);
+      }
+    })();
+  }, [companyId]);
 
   // 🔧 FIX: Force reload when returning from challenge creation (refresh URL param)
   useEffect(() => {
@@ -160,7 +203,22 @@ function DashboardContent() {
       <main className="mx-auto max-w-6xl px-4 sm:px-6 pb-12 pt-24 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Challenge Dashboard</h1>
+            <div className="flex items-center gap-4 mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">Challenge Dashboard</h1>
+              {/* Access Tier badge */}
+              <span
+                title={accessTierError || undefined}
+                className={`px-3 py-1 rounded-full text-sm font-medium border ${
+                  accessTier === 'ProPlus'
+                    ? 'bg-purple-700/30 text-purple-200 border-purple-600'
+                    : accessTier === 'Plus'
+                    ? 'bg-blue-700/30 text-blue-200 border-blue-600'
+                    : 'bg-gray-700/50 text-gray-200 border-gray-600'
+                }`}
+              >
+                {accessTierLoading ? 'Tier: …' : `Tier: ${accessTier}`}
+              </span>
+            </div>
             <p className="text-gray-400 text-sm sm:text-base">Manage your challenges and track performance</p>
           </div>
           <Link href={`/dashboard/${companyId}/new`}>
