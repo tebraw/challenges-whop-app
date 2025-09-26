@@ -50,6 +50,14 @@ class WhopPaymentService {
       });
 
       // 🎯 WHOP RULE #7: Use chargeUser to initiate payment
+      console.log('🔧 CALLING WHOP chargeUser API:', {
+        userId,
+        amount: paymentRequest.amount,
+        currency: paymentRequest.currency,
+        expectedDisplay: `$${paymentRequest.amount.toFixed(2)}`,
+        debug: `Whop API expects dollars. Amount ${paymentRequest.amount} dollars will display as $${paymentRequest.amount} in checkout`
+      });
+
       const paymentResult = await whopSdk.payments.chargeUser({
         userId,
         amount: paymentRequest.amount,

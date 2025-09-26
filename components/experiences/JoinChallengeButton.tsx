@@ -13,13 +13,19 @@ export default function JoinChallengeButton({
   challengeId: string; 
   experienceId: string;
   isEnrolled: boolean;
-  challenge?: any; // Challenge data for terms modal
+  challenge?: any; // Challenge data for terms modal and pricing
   className?: string;
 }) {
   const [joining, setJoining] = React.useState(false);
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [showTermsModal, setShowTermsModal] = React.useState(false);
   const router = useRouter();
+
+  // Check if challenge has paid entry fee
+  const monetization = challenge?.monetizationRules;
+  const isPaidChallenge = monetization && monetization.enabled && monetization.entryPriceCents > 0;
+  const entryPrice = isPaidChallenge ? (monetization.entryPriceCents / 100).toFixed(2) : null;
+  const entryCurrency = monetization?.entryCurrency || 'USD';
 
   // Handle initial join click - show terms first
   function handleInitialJoin() {
@@ -143,7 +149,9 @@ export default function JoinChallengeButton({
         className={`w-full sm:w-auto relative overflow-hidden bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-60 disabled:cursor-not-allowed px-4 sm:px-6 lg:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl transition-all duration-300 font-semibold text-sm sm:text-base lg:text-lg shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 flex items-center gap-2 sm:gap-3 justify-center min-h-[48px] sm:min-h-[56px] touch-target ${className}`}
       >
         <span className="text-lg sm:text-xl lg:text-2xl relative z-10">{joining ? "⏳" : "🚀"}</span>
-        <span className="relative z-10">{joining ? "Joining..." : "Join Challenge"}</span>
+        <span className="relative z-10">
+          {joining ? "Joining..." : (isPaidChallenge ? `Join for $${entryPrice}` : "Join Challenge")}
+        </span>
         
         {/* Animated background effect during join */}
         {joining && (

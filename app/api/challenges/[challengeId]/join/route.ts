@@ -88,13 +88,18 @@ export async function POST(
       console.log('🔧 PROCESSING PAID CHALLENGE JOIN:', {
         challengeId: challenge.id,
         userId: user.whopUserId || user.id,
-        amount: entryPriceCents,
-        currency: entryCurrency
+        storedCents: entryPriceCents,
+        convertedToDollars: entryPriceCents / 100,
+        currency: entryCurrency,
+        debug: 'Converting cents from database to dollars for Whop API (which expects dollars, not cents)'
       });
 
-      // Initiate Whop payment per guidelines (server-side charge + iFrame checkout)
+      // 🔧 FIX: Whop API expects amount in DOLLARS, not cents!
+      // Database stores: entryPriceCents = 100 (for $1.00)
+      // Whop API expects: amount = 1.00 (dollars), then internally converts to cents via amount * 100
+      // So we convert cents back to dollars: 100 cents / 100 = 1.00 dollars
       const paymentResult = await whopPaymentService.initiatePayment(user.whopUserId || user.id, {
-        amount: entryPriceCents,
+        amount: entryPriceCents / 100, // Convert cents to dollars for Whop API
         currency: entryCurrency.toLowerCase() as 'usd' | 'eur' | 'gbp',
         productName: `Challenge Entry: ${challenge.title}`,
         productDescription: `Entry fee for challenge: ${challenge.title}`,
