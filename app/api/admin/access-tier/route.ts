@@ -59,21 +59,51 @@ export async function GET(request: NextRequest) {
 
     // Attempt real detection via Whop receipts/subscriptions
     let detectedTier: AccessTier | null = null;
+    
+    console.log('🔍 DEBUG: Starting access tier detection for company:', companyId);
 
     try {
       // Prefer company-scoped receipts (dashboard app context)
       const receipts = await whopAppSdk.payments.listReceiptsForCompany({ companyId });
+      
+      console.log('📋 DEBUG: Receipt lookup result:', {
+        companyId,
+        receiptsCount: Array.isArray(receipts) ? receipts.length : 'not-array',
+        receiptsType: typeof receipts,
+        receipts: Array.isArray(receipts) ? receipts.slice(0, 3) : receipts // Log first 3 receipts only
+      });
+      
       if (Array.isArray(receipts)) {
         for (const r of receipts as any[]) {
           const productId = r.productId || r.product_id || r.plan?.product_id || r.plan?.id;
           const tier = productIdToTier(productId);
+          
+          console.log('🔍 DEBUG: Processing receipt:', {
+            receiptId: r.id,
+            productId,
+            planId: r.plan?.id,
+            product_id: r.product_id,
+            detectedTier: tier,
+            fullReceipt: r
+          });
+          
           if (tier) {
             detectedTier = tier;
+            console.log('✅ DEBUG: Found tier from receipt:', tier);
             break;
           }
         }
+        
+        if (!detectedTier) {
+          console.log('❌ DEBUG: No tier detected from receipts. Product IDs expected:', {
+            BASIC: ACCESS_PASS_PRODUCTS.BASIC,
+            PLUS: ACCESS_PASS_PRODUCTS.PLUS,
+            PRO_PLUS: ACCESS_PASS_PRODUCTS.PRO_PLUS
+          });
+        }
       }
     } catch (e) {
+      console.error('❌ DEBUG: Receipt lookup failed:', e);
       // Silent fallback; we'll coalesce to Basic below
     }
 
