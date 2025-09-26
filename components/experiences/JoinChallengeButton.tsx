@@ -51,11 +51,12 @@ export default function JoinChallengeButton({
     try {
       setJoining(true);
       
-      // Call the join API endpoint
+      // Call the join API endpoint with Experience context
       const res = await fetch(`/api/challenges/${challengeId}/join`, { 
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
+          'x-experience-id': experienceId, // 🔧 FIX: Include Experience ID for proper context
         }
       });
       

@@ -85,6 +85,13 @@ export async function POST(
         return NextResponse.json({ error: 'Paid challenge is misconfigured (price missing).' }, { status: 400 });
       }
 
+      console.log('🔧 PROCESSING PAID CHALLENGE JOIN:', {
+        challengeId: challenge.id,
+        userId: user.whopUserId || user.id,
+        amount: entryPriceCents,
+        currency: entryCurrency
+      });
+
       // Initiate Whop payment per guidelines (server-side charge + iFrame checkout)
       const paymentResult = await whopPaymentService.initiatePayment(user.whopUserId || user.id, {
         amount: entryPriceCents,
@@ -100,10 +107,29 @@ export async function POST(
         }
       });
 
+      console.log('🔧 PAYMENT RESULT:', {
+        success: paymentResult.success,
+        hasCheckoutUrl: !!paymentResult.checkoutUrl,
+        error: paymentResult.error
+      });
+
       if (!paymentResult.success) {
-        return NextResponse.json({ error: paymentResult.error || 'Failed to initiate payment' }, { status: 500 });
+        console.log('❌ Payment failed:', paymentResult.error);
+        return NextResponse.json({ 
+          error: paymentResult.error || 'Failed to initiate payment',
+          debug: 'Payment service returned failure'
+        }, { status: 500 });
       }
 
+      if (!paymentResult.checkoutUrl) {
+        console.log('❌ No checkout URL in successful payment result');
+        return NextResponse.json({ 
+          error: 'Payment service did not return checkout URL',
+          debug: 'Payment succeeded but no checkout URL available'
+        }, { status: 500 });
+      }
+
+      console.log('✅ Payment checkout URL created successfully');
       return NextResponse.json({
         requirePayment: true,
         checkoutUrl: paymentResult.checkoutUrl,

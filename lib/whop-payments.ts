@@ -42,6 +42,13 @@ class WhopPaymentService {
     paymentRequest: PaymentRequest
   ): Promise<PaymentInitResponse> {
     try {
+      console.log('🔧 INITIATING PAYMENT:', {
+        userId,
+        amount: paymentRequest.amount,
+        currency: paymentRequest.currency,
+        metadata: paymentRequest.metadata
+      });
+
       // 🎯 WHOP RULE #7: Use chargeUser to initiate payment
       const paymentResult = await whopSdk.payments.chargeUser({
         userId,
@@ -51,7 +58,10 @@ class WhopPaymentService {
         metadata: paymentRequest.metadata
       });
 
+      console.log('🔧 WHOP PAYMENT RESULT:', JSON.stringify(paymentResult, null, 2));
+
       if (!paymentResult) {
+        console.log('❌ No payment result returned from Whop SDK');
         return {
           success: false,
           error: 'Failed to create payment session'
@@ -63,6 +73,20 @@ class WhopPaymentService {
       const checkoutUrl = (paymentResult as any).checkoutUrl || (paymentResult as any).inAppPurchase?.checkoutUrl;
       const checkoutSessionId = (paymentResult as any).id || (paymentResult as any).inAppPurchase?.id;
 
+      console.log('🔧 EXTRACTED PAYMENT DATA:', {
+        checkoutUrl,
+        checkoutSessionId,
+        success: !!(checkoutUrl && checkoutSessionId)
+      });
+
+      if (!checkoutUrl) {
+        console.log('❌ No checkout URL found in payment result');
+        return {
+          success: false,
+          error: 'No checkout URL returned from payment service'
+        };
+      }
+
       return {
         success: true,
         checkoutSessionId,
@@ -71,7 +95,13 @@ class WhopPaymentService {
       };
 
     } catch (error) {
-      console.error('Payment initiation failed:', error);
+      console.error('❌ Payment initiation failed:', error);
+      console.error('Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Payment initiation failed'
