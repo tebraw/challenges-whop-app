@@ -4,28 +4,29 @@
  */
 import { WhopServerSdk, makeWebhookValidator } from "@whop/api";
 
-// 🎯 PRIMARY SDK - Dashboard App Standard (Company Operations)
+// 🎯 PRIMARY SDK - Official Whop Template Pattern (Experience & Dashboard)
 export const whopSdk = WhopServerSdk({
   appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
-  appApiKey: process.env.WHOP_APP_API_KEY ?? "fallback", // App API Key for Dashboard Apps
-  // onBehalfOfUserId removed for Company Access - follows official Whop Dashboard App template
+  appApiKey: process.env.WHOP_APP_API_KEY ?? "fallback", // App API Key
+  onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID, // ✅ RESTORED: Official template uses this
+  companyId: process.env.NEXT_PUBLIC_WHOP_COMPANY_ID, // ✅ RESTORED: Official template pattern
 });
 
-// 🎭 APP SDK - For Experience/Member operations  
+// 🎭 APP SDK - For Dashboard Company operations with dynamic context
 export const whopAppSdk = WhopServerSdk({
   appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
-  appApiKey: process.env.WHOP_APP_API_KEY ?? "fallback", // App API Key
-  // onBehalfOfUserId removed for Company Access - was blocking listReceiptsForCompany()
+  appApiKey: process.env.WHOP_APP_API_KEY ?? "fallback", // App API Key for Dashboard Apps
+  onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID, // ✅ RESTORED: Needed for Company operations
 });
 
-// 🏢 COMPANY SDK - For Company-specific operations (fallback)
-export const whopCompanySdk = whopAppSdk; // Use same SDK with App API Key
+// 🏢 COMPANY SDK - For Company-specific operations (legacy compatibility)
+export const whopCompanySdk = whopAppSdk; // Same configuration as official template
 
-// 🤖 AGENT SDK - For operations requiring Agent User (notifications, etc.)
+// 🤖 AGENT SDK - For operations explicitly requiring Agent User
 export const whopAgentSdk = WhopServerSdk({
   appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
   appApiKey: process.env.WHOP_APP_API_KEY ?? "fallback",
-  onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID, // Only for Agent operations
+  onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID, // Agent operations only
 });
 
 // 🔄 SMART SDK - Legacy compatibility
@@ -33,13 +34,14 @@ export function getWhopSdk(context: 'company' | 'experience' | 'auto' = 'auto') 
   return whopAppSdk; // Use unified App SDK for all contexts
 }
 
-// 🔧 COMPANY-SPECIFIC SDK CREATOR
+// 🔧 COMPANY-SPECIFIC SDK CREATOR - Official Template Pattern
 export function createCompanyWhopSdk(companyId: string) {
   return WhopServerSdk({
     appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
     appApiKey: process.env.WHOP_APP_API_KEY ?? "fallback",
-    // onBehalfOfUserId removed for Company Access compatibility
-  }).withCompany(companyId);
+    onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID, // ✅ RESTORED: Official pattern
+    companyId: companyId, // Dynamic company ID as per official template
+  });
 }
 
 // Export webhook validator
