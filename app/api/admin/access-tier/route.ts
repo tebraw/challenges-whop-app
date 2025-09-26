@@ -65,6 +65,15 @@ export async function GET(request: NextRequest) {
     try {
       // Use official Whop SDK with dynamic company binding for multi-tenant support
       const companySpecificSdk = whopAppSdk.withCompany(companyId);
+      
+      console.log('🔧 DEBUG: SDK Configuration Check:', {
+        hasAppId: !!process.env.NEXT_PUBLIC_WHOP_APP_ID,
+        hasAppApiKey: !!process.env.WHOP_APP_API_KEY,
+        hasAgentUserId: !!process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
+        companyId
+      });
+      
+      // SDK call requires companyId even with withCompany() binding
       const receiptsResult = await companySpecificSdk.payments.listReceiptsForCompany({
         companyId,
         first: 50, // Get enough receipts to find Access Pass purchases
