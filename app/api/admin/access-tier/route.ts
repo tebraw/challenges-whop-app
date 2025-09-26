@@ -57,78 +57,77 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No access to company' }, { status: 403 });
     }
 
-    // Attempt real detection via Whop receipts/subscriptions
+    // Attempt real detection via Whop receipts/subscriptions using official SDK
     let detectedTier: AccessTier | null = null;
     
     console.log('🔍 DEBUG: Starting access tier detection for company:', companyId);
 
     try {
-      // Use REST API directly instead of SDK method that's failing
-      const receiptsResponse = await fetch(`https://api.whop.com/api/v2/companies/${companyId}/receipts`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.WHOP_APP_API_KEY}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      console.log('📋 DEBUG: REST API receipt lookup response:', {
+      // Use official Whop SDK as recommended in documentation
+      const receiptsResult = await whopAppSdk.payments.listReceiptsForCompany({
         companyId,
-        status: receiptsResponse.status,
-        statusText: receiptsResponse.statusText,
-        ok: receiptsResponse.ok
+        first: 50, // Get enough receipts to find Access Pass purchases
       });
 
-      if (receiptsResponse.ok) {
-        const receiptsData = await receiptsResponse.json();
-        const receipts = receiptsData.data || receiptsData;
+      console.log('📋 DEBUG: SDK receipt lookup response:', {
+        companyId,
+        receiptsCount: receiptsResult?.receipts?.nodes?.length || 0,
+        hasPageInfo: !!receiptsResult?.receipts?.pageInfo
+      });
+
+      const receipts = receiptsResult?.receipts?.nodes || [];
         
-        console.log('📋 DEBUG: Receipt lookup result:', {
-          companyId,
-          receiptsCount: Array.isArray(receipts) ? receipts.length : 'not-array',
-          receiptsType: typeof receipts,
-          receipts: Array.isArray(receipts) ? receipts.slice(0, 3) : receipts // Log first 3 receipts only
-        });
+      console.log('📋 DEBUG: Receipt lookup result:', {
+        companyId,
+        receiptsCount: receipts.length,
+        receiptsType: typeof receipts,
+        receipts: receipts.slice(0, 3) // Log first 3 receipts only
+      });
         
-        if (Array.isArray(receipts)) {
-          for (const r of receipts as any[]) {
-            const productId = r.productId || r.product_id || r.plan?.product_id || r.plan?.id;
-            const tier = productIdToTier(productId);
-            
-            console.log('🔍 DEBUG: Processing receipt:', {
-              receiptId: r.id,
-              productId,
-              planId: r.plan?.id,
-              product_id: r.product_id,
-              detectedTier: tier,
-              fullReceipt: r
-            });
-            
-            if (tier) {
-              detectedTier = tier;
-              console.log('✅ DEBUG: Found tier from receipt:', tier);
-              break;
-            }
+      if (receipts.length > 0) {
+        for (const receipt of receipts) {
+          if (!receipt) continue;
+          
+          // Check Access Pass field (official way according to docs)
+          const accessPassId = receipt.accessPass?.id;
+          const accessPassTitle = receipt.accessPass?.title;
+          
+          // Also check plan ID as fallback
+          const planId = receipt.plan?.id;
+          
+          console.log('🔍 DEBUG: Processing receipt:', {
+            receiptId: receipt.id,
+            accessPassId,
+            accessPassTitle,
+            planId,
+            fullReceipt: receipt
+          });
+          
+          // Try Access Pass ID first (most reliable)
+          let tier = productIdToTier(accessPassId);
+          
+          // Fallback to plan ID if no Access Pass
+          if (!tier && planId) {
+            tier = productIdToTier(planId);
           }
           
-          if (!detectedTier) {
-            console.log('❌ DEBUG: No tier detected from receipts. Product IDs expected:', {
-              BASIC: ACCESS_PASS_PRODUCTS.BASIC,
-              PLUS: ACCESS_PASS_PRODUCTS.PLUS,
-              PRO_PLUS: ACCESS_PASS_PRODUCTS.PRO_PLUS
-            });
+          if (tier) {
+            detectedTier = tier;
+            console.log('✅ DEBUG: Found tier from receipt:', { tier, source: accessPassId ? 'accessPass' : 'plan', id: accessPassId || planId });
+            break;
           }
         }
-      } else {
-        const errorText = await receiptsResponse.text();
-        console.error('❌ DEBUG: REST API receipt lookup failed:', {
-          status: receiptsResponse.status,
-          statusText: receiptsResponse.statusText,
-          error: errorText
-        });
+        
+        if (!detectedTier) {
+          console.log('❌ DEBUG: No tier detected from receipts. Expected Access Pass/Plan IDs:', {
+            BASIC: ACCESS_PASS_PRODUCTS.BASIC,
+            PLUS: ACCESS_PASS_PRODUCTS.PLUS,
+            PRO_PLUS: ACCESS_PASS_PRODUCTS.PRO_PLUS
+          });
+        }
       }
     } catch (e) {
-      console.error('❌ DEBUG: Receipt lookup failed:', e);
+      console.error('❌ DEBUG: SDK receipt lookup failed:', e);
       // Silent fallback; we'll coalesce to Basic below
     }
 
