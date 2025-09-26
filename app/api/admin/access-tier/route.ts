@@ -57,87 +57,66 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No access to company' }, { status: 403 });
     }
 
-    // Attempt real detection via Whop receipts/subscriptions using official SDK
+    // OPTION A: Direct Access Pass Check (Official Whop Method)
     let detectedTier: AccessTier | null = null;
     
-    console.log('🔍 DEBUG: Starting access tier detection for company:', companyId);
+    console.log('🔍 DEBUG: Starting DIRECT ACCESS PASS detection for company:', companyId);
 
     try {
-      // Use official Whop SDK with dynamic company binding for multi-tenant support
-      const companySpecificSdk = whopAppSdk.withCompany(companyId);
+      // Get Company Owner User ID from token verification (already verified above)
+      console.log('🎯 DEBUG: Using Direct Access Pass Check method (Official Whop SDK)');
+      console.log('👤 DEBUG: Company Owner userId:', userId);
       
-      console.log('🔧 DEBUG: SDK Configuration Check:', {
-        hasAppId: !!process.env.NEXT_PUBLIC_WHOP_APP_ID,
-        hasAppApiKey: !!process.env.WHOP_APP_API_KEY,
-        hasAgentUserId: !!process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
-        companyId
+      // Check each tier directly via Access Pass API (most reliable method)
+      const accessPassChecks = [
+        { tier: 'ProPlus' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PRO_PLUS },
+        { tier: 'Plus' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PLUS },
+        { tier: 'Basic' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.BASIC }
+      ];
+      
+      console.log('� DEBUG: Checking Access Passes:', {
+        userId,
+        accessPassIds: accessPassChecks.map(check => ({ tier: check.tier, id: check.accessPassId }))
       });
       
-      // SDK call requires companyId even with withCompany() binding
-      const receiptsResult = await companySpecificSdk.payments.listReceiptsForCompany({
-        companyId,
-        first: 50, // Get enough receipts to find Access Pass purchases
-      });
-
-      console.log('📋 DEBUG: SDK receipt lookup response:', {
-        companyId,
-        receiptsCount: receiptsResult?.receipts?.nodes?.length || 0,
-        hasPageInfo: !!receiptsResult?.receipts?.pageInfo
-      });
-
-      const receipts = receiptsResult?.receipts?.nodes || [];
-        
-      console.log('📋 DEBUG: Receipt lookup result:', {
-        companyId,
-        receiptsCount: receipts.length,
-        receiptsType: typeof receipts,
-        receipts: receipts.slice(0, 3) // Log first 3 receipts only
-      });
-        
-      if (receipts.length > 0) {
-        for (const receipt of receipts) {
-          if (!receipt) continue;
+      // Check from highest tier to lowest
+      for (const { tier, accessPassId } of accessPassChecks) {
+        try {
+          console.log(`🔍 DEBUG: Checking ${tier} Access Pass: ${accessPassId}`);
           
-          // Check Access Pass field (official way according to docs)
-          const accessPassId = receipt.accessPass?.id;
-          const accessPassTitle = receipt.accessPass?.title;
-          
-          // Also check plan ID as fallback
-          const planId = receipt.plan?.id;
-          
-          console.log('🔍 DEBUG: Processing receipt:', {
-            receiptId: receipt.id,
+          const accessResult = await whopAppSdk.access.checkIfUserHasAccessToAccessPass({
             accessPassId,
-            accessPassTitle,
-            planId,
-            fullReceipt: receipt
+            userId
           });
           
-          // Try Access Pass ID first (most reliable)
-          let tier = productIdToTier(accessPassId);
+          console.log(`� DEBUG: ${tier} Access Pass result:`, {
+            accessPassId,
+            hasAccess: accessResult.hasAccess,
+            accessLevel: accessResult.accessLevel
+          });
           
-          // Fallback to plan ID if no Access Pass
-          if (!tier && planId) {
-            tier = productIdToTier(planId);
-          }
-          
-          if (tier) {
+          if (accessResult.hasAccess) {
             detectedTier = tier;
-            console.log('✅ DEBUG: Found tier from receipt:', { tier, source: accessPassId ? 'accessPass' : 'plan', id: accessPassId || planId });
-            break;
+            console.log(`✅ DEBUG: Found tier via Direct Access Pass Check: ${tier} (${accessPassId})`);
+            break; // Stop at highest tier found
           }
-        }
-        
-        if (!detectedTier) {
-          console.log('❌ DEBUG: No tier detected from receipts. Expected Access Pass/Plan IDs:', {
-            BASIC: ACCESS_PASS_PRODUCTS.BASIC,
-            PLUS: ACCESS_PASS_PRODUCTS.PLUS,
-            PRO_PLUS: ACCESS_PASS_PRODUCTS.PRO_PLUS
-          });
+        } catch (accessError) {
+          console.log(`❌ DEBUG: Error checking ${tier} Access Pass:`, accessError);
+          // Continue to next tier
         }
       }
+      
+      if (!detectedTier) {
+        console.log('❌ DEBUG: No Access Pass found. User may not have purchased any tier yet.');
+        console.log('📋 DEBUG: Checked Access Pass IDs:', {
+          BASIC: ACCESS_PASS_PRODUCTS.BASIC,
+          PLUS: ACCESS_PASS_PRODUCTS.PLUS,
+          PRO_PLUS: ACCESS_PASS_PRODUCTS.PRO_PLUS
+        });
+      }
+      
     } catch (e) {
-      console.error('❌ DEBUG: SDK receipt lookup failed:', e);
+      console.error('❌ DEBUG: Direct Access Pass check failed:', e);
       // Silent fallback; we'll coalesce to Basic below
     }
 
