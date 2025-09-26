@@ -68,22 +68,24 @@ class WhopPaymentService {
         };
       }
 
-      // Best-effort extraction of checkout URL/ID based on SDK return shape
-      // Supports both direct `checkoutUrl` and nested `inAppPurchase` shapes
-      const checkoutUrl = (paymentResult as any).checkoutUrl || (paymentResult as any).inAppPurchase?.checkoutUrl;
+      // Extract checkout session ID from Whop API response
       const checkoutSessionId = (paymentResult as any).id || (paymentResult as any).inAppPurchase?.id;
+      
+      // 🔧 FIX: Build checkout URL manually since Whop API doesn't return it
+      const checkoutUrl = checkoutSessionId ? `https://whop.com/checkout/${checkoutSessionId}` : null;
 
       console.log('🔧 EXTRACTED PAYMENT DATA:', {
         checkoutUrl,
         checkoutSessionId,
-        success: !!(checkoutUrl && checkoutSessionId)
+        success: !!(checkoutUrl && checkoutSessionId),
+        paymentResultType: (paymentResult as any).__typename
       });
 
-      if (!checkoutUrl) {
-        console.log('❌ No checkout URL found in payment result');
+      if (!checkoutUrl || !checkoutSessionId) {
+        console.log('❌ No checkout session ID found in payment result');
         return {
           success: false,
-          error: 'No checkout URL returned from payment service'
+          error: 'No checkout session ID returned from payment service'
         };
       }
 
