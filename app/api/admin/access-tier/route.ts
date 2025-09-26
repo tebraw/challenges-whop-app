@@ -63,8 +63,9 @@ export async function GET(request: NextRequest) {
     console.log('🔍 DEBUG: Starting access tier detection for company:', companyId);
 
     try {
-      // Use official Whop SDK as recommended in documentation
-      const receiptsResult = await whopAppSdk.payments.listReceiptsForCompany({
+      // Use official Whop SDK with dynamic company binding for multi-tenant support
+      const companySpecificSdk = whopAppSdk.withCompany(companyId);
+      const receiptsResult = await companySpecificSdk.payments.listReceiptsForCompany({
         companyId,
         first: 50, // Get enough receipts to find Access Pass purchases
       });

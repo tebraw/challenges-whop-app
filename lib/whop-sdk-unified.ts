@@ -8,15 +8,16 @@ import { WhopServerSdk, makeWebhookValidator } from "@whop/api";
 export const whopSdk = WhopServerSdk({
   appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
   appApiKey: process.env.WHOP_APP_API_KEY ?? "fallback", // App API Key
-  onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID, // ✅ RESTORED: Official template uses this
-  companyId: process.env.NEXT_PUBLIC_WHOP_COMPANY_ID, // ✅ RESTORED: Official template pattern
+  onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID, // ✅ Official template uses this
+  // companyId removed - use withCompany() dynamically for multi-tenant support
 });
 
-// 🎭 APP SDK - For Dashboard Company operations with dynamic context
+// 🎭 APP SDK - For Dashboard Company operations with DYNAMIC company context
 export const whopAppSdk = WhopServerSdk({
   appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
   appApiKey: process.env.WHOP_APP_API_KEY ?? "fallback", // App API Key for Dashboard Apps
-  onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID, // ✅ RESTORED: Needed for Company operations
+  onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID, // ✅ Needed for Company operations
+  // companyId removed - prevents 500 errors when accessing different companies
 });
 
 // 🏢 COMPANY SDK - For Company-specific operations (legacy compatibility)
@@ -34,14 +35,14 @@ export function getWhopSdk(context: 'company' | 'experience' | 'auto' = 'auto') 
   return whopAppSdk; // Use unified App SDK for all contexts
 }
 
-// 🔧 COMPANY-SPECIFIC SDK CREATOR - Official Template Pattern
+// 🔧 COMPANY-SPECIFIC SDK CREATOR - Official Template Pattern for Multi-Tenant
 export function createCompanyWhopSdk(companyId: string) {
   return WhopServerSdk({
     appId: process.env.NEXT_PUBLIC_WHOP_APP_ID ?? "fallback",
     appApiKey: process.env.WHOP_APP_API_KEY ?? "fallback",
-    onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID, // ✅ RESTORED: Official pattern
-    companyId: companyId, // Dynamic company ID as per official template
-  });
+    onBehalfOfUserId: process.env.NEXT_PUBLIC_WHOP_AGENT_USER_ID, // ✅ Official pattern
+    // Create SDK instance without static companyId, then apply dynamically
+  }).withCompany(companyId); // ✅ CRITICAL: Dynamic company binding prevents 500 errors
 }
 
 // Export webhook validator
