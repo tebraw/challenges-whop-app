@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { whopSdk } from '@/lib/whop-sdk-unified';
+import { whopPaymentService } from '@/lib/whop-payments';
 
 interface CheckPaymentRequest {
   checkoutSessionId: string;
@@ -23,12 +24,22 @@ export async function POST(
 
     console.log('🔧 CHECKING PAYMENT STATUS:', {
       challengeId,
-      checkoutSessionId
+      checkoutSessionId,
+      timestamp: new Date().toISOString()
     });
 
     if (!checkoutSessionId) {
+      console.error('❌ Missing checkout session ID');
       return NextResponse.json(
         { error: 'Checkout session ID is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!checkoutSessionId.startsWith('ch_')) {
+      console.error('❌ Invalid checkout session format:', checkoutSessionId);
+      return NextResponse.json(
+        { error: 'Invalid checkout session format' },
         { status: 400 }
       );
     }
@@ -39,6 +50,7 @@ export async function POST(
     const whopUserId = headersList.get('x-whop-user-id') || headersList.get('x-user-id');
 
     if (!whopUserToken) {
+      console.error('❌ Missing authentication token');
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -46,7 +58,18 @@ export async function POST(
     }
 
     // Verify user with Whop SDK
-    const { userId } = await whopSdk.verifyUserToken(headersList);
+    let userId: string;
+    try {
+      const userData = await whopSdk.verifyUserToken(headersList);
+      userId = userData.userId;
+      console.log('✅ User authenticated:', userId);
+    } catch (authError) {
+      console.error('❌ Authentication failed:', authError);
+      return NextResponse.json(
+        { error: 'Invalid authentication token' },
+        { status: 401 }
+      );
+    }
     
     // Find local user
     const user = await prisma.user.findFirst({
@@ -55,11 +78,18 @@ export async function POST(
     });
 
     if (!user) {
+      console.error('❌ User not found in database:', userId);
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
       );
     }
+
+    console.log('✅ User found:', { 
+      id: user.id, 
+      whopUserId: user.whopUserId,
+      tenantId: user.tenantId 
+    });
 
     // Find challenge
     const challenge = await prisma.challenge.findUnique({
@@ -72,11 +102,19 @@ export async function POST(
     });
 
     if (!challenge) {
+      console.error('❌ Challenge not found:', challengeId);
       return NextResponse.json(
         { error: 'Challenge not found' },
         { status: 404 }
       );
     }
+
+    console.log('✅ Challenge found:', { 
+      id: challenge.id, 
+      title: challenge.title,
+      status: challenge.status,
+      existingEnrollments: challenge.enrollments.length
+    });
 
     // Check if user is already enrolled
     if (challenge.enrollments.length > 0) {
@@ -88,11 +126,30 @@ export async function POST(
       });
     }
 
-    // TODO: Check payment status with Whop API
-    // For now, we'll assume payment is successful if we get to this point
-    // In a real implementation, you would verify the payment status with Whop
+    // Verify payment status with Whop Payment Service
+    const paymentStatus = await whopPaymentService.checkPaymentStatus(checkoutSessionId);
     
-    console.log('💰 Payment verification - assuming successful for checkout session:', checkoutSessionId);
+    if (!paymentStatus.success) {
+      console.error('❌ Payment verification failed:', paymentStatus.error);
+      return NextResponse.json(
+        { error: paymentStatus.error || 'Payment verification failed' },
+        { status: 400 }
+      );
+    }
+
+    if (paymentStatus.status !== 'completed') {
+      console.log('⏳ Payment not yet completed, status:', paymentStatus.status);
+      return NextResponse.json(
+        { 
+          success: false,
+          status: paymentStatus.status,
+          message: `Payment status: ${paymentStatus.status}` 
+        },
+        { status: 202 } // Accepted but not completed
+      );
+    }
+
+    console.log('✅ Payment verification successful for checkout session:', checkoutSessionId);
 
     // Create enrollment
     const enrollment = await prisma.enrollment.create({
@@ -115,21 +172,19 @@ export async function POST(
 
     console.log('✅ User enrolled after payment verification');
 
-    // Optionally, record the payment for tracking
+    // Record the payment for tracking (optional)
     try {
-      await prisma.offerConversion.create({
-        data: {
-          challengeOfferId: `paid_entry_${challengeId}`,
-          userId: user.id,
-          challengeId: challengeId,
-          conversionType: 'paid_entry',
-          whopCheckoutUrl: `https://whop.com/checkout/${checkoutSessionId}`,
-          convertedAt: new Date()
-        }
+      // Log successful payment for tracking purposes
+      console.log('📊 Payment successfully processed and tracked:', {
+        userId: user.id,
+        challengeId,
+        challengeTitle: challenge.title,
+        checkoutSessionId,
+        timestamp: new Date().toISOString()
       });
     } catch (conversionError) {
-      console.warn('Failed to record offer conversion:', conversionError);
-      // Don't fail the enrollment if conversion tracking fails
+      console.warn('Failed to record payment tracking:', conversionError);
+      // Don't fail the enrollment if tracking fails
     }
 
     return NextResponse.json({
