@@ -29,6 +29,21 @@ export const TIER_LIMITS: Record<AccessTier, TierLimits> = {
 };
 
 /**
+ * Check if testing mode is enabled for this company
+ */
+function isTestingMode(companyId: string): boolean {
+  const testingMode = process.env.TESTING_MODE === 'true';
+  const testCompanyId = process.env.TEST_COMPANY_ID;
+  
+  if (testingMode && testCompanyId && companyId === testCompanyId) {
+    console.log('🧪 TESTING MODE: Granting ProPlus permissions for company:', companyId);
+    return true;
+  }
+  
+  return false;
+}
+
+/**
  * Check if user can create a new challenge based on their tier limits
  */
 export async function canCreateChallenge(
@@ -36,6 +51,12 @@ export async function canCreateChallenge(
   tenantId: string, 
   accessTier: AccessTier
 ): Promise<{ allowed: boolean; reason?: string; currentCount?: number; limit?: number }> {
+  // Check testing mode first
+  if (isTestingMode(companyId)) {
+    console.log('🧪 TESTING MODE: Allowing unlimited challenges for test company');
+    return { allowed: true };
+  }
+  
   const limits = TIER_LIMITS[accessTier];
   
   // Plus and ProPlus have unlimited challenges
@@ -123,7 +144,21 @@ export async function canCreateChallenge(
 }
 
 /**
- * Check if user can create paid challenges
+ * Check if user can create paid challenges (entry fee system)
+ */
+export function canCreatePaidChallenges(companyId: string, accessTier: AccessTier): boolean {
+  // Check testing mode first
+  if (isTestingMode(companyId)) {
+    console.log('🧪 TESTING MODE: Allowing paid challenges for test company');
+    return true;
+  }
+  
+  // Normal tier check
+  return TIER_LIMITS[accessTier].canCreatePaidChallenges;
+}
+
+/**
+ * Check if user can create paid challenges (legacy function)
  */
 export function canCreatePaidChallenge(accessTier: AccessTier): boolean {
   return TIER_LIMITS[accessTier].canCreatePaidChallenges;

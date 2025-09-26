@@ -84,9 +84,18 @@ export async function GET(request: NextRequest) {
 
     const tier = coalesceTier(detectedTier);
 
+    // Check testing mode - grant ProPlus permissions for test company
+    const isTestingMode = process.env.TESTING_MODE === 'true';
+    const testCompanyId = process.env.TEST_COMPANY_ID;
+    const isTestCompany = isTestingMode && testCompanyId && companyId === testCompanyId;
+
+    if (isTestCompany) {
+      console.log('🧪 TESTING MODE: Granting ProPlus access tier for company:', companyId);
+    }
+
     const caps: TierCaps = {
-      tier,
-      canCreatePaidChallenges: tier === 'ProPlus', // Paid challenges only for ProPlus
+      tier: isTestCompany ? 'ProPlus' : tier,
+      canCreatePaidChallenges: isTestCompany || tier === 'ProPlus', // Testing mode OR ProPlus
       canSetCustomEntryPrice: true, // Company owner sets entry price freely
       revenueSharePercent: 10, // 10% platform fee (assumed on net, see docs)
     };

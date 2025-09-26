@@ -311,9 +311,9 @@ export async function POST(request: NextRequest) {
           
           // 💰 CHECK PAID CHALLENGE PERMISSIONS
           if (challengeData.monetization?.enabled && challengeData.monetization?.entryPriceCents) {
-            const { canCreatePaidChallenge } = await import('@/lib/tierLimits');
+            const { canCreatePaidChallenges } = await import('@/lib/tierLimits');
             
-            if (!canCreatePaidChallenge(tier)) {
+            if (!canCreatePaidChallenges(headerCompanyId, tier)) {
               console.log('❌ Paid challenge creation blocked for tier:', tier);
               return NextResponse.json({
                 error: 'Paid challenges not allowed',
