@@ -68,21 +68,39 @@ class WhopPaymentService {
         };
       }
 
-      // Extract checkout session ID from Whop API response
+      // Extract checkout session ID and plan ID from Whop API response
       const checkoutSessionId = (paymentResult as any).id || (paymentResult as any).inAppPurchase?.id;
+      const planId = (paymentResult as any).planId || (paymentResult as any).inAppPurchase?.planId;
       
-      // 🔧 FIX: Build checkout URL manually since Whop API doesn't return it
-      const checkoutUrl = checkoutSessionId ? `https://whop.com/checkout/${checkoutSessionId}` : null;
+      // 🔧 FIX: Try different Whop checkout URL formats based on real usage
+      // Format 1: Standard checkout with session ID
+      const checkoutUrl1 = checkoutSessionId ? `https://whop.com/checkout/${checkoutSessionId}` : null;
+      // Format 2: Purchase format with session ID
+      const checkoutUrl2 = checkoutSessionId ? `https://whop.com/purchase/${checkoutSessionId}` : null;
+      // Format 3: Direct plan purchase 
+      const checkoutUrl3 = planId ? `https://whop.com/checkout/plan/${planId}` : null;
+      // Format 4: Plan ID only
+      const checkoutUrl4 = planId ? `https://whop.com/checkout/${planId}` : null;
+      
+      // Let's try the plan-based approach (format 3)
+      const checkoutUrl = checkoutUrl3 || checkoutUrl1;
 
       console.log('🔧 EXTRACTED PAYMENT DATA:', {
         checkoutUrl,
         checkoutSessionId,
-        success: !!(checkoutUrl && checkoutSessionId),
-        paymentResultType: (paymentResult as any).__typename
+        planId,
+        success: !!(checkoutUrl && (checkoutSessionId || planId)),
+        paymentResultType: (paymentResult as any).__typename,
+        alternativeUrls: {
+          sessionBased1: checkoutUrl1,
+          sessionBased2: checkoutUrl2, 
+          planBased1: checkoutUrl3,
+          planBased2: checkoutUrl4
+        }
       });
 
-      if (!checkoutUrl || !checkoutSessionId) {
-        console.log('❌ No checkout session ID found in payment result');
+      if (!checkoutUrl || (!checkoutSessionId && !planId)) {
+        console.log('❌ No checkout session ID or plan ID found in payment result');
         return {
           success: false,
           error: 'No checkout session ID returned from payment service'
