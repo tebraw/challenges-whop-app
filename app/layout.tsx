@@ -4,7 +4,6 @@ import React from "react";
 import "./globals.css";
 import AppHeader from "../components/ui/AppHeader"; // <- RELATIV, sicher
 import { WhopApp } from "@whop/react/components";
-import { WhopIframeSdkProvider } from "@whop/react";  // KORREKTE iFrame SDK Provider
 import { WhopExperienceProvider } from "@/components/providers/WhopExperienceProvider";
 import { WhopChallengeWebSocketProvider } from "@/components/providers/WhopChallengeWebSocketProvider";
 import WhopErrorHandler from "@/components/WhopErrorHandler";
@@ -19,16 +18,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="de" suppressHydrationWarning className="dark">
       <body className="antialiased">
         <WhopApp>
-          {/* KORREKTE Whop iFrame SDK Provider für Dashboard App Checkouts */}
-          <WhopIframeSdkProvider>
-            <WhopExperienceProvider>
-              <WhopChallengeWebSocketProvider>
-                  <WhopErrorHandler />
-                  <AppHeader />
-                  <div className="pt-16">{children}</div>
-              </WhopChallengeWebSocketProvider>
-            </WhopExperienceProvider>
-          </WhopIframeSdkProvider>
+          {/* ✅ WhopApp handles WhopIframeSdkProvider automatically */}
+          <WhopExperienceProvider>
+            <WhopChallengeWebSocketProvider>
+                <WhopErrorHandler />
+                <AppHeader />
+                <div className="pt-16">{children}</div>
+            </WhopChallengeWebSocketProvider>
+          </WhopExperienceProvider>
         </WhopApp>
       </body>
     </html>
