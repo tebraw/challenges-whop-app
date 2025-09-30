@@ -77,6 +77,8 @@ function DashboardContent() {
   const [planModalOpen, setPlanModalOpen] = useState(false);
   // Basic tier onboarding popup state
   const [onboardingPopupOpen, setOnboardingPopupOpen] = useState(false);
+  // Processing state for plan selection
+  const [isProcessing, setIsProcessing] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -218,6 +220,9 @@ function DashboardContent() {
 
   // Handle plan selection and upgrade via Modern Whop iFrame Purchase API
   const handlePlanSelect = async (planId: string, tierName: string) => {
+    if (isProcessing || accessTier === tierName) return;
+
+    setIsProcessing(true);
     try {
       console.log('🛒 Starting plan purchase:', { planId, tierName });
       
@@ -253,6 +258,8 @@ function DashboardContent() {
     } catch (error) {
       console.error('💥 Error during plan selection:', error);
       alert(`An error occurred during the purchase: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsProcessing(false);
     }
   };
 

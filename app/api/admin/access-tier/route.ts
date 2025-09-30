@@ -57,30 +57,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No access to company' }, { status: 403 });
     }
 
-    // OPTION A: Direct Access Pass Check (Official Whop Method)
+    // OPTION A: Access Pass Check (iFrame SDK Compatible)
     let detectedTier: AccessTier | null = null;
     
-    console.log('🔍 DEBUG: Starting DIRECT ACCESS PASS detection for company:', companyId);
+    console.log('🔍 DEBUG: Starting ACCESS PASS detection for company:', companyId);
 
     try {
       // Get Company Owner User ID from token verification (already verified above)
-      console.log('🎯 DEBUG: Using Direct Access Pass Check method (Official Whop SDK)');
+      console.log('🎯 DEBUG: Using Access Pass Check method (iFrame SDK Compatible)');
       console.log('👤 DEBUG: Company Owner userId:', userId);
       
-      // Check each tier directly via Access Pass API (most reliable method)
-      const accessPassChecks = [
+      // Access Pass IDs that correspond to the plans users can purchase
+      // When users buy plans via iFrame SDK, they get access to these Access Passes
+      const ACCESS_PASS_CHECKS = [
         { tier: 'ProPlus' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PRO_PLUS },
         { tier: 'Plus' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PLUS },
         { tier: 'Basic' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.BASIC }
       ];
       
-      console.log('� DEBUG: Checking Access Passes:', {
+      console.log('🎯 DEBUG: Checking Access Pass Access:', {
         userId,
-        accessPassIds: accessPassChecks.map(check => ({ tier: check.tier, id: check.accessPassId }))
+        accessPasses: ACCESS_PASS_CHECKS.map(check => ({ tier: check.tier, accessPassId: check.accessPassId }))
       });
       
-      // Check from highest tier to lowest
-      for (const { tier, accessPassId } of accessPassChecks) {
+      // Check from highest tier to lowest using Access Pass method
+      for (const { tier, accessPassId } of ACCESS_PASS_CHECKS) {
         try {
           console.log(`🔍 DEBUG: Checking ${tier} Access Pass: ${accessPassId}`);
           
@@ -89,19 +90,18 @@ export async function GET(request: NextRequest) {
             userId
           });
           
-          console.log(`� DEBUG: ${tier} Access Pass result:`, {
+          console.log(`🎯 DEBUG: ${tier} Access Pass result:`, {
             accessPassId,
-            hasAccess: accessResult.hasAccess,
-            accessLevel: accessResult.accessLevel
+            hasAccess: accessResult.hasAccess
           });
           
           if (accessResult.hasAccess) {
             detectedTier = tier;
-            console.log(`✅ DEBUG: Found tier via Direct Access Pass Check: ${tier} (${accessPassId})`);
+            console.log(`✅ DEBUG: Found tier via Access Pass: ${tier} (${accessPassId})`);
             break; // Stop at highest tier found
           }
-        } catch (accessError) {
-          console.log(`❌ DEBUG: Error checking ${tier} Access Pass:`, accessError);
+        } catch (accessPassError) {
+          console.log(`❌ DEBUG: Error checking ${tier} Access Pass:`, accessPassError);
           // Continue to next tier
         }
       }
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
       }
       
     } catch (e) {
-      console.error('❌ DEBUG: Direct Access Pass check failed:', e);
+      console.error('❌ DEBUG: Access Pass check failed:', e);
       // Silent fallback; we'll coalesce to Basic below
     }
 
