@@ -234,6 +234,11 @@ function DashboardContent() {
     setIsProcessing(true);
     try {
       console.log('🛒 Starting plan purchase:', { planId, tierName });
+      console.log('🔍 iFrame SDK status:', { 
+        iframeSdk: !!iframeSdk, 
+        type: typeof iframeSdk, 
+        methods: iframeSdk ? Object.keys(iframeSdk) : 'N/A' 
+      });
       
       // Check if iFrame SDK is available (running inside Whop iFrame)
       if (!iframeSdk) {
@@ -246,6 +251,7 @@ function DashboardContent() {
         console.log('🔗 Fallback: Opening external Whop checkout:', checkoutUrl);
         window.open(checkoutUrl, '_blank');
         
+        setIsProcessing(false); // Reset processing state immediately
         setPlanModalOpen(false);
         alert(`Opening ${tierName} checkout in new tab. Complete your purchase there and refresh this page.`);
         return;
