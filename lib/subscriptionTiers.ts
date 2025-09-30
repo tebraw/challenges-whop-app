@@ -1,7 +1,7 @@
 // Whop Access Pass product IDs (provided by user)
 export const ACCESS_PASS_PRODUCTS = {
   BASIC: 'prod_YByUE3J5oT4Fq',
-  PLUS: 'prod_3lTSwjRreFDwP',
+  PLUS: 'prod_ttlhdSPEzAXeO',
   PRO_PLUS: 'prod_9YkNJGjxSgRyE',
 } as const;
 

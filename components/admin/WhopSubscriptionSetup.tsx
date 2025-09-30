@@ -28,7 +28,7 @@ const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
       'Premium features',
       'Custom branding options'
     ],
-    whopProdId: 'plan_zMxxDdVUysqE1', // Plus Plan ID aus .env.local
+    whopProdId: 'plan_HIkvcR8fdipgO', // Plus Plan ID aus .env.local (NEW: Pre plan renamed to Plus)
     isActive: true
   },
   {

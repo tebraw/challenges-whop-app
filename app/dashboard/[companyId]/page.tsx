@@ -245,7 +245,7 @@ function DashboardContent() {
         console.warn('❌ Whop iFrame SDK not available - not running in Whop iFrame context');
         
         // Fallback: Create external checkout link for non-iFrame context
-        const productId = tierName === 'Plus' ? 'prod_3lTSwjRreFDwP' : 'prod_9YkNJGjxSgRyE';
+        const productId = tierName === 'Plus' ? 'prod_ttlhdSPEzAXeO' : 'prod_9YkNJGjxSgRyE';
         const checkoutUrl = `https://whop.com/checkout/${productId}`;
         
         console.log('🔗 Fallback: Opening external Whop checkout:', checkoutUrl);
