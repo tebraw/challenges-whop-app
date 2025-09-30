@@ -229,7 +229,12 @@ function DashboardContent() {
 
   // Handle plan selection and upgrade via Modern Whop iFrame Purchase API
   const handlePlanSelect = async (planId: string, tierName: string) => {
-    if (isProcessing || accessTier === tierName) return;
+    console.log('🔍 [DEBUG] handlePlanSelect called:', { planId, tierName, accessTier, isProcessing });
+    
+    if (isProcessing || accessTier === tierName) {
+      console.log('🔍 [DEBUG] Blocked - processing or same tier:', { isProcessing, accessTier, tierName });
+      return;
+    }
 
     setIsProcessing(true);
     try {

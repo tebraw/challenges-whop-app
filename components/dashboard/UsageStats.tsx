@@ -3,7 +3,7 @@
 import { AlertTriangle, Crown, TrendingUp, Users, BarChart3 } from 'lucide-react';
 
 interface UsageStatsProps {
-  currentTier: 'Basic' | 'Plus' | 'ProPlus';
+  currentTier: 'Basic' | 'Plus' | 'ProPlus' | 'Pre';
   stats: {
     challengesCreated: number;
     totalParticipants: number;
@@ -18,6 +18,10 @@ const TIER_LIMITS = {
     features: ['Basic analytics', 'Email support', 'Community access']
   },
   Plus: {
+    challenges: Infinity,
+    features: ['Advanced analytics', 'Priority support', 'Custom branding', 'Member tools']
+  },
+  Pre: {
     challenges: Infinity,
     features: ['Advanced analytics', 'Priority support', 'Custom branding', 'Member tools']
   },
@@ -38,6 +42,9 @@ export default function UsageStats({ currentTier, stats, onUpgrade }: UsageStats
 
   // Don't show for ProPlus users (they have everything)
   if (currentTier === 'ProPlus') return null;
+  
+  // Treat 'Pre' same as 'Plus' internally
+  const effectiveTier = currentTier === 'Pre' ? 'Plus' : currentTier;
 
   return (
     <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
