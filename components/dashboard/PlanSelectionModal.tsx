@@ -12,6 +12,11 @@ interface PlanSelectionModalProps {
 
 // KORREKTE WHOP PLAN IDS - diese müssen in Whop Dashboard eingerichtet werden
 // ❌ BASIC PLAN REMOVED: Users get Basic access by default (no purchase needed)
+
+// DEBUG: Log Plan IDs to console
+console.log('🔍 Plus Plan ID from env:', process.env.NEXT_PUBLIC_PLUS_PLAN_ID);
+console.log('🔍 ProPlus Plan ID from env:', process.env.NEXT_PUBLIC_PROPLUS_PLAN_ID);
+
 const PLANS = [
   {
     id: process.env.NEXT_PUBLIC_PLUS_PLAN_ID || 'plan_plus_placeholder',
@@ -23,7 +28,7 @@ const PLANS = [
     color: 'bg-blue-50 border-blue-200',
     textColor: 'text-blue-900',
     buttonColor: 'bg-blue-600 hover:bg-blue-700',
-    popular: true,
+    // popular: true, // DISABLED: Could interfere with click events
     features: [
       '✅ Unlimited challenges',
       '❌ Paid challenges',
@@ -111,14 +116,14 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
                   isCurrentPlan(plan.name) ? 'ring-2 ring-blue-500' : ''
                 }`}
               >
-                {/* Popular Badge */}
-                {plan.popular && (
+                {/* Popular Badge - DISABLED to prevent click interference */}
+                {/* {plan.popular && (
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                     <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium">
                       Most Popular
                     </span>
                   </div>
-                )}
+                )} */}
 
                 {/* Current Plan Badge */}
                 {isCurrentPlan(plan.name) && (
