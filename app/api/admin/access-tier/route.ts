@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       // Basic users get access by default - no purchase required!
       const ACCESS_PASS_CHECKS = [
         { tier: 'ProPlus' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PRO_PLUS },
-        { tier: 'Plus' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PLUS }
+        { tier: 'Pre' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PLUS }
         // ❌ REMOVED Basic tier - users get Basic access without purchasing Access Pass
       ];
       

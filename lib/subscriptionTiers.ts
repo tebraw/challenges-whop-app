@@ -5,7 +5,7 @@ export const ACCESS_PASS_PRODUCTS = {
   PRO_PLUS: 'prod_9YkNJGjxSgRyE',
 } as const;
 
-export type AccessTier = 'Basic' | 'Plus' | 'ProPlus';
+export type AccessTier = 'Basic' | 'Plus' | 'ProPlus' | 'Pre';
 
 export function getUpgradeCheckoutUrl(tier: Exclude<AccessTier, 'Basic'>): string {
   const id = tier === 'Plus' ? ACCESS_PASS_PRODUCTS.PLUS : ACCESS_PASS_PRODUCTS.PRO_PLUS;
@@ -14,7 +14,7 @@ export function getUpgradeCheckoutUrl(tier: Exclude<AccessTier, 'Basic'>): strin
 
 export function productIdToTier(productId?: string | null): AccessTier | null {
   if (!productId) return null;
-  if (productId === ACCESS_PASS_PRODUCTS.PLUS) return 'Plus';
+  if (productId === ACCESS_PASS_PRODUCTS.PLUS) return 'Pre'; // Whop plan is named "Pre" but we map it to "Pre" internally
   if (productId === ACCESS_PASS_PRODUCTS.PRO_PLUS) return 'ProPlus';
   if (productId === ACCESS_PASS_PRODUCTS.BASIC) return 'Basic';
   return null;

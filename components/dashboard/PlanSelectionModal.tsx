@@ -6,7 +6,7 @@ import { X, Check } from 'lucide-react';
 interface PlanSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentTier?: 'Basic' | 'Plus' | 'ProPlus' | null;
+  currentTier?: 'Basic' | 'Plus' | 'ProPlus' | 'Pre' | null;
   onPlanSelect: (planId: string, tierName: string) => void;
 }
 
@@ -21,7 +21,8 @@ const PLANS = [
   {
     id: process.env.NEXT_PUBLIC_PLUS_PLAN_ID || 'plan_plus_placeholder',
     accessPassId: process.env.NEXT_PUBLIC_PLUS_ACCESS_PASS_ID || 'pass_plus_placeholder',
-    name: 'Plus',
+    name: 'Pre', // Internal name matching Whop plan
+    displayName: 'Plus', // User-facing name
     price: '$19.90',
     priceDetail: '/month',
     description: 'Ideal for growing communities',
@@ -38,7 +39,8 @@ const PLANS = [
   {
     id: process.env.NEXT_PUBLIC_PROPLUS_PLAN_ID || 'plan_proplus_placeholder',
     accessPassId: process.env.NEXT_PUBLIC_PROPLUS_ACCESS_PASS_ID || 'pass_proplus_placeholder',
-    name: 'ProPlus',
+    name: 'ProPlus', // Internal name matching Whop plan
+    displayName: 'ProPlus', // User-facing name
     price: '$49.90',
     priceDetail: '/month',
     description: 'Maximum power for enterprises',
@@ -69,10 +71,10 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
     }
   };
 
-  const getButtonText = (planName: string) => {
+  const getButtonText = (planName: string, displayName: string) => {
     if (currentTier === planName) return 'Current Plan';
     if (planName === 'Basic') return 'Downgrade to Basic';
-    return `Upgrade to ${planName}`;
+    return `Upgrade to ${displayName}`;
   };
 
   const isCurrentPlan = (planName: string) => currentTier === planName;
@@ -98,9 +100,9 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
         {currentTier && (
           <div className="px-6 py-3 bg-blue-50 border-b">
             <p className="text-sm text-blue-800">
-              <strong>Current Plan:</strong> {currentTier} 
+              <strong>Current Plan:</strong> {currentTier === 'Pre' ? 'Plus' : currentTier} 
               {currentTier === 'Basic' && ' (FREE)'}
-              {currentTier === 'Plus' && ' ($19.90/month)'}
+              {(currentTier === 'Plus' || currentTier === 'Pre') && ' ($19.90/month)'}
               {currentTier === 'ProPlus' && ' ($49.90/month)'}
             </p>
           </div>
@@ -138,7 +140,7 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
                 <div className={`${plan.textColor}`}>
                   {/* Plan Header */}
                   <div className="text-center mb-6">
-                    <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
+                    <h3 className="text-xl font-bold mb-2">{plan.displayName}</h3>
                     <div className="mb-3">
                       <span className="text-3xl font-bold">{plan.price}</span>
                       {plan.priceDetail && (
@@ -160,7 +162,14 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
 
                   {/* Action Button */}
                   <button
-                    onClick={() => handlePlanSelect(plan.id, plan.name)}
+                    onClick={() => {
+                      console.log(`🔍 [DEBUG] Button clicked for plan: ${plan.name}, id: ${plan.id}`);
+                      console.log(`🔍 [DEBUG] isCurrentPlan(${plan.name}):`, isCurrentPlan(plan.name));
+                      console.log(`🔍 [DEBUG] currentTier:`, currentTier);
+                      console.log(`🔍 [DEBUG] isProcessing:`, isProcessing);
+                      console.log(`🔍 [DEBUG] button disabled:`, isCurrentPlan(plan.name) || isProcessing);
+                      handlePlanSelect(plan.id, plan.name);
+                    }}
                     disabled={isCurrentPlan(plan.name) || isProcessing}
                     className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
                       isCurrentPlan(plan.name)
@@ -168,7 +177,7 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
                         : `${plan.buttonColor} text-white ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`
                     }`}
                   >
-                    {isProcessing ? 'Processing...' : getButtonText(plan.name)}
+                    {isProcessing ? 'Processing...' : getButtonText(plan.name, plan.displayName)}
                   </button>
                 </div>
               </div>

@@ -78,8 +78,8 @@ function DashboardContent() {
   const [error, setError] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editChallengeId, setEditChallengeId] = useState<string | null>(null);
-  // Access tier state (Basic | Plus | ProPlus)
-  const [accessTier, setAccessTier] = useState<'Basic' | 'Plus' | 'ProPlus'>("Basic");
+  // Access tier state (Basic | Plus | ProPlus | Pre)
+  const [accessTier, setAccessTier] = useState<'Basic' | 'Plus' | 'ProPlus' | 'Pre'>("Basic");
   const [accessTierLoading, setAccessTierLoading] = useState<boolean>(true);
   const [accessTierError, setAccessTierError] = useState<string | null>(null);
   // Plan selection modal state
@@ -140,7 +140,7 @@ function DashboardContent() {
           setAccessTierError(`Access tier unavailable (${res.status})`);
         } else {
           const data = await res.json();
-          if (data?.tier === 'Plus' || data?.tier === 'ProPlus' || data?.tier === 'Basic') {
+          if (data?.tier === 'Plus' || data?.tier === 'ProPlus' || data?.tier === 'Basic' || data?.tier === 'Pre') {
             setAccessTier(data.tier);
             console.log('🎯 Access Tier loaded:', data.tier);
           } else {
@@ -245,7 +245,7 @@ function DashboardContent() {
         console.warn('❌ Whop iFrame SDK not available - not running in Whop iFrame context');
         
         // Fallback: Create external checkout link for non-iFrame context
-        const productId = tierName === 'Plus' ? 'prod_ttlhdSPEzAXeO' : 'prod_9YkNJGjxSgRyE';
+        const productId = (tierName === 'Plus' || tierName === 'Pre') ? 'prod_ttlhdSPEzAXeO' : 'prod_9YkNJGjxSgRyE';
         const checkoutUrl = `https://whop.com/checkout/${productId}`;
         
         console.log('🔗 Fallback: Opening external Whop checkout:', checkoutUrl);
@@ -271,7 +271,7 @@ function DashboardContent() {
       
       if (result.status === 'ok') {
         // Update local state immediately for better UX
-        setAccessTier(tierName as 'Basic' | 'Plus' | 'ProPlus');
+        setAccessTier(tierName as 'Basic' | 'Plus' | 'ProPlus' | 'Pre');
         setPlanModalOpen(false);
         
         // Show success message
