@@ -13,14 +13,27 @@ interface PlanSelectionModalProps {
 // KORREKTE WHOP PLAN IDS - diese müssen in Whop Dashboard eingerichtet werden
 // ❌ BASIC PLAN REMOVED: Users get Basic access by default (no purchase needed)
 
-// DEBUG: Log Plan IDs to console
+// DEBUG: Log Plan IDs to console with detailed info
 console.log('🔍 Pre Plan ID from env:', process.env.NEXT_PUBLIC_PRE_PLAN_ID);
 console.log('🔍 ProPlus Plan ID from env:', process.env.NEXT_PUBLIC_PROPLUS_PLAN_ID);
+console.log('🔍 ALL ENV VARS DEBUG:', {
+  PRE_PLAN_ID: process.env.NEXT_PUBLIC_PRE_PLAN_ID,
+  PRE_ACCESS_PASS_ID: process.env.NEXT_PUBLIC_PRE_ACCESS_PASS_ID,
+  PROPLUS_PLAN_ID: process.env.NEXT_PUBLIC_PROPLUS_PLAN_ID,
+  PROPLUS_ACCESS_PASS_ID: process.env.NEXT_PUBLIC_PROPLUS_ACCESS_PASS_ID
+});
+
+// ADDITIONAL DEBUG: Check values before PLANS array creation
+console.log('🔥 DIRECT ENV CHECK before PLANS array:', {
+  PRE_ID: process.env.NEXT_PUBLIC_PRE_PLAN_ID,
+  PRE_DEFAULT: 'plan_pre_placeholder',
+  RESULT: process.env.NEXT_PUBLIC_PRE_PLAN_ID || 'plan_pre_placeholder'
+});
 
 const PLANS = [
   {
-    id: process.env.NEXT_PUBLIC_PRE_PLAN_ID || 'plan_pre_placeholder',
-    accessPassId: process.env.NEXT_PUBLIC_PRE_ACCESS_PASS_ID || 'pass_pre_placeholder',
+    id: process.env.NEXT_PUBLIC_PRE_PLAN_ID || 'plan_HIkvcR8fdipgO', // HARDCODED FALLBACK
+    accessPassId: process.env.NEXT_PUBLIC_PRE_ACCESS_PASS_ID || 'prod_ttlhdSPEzAXeO', // HARDCODED FALLBACK
     name: 'Pre', // Internal name matching Whop plan
     displayName: 'Pre', // User-facing name (unified with internal name)
     price: '$19.90',
@@ -37,8 +50,8 @@ const PLANS = [
     ]
   },
   {
-    id: process.env.NEXT_PUBLIC_PROPLUS_PLAN_ID || 'plan_proplus_placeholder',
-    accessPassId: process.env.NEXT_PUBLIC_PROPLUS_ACCESS_PASS_ID || 'pass_proplus_placeholder',
+    id: process.env.NEXT_PUBLIC_PROPLUS_PLAN_ID || 'plan_SHRCynR9h3EdG', // HARDCODED FALLBACK
+    accessPassId: process.env.NEXT_PUBLIC_PROPLUS_ACCESS_PASS_ID || 'prod_9YkNJGjxSgRyE', // HARDCODED FALLBACK
     name: 'ProPlus', // Internal name matching Whop plan
     displayName: 'ProPlus', // User-facing name
     price: '$49.90',
