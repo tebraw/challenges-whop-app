@@ -64,6 +64,15 @@ function DashboardContent() {
   // Modern Whop iFrame SDK hook
   const iframeSdk = useIframeSdk();
   
+  // Debug iFrame SDK context
+  useEffect(() => {
+    console.log('🔍 DEBUG: iFrame SDK Context:', {
+      available: !!iframeSdk,
+      sdkObject: iframeSdk ? 'present' : 'null',
+      isWhopEnvironment: typeof window !== 'undefined' ? window.location.hostname.includes('whop') : false
+    });
+  }, [iframeSdk]);
+  
   const [items, setItems] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -226,13 +235,23 @@ function DashboardContent() {
     try {
       console.log('🛒 Starting plan purchase:', { planId, tierName });
       
+      // Check if iFrame SDK is available (running inside Whop iFrame)
       if (!iframeSdk) {
-        console.error('❌ Whop iFrame SDK not available!');
-        alert('iFrame SDK is not available. Please try again later.');
+        console.warn('❌ Whop iFrame SDK not available - not running in Whop iFrame context');
+        
+        // Fallback: Create external checkout link for non-iFrame context
+        const productId = tierName === 'Plus' ? 'prod_3lTSwjRreFDwP' : 'prod_9YkNJGjxSgRyE';
+        const checkoutUrl = `https://whop.com/checkout/${productId}`;
+        
+        console.log('🔗 Fallback: Opening external Whop checkout:', checkoutUrl);
+        window.open(checkoutUrl, '_blank');
+        
+        setPlanModalOpen(false);
+        alert(`Opening ${tierName} checkout in new tab. Complete your purchase there and refresh this page.`);
         return;
       }
       
-      console.log('📱 Using modern Whop iFrame SDK for purchase...');
+      console.log('📱 Using modern Whop iFrame SDK for in-app purchase...');
       
       // Use the modern iFrame Purchase API
       const result = await iframeSdk.inAppPurchase({ planId });
@@ -252,7 +271,7 @@ function DashboardContent() {
           window.location.reload();
         }, 1500);
       } else {
-        console.error('❌ Purchase failed:', result.error);
+        console.error('❌ iFrame purchase failed:', result.error);
         alert(`Purchase was not completed: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {

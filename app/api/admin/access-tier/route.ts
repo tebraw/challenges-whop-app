@@ -67,15 +67,16 @@ export async function GET(request: NextRequest) {
       console.log('🎯 DEBUG: Using Access Pass Check method (iFrame SDK Compatible)');
       console.log('👤 DEBUG: Company Owner userId:', userId);
       
-      // Access Pass IDs that correspond to the plans users can purchase
-      // When users buy plans via iFrame SDK, they get access to these Access Passes
+      // Access Pass IDs that correspond to the PAID plans users can purchase
+      // ✅ WHOP TEAM FIX: "remove base accessPass ID check for the free plan"
+      // Basic users get access by default - no purchase required!
       const ACCESS_PASS_CHECKS = [
         { tier: 'ProPlus' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PRO_PLUS },
-        { tier: 'Plus' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PLUS },
-        { tier: 'Basic' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.BASIC }
+        { tier: 'Plus' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PLUS }
+        // ❌ REMOVED Basic tier - users get Basic access without purchasing Access Pass
       ];
       
-      console.log('🎯 DEBUG: Checking Access Pass Access:', {
+      console.log('🎯 DEBUG: Checking PAID Access Pass Access (Basic = default):', {
         userId,
         accessPasses: ACCESS_PASS_CHECKS.map(check => ({ tier: check.tier, accessPassId: check.accessPassId }))
       });
@@ -107,12 +108,12 @@ export async function GET(request: NextRequest) {
       }
       
       if (!detectedTier) {
-        console.log('❌ DEBUG: No Access Pass found. User may not have purchased any tier yet.');
-        console.log('📋 DEBUG: Checked Access Pass IDs:', {
-          BASIC: ACCESS_PASS_PRODUCTS.BASIC,
+        console.log('✅ DEBUG: No paid Access Pass found - defaulting to Basic tier (free access)');
+        console.log('📋 DEBUG: Checked PAID Access Pass IDs only:', {
           PLUS: ACCESS_PASS_PRODUCTS.PLUS,
           PRO_PLUS: ACCESS_PASS_PRODUCTS.PRO_PLUS
         });
+        console.log('🎯 DEBUG: Basic tier = default access (no purchase required)');
       }
       
     } catch (e) {
