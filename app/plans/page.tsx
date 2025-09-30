@@ -12,19 +12,8 @@ interface Plan {
   popular?: boolean;
 }
 
+// ❌ BASIC PLAN REMOVED: Users get Basic access by default (no purchase needed)
 const plans: Plan[] = [
-  {
-    id: 'basic',
-    name: 'Basic',
-    price: '€29',
-    productId: 'prod_YByUE3J5oT4Fq',
-    features: [
-      'Create unlimited challenges',
-      'Basic analytics',
-      'Community management',
-      'Email support'
-    ]
-  },
   {
     id: 'pro',
     name: 'Pro',

@@ -94,17 +94,16 @@ export async function hasActiveSubscription(session: WhopSession): Promise<{
   productId?: string;
 }> {
   try {
-    // 🎯 UPDATED: Your actual Access Pass IDs
-    const basicProductId = 'prod_YByUE3J5oT4Fq';  // Basic (Free for testing)
+    // ✅ WHOP TEAM FIX: Only check PAID Access Passes
+    // Basic users get free access without purchasing Access Pass
     const proProductId = 'prod_Tj4T1U7pVwtgb';    // Pro ($29.99/month)
     
-    console.log('🔍 Checking subscriptions against your Access Passes:', {
-      basicProductId,
+    console.log('🔍 Checking PAID subscriptions only (Basic = default free access):', {
       proProductId,
       userMemberships: session.memberships.length
     });
     
-    // Check for Pro subscription first (higher tier)
+    // Check for Pro subscription (paid tier)
     const proSubscription = session.memberships.find(m => 
       m.productId === proProductId && m.valid && m.status === 'active'
     );
@@ -118,27 +117,12 @@ export async function hasActiveSubscription(session: WhopSession): Promise<{
       };
     }
     
-    // Check for Basic subscription (Free for testing)
-    const basicSubscription = session.memberships.find(m => 
-      m.productId === basicProductId && m.valid && m.status === 'active'
-    );
-    
-    if (basicSubscription) {
-      console.log('✅ Basic Access Pass found - granting admin access');
-      return {
-        hasSubscription: true,
-        plan: 'basic',
-        productId: basicProductId
-      };
-    }
-    
-    console.log('❌ No valid Access Pass found. Available memberships:', 
-      session.memberships.map(m => ({ productId: m.productId, status: m.status, valid: m.valid }))
-    );
+    // ✅ WHOP TEAM FIX: Basic users get free access by default
+    console.log('✅ No paid Access Pass - defaulting to Basic (free access)');
     
     return {
-      hasSubscription: false,
-      plan: null
+      hasSubscription: true, // Changed: Basic is considered "has subscription" (free tier)
+      plan: 'basic'
     };
     
   } catch (error) {
@@ -397,14 +381,14 @@ export async function getUserRole(session: WhopSession): Promise<'ADMIN' | 'USER
       return 'USER';
     }
     
-    // ❌ NO ACCESS: Company owner without Access Pass
-    if (ownsCompanies && !subscriptionStatus.hasSubscription) {
-      console.log('💰 Company owner needs to purchase Access Pass for admin rights');
-      console.log('   Available plans: Basic (prod_YByUE3J5oT4Fq) or Pro (prod_Tj4T1U7pVwtgb)');
-      return 'USER';
+    // ✅ WHOP TEAM FIX: Company owners get Basic access by default
+    if (ownsCompanies) {
+      console.log('✅ Company owner gets Basic access by default (can upgrade to Pro)');
+      console.log('   Available upgrades: Pro (prod_Tj4T1U7pVwtgb)');
+      return 'ADMIN'; // Company owners get admin role with Basic access
     }
 
-    console.log('❌ No Access Pass found - defaulting to USER');
+    console.log('✅ Regular user gets Basic access by default');
     return 'USER';
   } catch (error) {
     console.error('Error determining user role:', error);

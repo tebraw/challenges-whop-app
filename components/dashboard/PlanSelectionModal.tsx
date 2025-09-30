@@ -11,20 +11,8 @@ interface PlanSelectionModalProps {
 }
 
 // KORREKTE WHOP PLAN IDS - diese müssen in Whop Dashboard eingerichtet werden
+// ❌ BASIC PLAN REMOVED: Users get Basic access by default (no purchase needed)
 const PLANS = [
-  {
-    id: process.env.NEXT_PUBLIC_BASIC_PLAN_ID || 'plan_basic_placeholder',
-    accessPassId: process.env.NEXT_PUBLIC_BASIC_ACCESS_PASS_ID || 'pass_basic_placeholder',
-    name: 'Basic',
-    price: 'FREE',
-    description: 'Perfect for getting started',
-    color: 'bg-gray-100 border-gray-200',
-    textColor: 'text-gray-900',
-    buttonColor: 'bg-gray-600 hover:bg-gray-700',
-    features: [
-      'Create ONE Challenge for FREE'
-    ]
-  },
   {
     id: process.env.NEXT_PUBLIC_PLUS_PLAN_ID || 'plan_plus_placeholder',
     accessPassId: process.env.NEXT_PUBLIC_PLUS_ACCESS_PASS_ID || 'pass_plus_placeholder',

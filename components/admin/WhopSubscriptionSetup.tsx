@@ -14,21 +14,8 @@ interface SubscriptionTier {
   isActive: boolean;
 }
 
+// ❌ BASIC PLAN REMOVED: Users get Basic access by default (no purchase needed)
 const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
-  {
-    id: 'starter',
-    name: 'Starter',
-    price: 19,
-    features: [
-      'Up to 3 active challenges',
-      'Basic analytics',
-      'Email support',
-      '10% revenue share on entry fees',
-      'Free community integration'
-    ],
-    whopProdId: 'plan_WKjaYgt1dSX3B', // Basic Plan ID aus .env.local
-    isActive: true
-  },
   {
     id: 'professional',
     name: 'Professional', 
