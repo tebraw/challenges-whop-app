@@ -260,9 +260,12 @@ function DashboardContent() {
       console.log('📱 Using modern Whop iFrame SDK for in-app purchase...');
       console.log('🔍 EXACT planId being passed to inAppPurchase:', planId);
       console.log('🔍 tierName:', tierName);
+      console.log('🔍 CALLING inAppPurchase with params:', { planId });
       
       // Use the modern iFrame Purchase API
       const result = await iframeSdk.inAppPurchase({ planId });
+      
+      console.log('🔍 IMMEDIATE result after inAppPurchase call:', result);
       
       console.log('💳 Purchase result:', result);
       
