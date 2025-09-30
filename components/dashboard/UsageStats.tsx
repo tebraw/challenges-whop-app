@@ -3,7 +3,7 @@
 import { AlertTriangle, Crown, TrendingUp, Users, BarChart3 } from 'lucide-react';
 
 interface UsageStatsProps {
-  currentTier: 'Basic' | 'Plus' | 'ProPlus' | 'Pre';
+  currentTier: 'Basic' | 'Pre' | 'ProPlus';
   stats: {
     challengesCreated: number;
     totalParticipants: number;
@@ -43,8 +43,8 @@ export default function UsageStats({ currentTier, stats, onUpgrade }: UsageStats
   // Don't show for ProPlus users (they have everything)
   if (currentTier === 'ProPlus') return null;
   
-  // Treat 'Pre' same as 'Plus' internally
-  const effectiveTier = currentTier === 'Pre' ? 'Plus' : currentTier;
+  // Use Pre tier directly
+  const effectiveTier = currentTier;
 
   return (
     <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
@@ -55,7 +55,7 @@ export default function UsageStats({ currentTier, stats, onUpgrade }: UsageStats
         </h3>
         <div className="flex items-center gap-2">
           <span className={`px-2 py-1 rounded text-xs font-medium ${
-            currentTier === 'Plus' 
+            currentTier === 'Pre' 
               ? 'bg-blue-600/20 text-blue-200 border border-blue-600'
               : 'bg-gray-600/20 text-gray-200 border border-gray-600'
           }`}>
@@ -175,8 +175,8 @@ export default function UsageStats({ currentTier, stats, onUpgrade }: UsageStats
         </div>
       )}
 
-      {/* Plus to ProPlus upgrade */}
-      {currentTier === 'Plus' && (
+      {/* Pre to ProPlus upgrade */}
+      {currentTier === 'Pre' && (
         <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg p-4 border border-purple-600/30">
           <div className="flex items-center gap-2 mb-3">
             <Crown size={16} className="text-purple-400" />

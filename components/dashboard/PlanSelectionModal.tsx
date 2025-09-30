@@ -6,7 +6,7 @@ import { X, Check } from 'lucide-react';
 interface PlanSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentTier?: 'Basic' | 'Plus' | 'ProPlus' | 'Pre' | null;
+  currentTier?: 'Basic' | 'Pre' | 'ProPlus' | null;
   onPlanSelect: (planId: string, tierName: string) => void;
 }
 
@@ -14,15 +14,15 @@ interface PlanSelectionModalProps {
 // ❌ BASIC PLAN REMOVED: Users get Basic access by default (no purchase needed)
 
 // DEBUG: Log Plan IDs to console
-console.log('🔍 Plus Plan ID from env:', process.env.NEXT_PUBLIC_PLUS_PLAN_ID);
+console.log('🔍 Pre Plan ID from env:', process.env.NEXT_PUBLIC_PRE_PLAN_ID);
 console.log('🔍 ProPlus Plan ID from env:', process.env.NEXT_PUBLIC_PROPLUS_PLAN_ID);
 
 const PLANS = [
   {
-    id: process.env.NEXT_PUBLIC_PLUS_PLAN_ID || 'plan_plus_placeholder',
-    accessPassId: process.env.NEXT_PUBLIC_PLUS_ACCESS_PASS_ID || 'pass_plus_placeholder',
+    id: process.env.NEXT_PUBLIC_PRE_PLAN_ID || 'plan_pre_placeholder',
+    accessPassId: process.env.NEXT_PUBLIC_PRE_ACCESS_PASS_ID || 'pass_pre_placeholder',
     name: 'Pre', // Internal name matching Whop plan
-    displayName: 'Plus', // User-facing name
+    displayName: 'Pre', // User-facing name (unified with internal name)
     price: '$19.90',
     priceDetail: '/month',
     description: 'Ideal for growing communities',
@@ -100,9 +100,9 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
         {currentTier && (
           <div className="px-6 py-3 bg-blue-50 border-b">
             <p className="text-sm text-blue-800">
-              <strong>Current Plan:</strong> {currentTier === 'Pre' ? 'Plus' : currentTier} 
+              <strong>Current Plan:</strong> {currentTier} 
               {currentTier === 'Basic' && ' (FREE)'}
-              {(currentTier === 'Plus' || currentTier === 'Pre') && ' ($19.90/month)'}
+              {currentTier === 'Pre' && ' ($19.90/month)'}
               {currentTier === 'ProPlus' && ' ($49.90/month)'}
             </p>
           </div>
@@ -188,7 +188,7 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
           <div className="mt-8 p-4 bg-gray-50 rounded-lg">
             <h4 className="font-semibold text-gray-900 mb-2">Need Help Choosing?</h4>
             <p className="text-sm text-gray-600 mb-3">
-              Start with <strong>Basic</strong> to explore our features. Upgrade to <strong>Plus</strong> when you need unlimited challenges and advanced analytics. 
+              Start with <strong>Basic</strong> to explore our features. Upgrade to <strong>Pre</strong> when you need unlimited challenges and advanced analytics. 
               Choose <strong>ProPlus</strong> for enterprise features and dedicated support.
             </p>
             <div className="flex flex-wrap gap-4 text-xs text-gray-500">

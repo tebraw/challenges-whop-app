@@ -1,20 +1,20 @@
 // Whop Access Pass product IDs (provided by user)
 export const ACCESS_PASS_PRODUCTS = {
   BASIC: 'prod_YByUE3J5oT4Fq',
-  PLUS: 'prod_ttlhdSPEzAXeO',
+  PRE: 'prod_ttlhdSPEzAXeO',
   PRO_PLUS: 'prod_9YkNJGjxSgRyE',
 } as const;
 
-export type AccessTier = 'Basic' | 'Plus' | 'ProPlus' | 'Pre';
+export type AccessTier = 'Basic' | 'Pre' | 'ProPlus';
 
 export function getUpgradeCheckoutUrl(tier: Exclude<AccessTier, 'Basic'>): string {
-  const id = tier === 'Plus' ? ACCESS_PASS_PRODUCTS.PLUS : ACCESS_PASS_PRODUCTS.PRO_PLUS;
+  const id = tier === 'Pre' ? ACCESS_PASS_PRODUCTS.PRE : ACCESS_PASS_PRODUCTS.PRO_PLUS;
   return `https://whop.com/checkout/${id}`;
 }
 
 export function productIdToTier(productId?: string | null): AccessTier | null {
   if (!productId) return null;
-  if (productId === ACCESS_PASS_PRODUCTS.PLUS) return 'Pre'; // Whop plan is named "Pre" but we map it to "Pre" internally
+  if (productId === ACCESS_PASS_PRODUCTS.PRE) return 'Pre'; // Whop plan is named "Pre" and we map it to "Pre" internally
   if (productId === ACCESS_PASS_PRODUCTS.PRO_PLUS) return 'ProPlus';
   if (productId === ACCESS_PASS_PRODUCTS.BASIC) return 'Basic';
   return null;

@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       // Basic users get access by default - no purchase required!
       const ACCESS_PASS_CHECKS = [
         { tier: 'ProPlus' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PRO_PLUS },
-        { tier: 'Pre' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PLUS }
+        { tier: 'Pre' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PRE }
         // ❌ REMOVED Basic tier - users get Basic access without purchasing Access Pass
       ];
       
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
       if (!detectedTier) {
         console.log('✅ DEBUG: No paid Access Pass found - defaulting to Basic tier (free access)');
         console.log('📋 DEBUG: Checked PAID Access Pass IDs only:', {
-          PLUS: ACCESS_PASS_PRODUCTS.PLUS,
+          PRE: ACCESS_PASS_PRODUCTS.PRE,
           PRO_PLUS: ACCESS_PASS_PRODUCTS.PRO_PLUS
         });
         console.log('🎯 DEBUG: Basic tier = default access (no purchase required)');
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
 
     // Debug override header (non-production only)
     const debugTier = request.headers.get('x-debug-tier');
-    if (debugTier === 'plus') detectedTier = 'Plus';
+    if (debugTier === 'pre') detectedTier = 'Pre';
     if (debugTier === 'proplus') detectedTier = 'ProPlus';
 
     const tier = coalesceTier(detectedTier);
