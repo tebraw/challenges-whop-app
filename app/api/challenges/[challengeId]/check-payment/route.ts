@@ -28,6 +28,7 @@ export async function POST(
       timestamp: new Date().toISOString()
     });
 
+    // ✅ FIRST: Validate input data
     if (!checkoutSessionId) {
       console.error('❌ Missing checkout session ID');
       return NextResponse.json(
@@ -116,11 +117,12 @@ export async function POST(
       existingEnrollments: challenge.enrollments.length
     });
 
-    // Check if user is already enrolled
+    // Check if user is already enrolled (webhook may have processed it)
     if (challenge.enrollments.length > 0) {
-      console.log('✅ User already enrolled in challenge');
+      console.log('✅ User already enrolled in challenge (processed by webhook)');
       return NextResponse.json({
         success: true,
+        enrolled: true,
         alreadyEnrolled: true,
         message: 'Already enrolled in challenge'
       });
@@ -149,53 +151,21 @@ export async function POST(
       );
     }
 
-    console.log('✅ Payment verification successful for checkout session:', checkoutSessionId);
+    console.log('✅ Payment completed - waiting for webhook to process enrollment and revenue sharing');
+    console.log('⚠️ CHECK-PAYMENT: Payment verified but no enrollment yet - webhook should process it');
+    console.log('💡 This indicates webhook may not be configured correctly or payment metadata is missing');
 
-    // Create enrollment
-    const enrollment = await prisma.enrollment.create({
-      data: {
-        userId: user.id,
-        challengeId: challengeId,
-        experienceId: challenge.experienceId,
-        joinedAt: new Date()
-      },
-      include: {
-        challenge: {
-          select: {
-            title: true,
-            startAt: true,
-            endAt: true
-          }
-        }
-      }
-    });
-
-    console.log('✅ User enrolled after payment verification');
-
-    // Record the payment for tracking (optional)
-    try {
-      // Log successful payment for tracking purposes
-      console.log('📊 Payment successfully processed and tracked:', {
-        userId: user.id,
-        challengeId,
-        challengeTitle: challenge.title,
-        checkoutSessionId,
-        timestamp: new Date().toISOString()
-      });
-    } catch (conversionError) {
-      console.warn('Failed to record payment tracking:', conversionError);
-      // Don't fail the enrollment if tracking fails
-    }
-
+    // Payment is completed but no enrollment yet - webhook should process it
+    // This might indicate a webhook configuration issue
     return NextResponse.json({
       success: true,
-      enrolled: true,
-      message: `Successfully enrolled in "${challenge.title}" after payment!`,
-      enrollment: {
-        id: enrollment.id,
-        joinedAt: enrollment.joinedAt,
-        challenge: enrollment.challenge
-      }
+      enrolled: false,
+      status: 'payment_completed_waiting_webhook',
+      message: 'Payment completed but enrollment pending - check webhook configuration',
+      checkoutSessionId,
+      challengeId,
+      timestamp: new Date().toISOString(),
+      warning: 'Webhook may not be processing payments correctly'
     });
 
   } catch (error) {

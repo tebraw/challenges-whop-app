@@ -314,23 +314,51 @@ async function handleEvent(event: string, data: any) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🪝 WEBHOOK RECEIVED - Starting validation...');
+    
     // Validate webhook with new SDK
     const webhookData = await validateWebhook(request);
     
     if (!webhookData) {
-      console.log('🪝 Webhook received but validation failed');
+      console.log('🚨 Webhook validation FAILED - Invalid signature or payload');
       return NextResponse.json({ error: 'Invalid webhook' }, { status: 400 });
     }
 
     const { action, data } = webhookData;
-    console.log(`🪝 Processing webhook event: ${action}`);
+    console.log(`🎯 WEBHOOK EVENT VALIDATED: ${action}`, {
+      action,
+      dataKeys: Object.keys(data || {}),
+      hasMetadata: !!(data as any)?.metadata,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Extra logging for payment events
+    if (action === 'payment.succeeded') {
+      console.log('💰 PAYMENT SUCCESS WEBHOOK DETAILS:', {
+        paymentId: data?.id,
+        userId: (data as any)?.user_id,
+        amount: (data as any)?.amount,
+        metadata: (data as any)?.metadata,
+        hasRequiredFields: !!(data?.id && (data as any)?.user_id && (data as any)?.metadata)
+      });
+    }
     
     // Process the webhook event
     await handleEvent(action, data);
     
-    return NextResponse.json({ ok: true, event, processed: true });
+    console.log(`✅ WEBHOOK PROCESSED SUCCESSFULLY: ${action}`);
+    return NextResponse.json({ 
+      ok: true, 
+      event: action, 
+      processed: true,
+      timestamp: new Date().toISOString()
+    });
   } catch (err) {
-    console.error('❌ Webhook processing failed:', err);
+    console.error('💥 WEBHOOK PROCESSING FAILED:', {
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
   }
 }
