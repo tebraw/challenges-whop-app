@@ -42,6 +42,8 @@ export async function POST(
         endAt: true,
         experienceId: true,
         monetizationRules: true,
+        creatorId: true,        // ✅ Added for revenue sharing
+        whopCreatorId: true,    // ✅ Added for revenue sharing
         _count: {
           select: { enrollments: true }
         }
@@ -107,6 +109,11 @@ export async function POST(
           type: 'challenge_entry',
           challengeId: challenge.id,
           experienceId: challenge.experienceId,
+          creatorId: challenge.creatorId || '',
+          whopCreatorId: challenge.whopCreatorId || '',
+          totalAmount: String(entryPriceCents),
+          creatorAmount: String(Math.floor(entryPriceCents * 0.9)), // 90% to creator
+          platformAmount: String(Math.floor(entryPriceCents * 0.1)), // 10% platform fee
           // for reconciliation
           appEntity: 'challenge_enrollment',
         }

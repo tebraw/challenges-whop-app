@@ -36,6 +36,7 @@ model User {
   enrollments        Enrollment[]
   notifications      InternalNotification[] @relation("UserNotifications")
   conversions        OfferConversion[]      @relation("UserConversions")
+  revenueShares      RevenueShare[]         @relation("CreatorRevenue")
   tenant             Tenant                 @relation(fields: [tenantId], references: [id])
   whopProducts       WhopProduct[]          @relation("CreatorProducts")
 
@@ -78,6 +79,7 @@ model Challenge {
   enrollments        Enrollment[]
   notifications      InternalNotification[] @relation("ChallengeNotifications")
   conversions        OfferConversion[]      @relation("ChallengeConversions")
+  revenueShares      RevenueShare[]
 
   @@index([experienceId])
   @@index([whopCompanyId])
@@ -236,4 +238,30 @@ enum ProofType {
   TEXT
   PHOTO
   LINK
+}
+
+model RevenueShare {
+  id           String   @id @default(cuid())
+  challengeId  String
+  creatorId    String
+  whopCreatorId String
+  paymentId    String   // Original Whop payment ID
+  amount       Int      // Creator amount in cents
+  platformFee  Int      // Platform fee in cents
+  transferId   String?  // Whop transfer ID from payUser
+  status       String   @default("pending") // pending, completed, failed, retry
+  createdAt    DateTime @default(now())
+  processedAt  DateTime?
+  errorMessage String?
+  retryCount   Int      @default(0)
+  
+  // Relations
+  challenge    Challenge @relation(fields: [challengeId], references: [id])
+  creator      User      @relation("CreatorRevenue", fields: [creatorId], references: [id])
+  
+  @@index([challengeId])
+  @@index([creatorId])
+  @@index([paymentId])
+  @@index([status])
+  @@map("RevenueShare")
 }

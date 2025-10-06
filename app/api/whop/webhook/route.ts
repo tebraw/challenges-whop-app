@@ -3,30 +3,135 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateWebhook, whopSdk } from '@/lib/whop-sdk';
 
-// Map your business logic here
+// Import revenue sharing service
+import { distributeRevenue } from '@/lib/revenue-sharing';
+
+// Enhanced payment processing with revenue sharing
 async function handlePaymentSucceeded(data: any) {
   try {
-    console.log('💸 Payment succeeded:', data?.id);
+    console.log('� Payment succeeded - processing revenue share:', {
+      paymentId: data?.id,
+      userId: data?.user_id,
+      amount: data?.amount,
+      metadata: data?.metadata
+    });
     
-    // Update user's payment status in database
-    if (data?.user_id) {
-      // Find the user by whopUserId and update their enrollments
-      const user = await prisma.user.findUnique({
-        where: { whopUserId: data.user_id }
-      });
+    const metadata = data?.metadata;
+    
+    // Check if this is a challenge payment that requires revenue sharing
+    if (metadata?.type === 'challenge_entry' && metadata?.challengeId && metadata?.whopCreatorId) {
+      console.log('🎯 Challenge payment detected - processing enrollment and revenue share');
       
-      if (user) {
-        await prisma.enrollment.updateMany({
-          where: { userId: user.id },
-          data: { 
-            // Add payment tracking fields if needed
-            joinedAt: new Date() // Update join timestamp
-          }
+      // 1. Create challenge enrollment
+      await createChallengeEnrollment(data.user_id, metadata);
+      
+      // 2. Distribute revenue to creator (if creator info available)
+      if (metadata.whopCreatorId && metadata.creatorAmount) {
+        await distributeRevenueToCreator(data, metadata);
+      } else {
+        console.log('⚠️ Skipping revenue distribution: Missing creator info in metadata');
+      }
+      
+    } else {
+      console.log('ℹ️ Non-challenge payment or missing metadata - using legacy handling');
+      
+      // Legacy handling for other payment types
+      if (data?.user_id) {
+        const user = await prisma.user.findUnique({
+          where: { whopUserId: data.user_id }
         });
+        
+        if (user) {
+          await prisma.enrollment.updateMany({
+            where: { userId: user.id },
+            data: { 
+              joinedAt: new Date()
+            }
+          });
+        }
       }
     }
   } catch (error) {
-    console.error('Error handling payment succeeded:', error);
+    console.error('💥 Error handling payment succeeded:', error);
+  }
+}
+
+// Create challenge enrollment for paid user
+async function createChallengeEnrollment(whopUserId: string, metadata: any) {
+  try {
+    console.log('🎫 Creating challenge enrollment:', {
+      whopUserId,
+      challengeId: metadata.challengeId,
+      experienceId: metadata.experienceId
+    });
+
+    // Find user by whopUserId
+    const user = await prisma.user.findUnique({
+      where: { whopUserId: whopUserId }
+    });
+
+    if (!user) {
+      console.error('❌ User not found for enrollment:', whopUserId);
+      return;
+    }
+
+    // Create enrollment
+    const enrollment = await prisma.enrollment.create({
+      data: {
+        userId: user.id,
+        challengeId: metadata.challengeId,
+        experienceId: metadata.experienceId,
+        joinedAt: new Date()
+      }
+    });
+
+    console.log('✅ Challenge enrollment created:', {
+      enrollmentId: enrollment.id,
+      userId: user.id,
+      challengeId: metadata.challengeId
+    });
+
+  } catch (error) {
+    console.error('❌ Failed to create challenge enrollment:', error);
+  }
+}
+
+// Distribute revenue to challenge creator
+async function distributeRevenueToCreator(paymentData: any, metadata: any) {
+  try {
+    console.log('💸 Initiating revenue distribution:', {
+      paymentId: paymentData.id,
+      challengeId: metadata.challengeId,
+      whopCreatorId: metadata.whopCreatorId,
+      totalAmount: metadata.totalAmount,
+      creatorAmount: metadata.creatorAmount,
+      platformAmount: metadata.platformAmount
+    });
+
+    const result = await distributeRevenue({
+      challengeId: metadata.challengeId,
+      creatorId: metadata.creatorId,
+      whopCreatorId: metadata.whopCreatorId,
+      paymentId: paymentData.id,
+      totalAmount: parseInt(metadata.totalAmount),
+      creatorAmount: parseInt(metadata.creatorAmount),
+      platformAmount: parseInt(metadata.platformAmount)
+    });
+
+    if (result.success) {
+      console.log('✅ Revenue distribution completed:', {
+        revenueShareId: result.revenueShareId,
+        transferId: result.transferId
+      });
+    } else {
+      console.error('❌ Revenue distribution failed:', {
+        error: result.error,
+        shouldRetry: result.shouldRetry
+      });
+    }
+
+  } catch (error) {
+    console.error('💥 Revenue distribution system error:', error);
   }
 }
 
