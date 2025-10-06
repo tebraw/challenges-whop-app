@@ -151,21 +151,80 @@ export async function POST(
       );
     }
 
-    console.log('✅ Payment completed - waiting for webhook to process enrollment and revenue sharing');
-    console.log('⚠️ CHECK-PAYMENT: Payment verified but no enrollment yet - webhook should process it');
-    console.log('💡 This indicates webhook may not be configured correctly or payment metadata is missing');
+    console.log('✅ Payment completed - creating enrollment and processing revenue sharing');
+    
+    // Import revenue sharing service
+    const { distributeRevenue } = await import('@/lib/revenue-sharing');
+    
+    // Create enrollment immediately (don't wait for webhook)
+    const enrollment = await prisma.enrollment.create({
+      data: {
+        userId: user.id,
+        challengeId: challengeId,
+        experienceId: challenge.experienceId,
+        joinedAt: new Date()
+      },
+      include: {
+        challenge: {
+          select: {
+            title: true,
+            startAt: true,
+            endAt: true,
+            whopCreatorId: true
+          }
+        }
+      }
+    });
 
-    // Payment is completed but no enrollment yet - webhook should process it
-    // This might indicate a webhook configuration issue
+    console.log('✅ User enrolled after payment verification:', {
+      enrollmentId: enrollment.id,
+      challengeTitle: enrollment.challenge.title
+    });
+
+    // Process revenue sharing if creator is available
+    if (challenge.whopCreatorId) {
+      try {
+        console.log('� Processing revenue sharing:', {
+          challengeId,
+          whopCreatorId: challenge.whopCreatorId,
+          paymentAmount: 'from-challenge-offer'
+        });
+
+        await distributeRevenue({
+          challengeId,
+          creatorId: user.id,
+          whopCreatorId: challenge.whopCreatorId,
+          paymentId: checkoutSessionId,
+          totalAmount: 100, // TODO: Get from challenge offer
+          creatorAmount: 90,
+          platformAmount: 10
+        });
+
+        console.log('✅ Revenue sharing completed successfully');
+      } catch (revenueError) {
+        console.error('❌ Revenue sharing failed:', revenueError);
+        // Don't fail enrollment if revenue sharing fails
+      }
+    } else {
+      console.log('⚠️ Skipping revenue sharing - missing creator info:', {
+        whopCreatorId: challenge.whopCreatorId,
+        paymentComplete: true
+      });
+    }
+
     return NextResponse.json({
       success: true,
-      enrolled: false,
-      status: 'payment_completed_waiting_webhook',
-      message: 'Payment completed but enrollment pending - check webhook configuration',
+      enrolled: true,
+      status: 'enrollment_completed',
+      message: `Successfully enrolled in "${challenge.title}" after payment!`,
+      enrollment: {
+        id: enrollment.id,
+        joinedAt: enrollment.joinedAt,
+        challenge: enrollment.challenge
+      },
       checkoutSessionId,
       challengeId,
-      timestamp: new Date().toISOString(),
-      warning: 'Webhook may not be processing payments correctly'
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
