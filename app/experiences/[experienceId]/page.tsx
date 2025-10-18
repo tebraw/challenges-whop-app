@@ -95,7 +95,18 @@ export default async function ExperiencePage({ params }: Props) {
         ]
       },
       take: 50, // 🚀 PERFORMANCE: Limit to 50 challenges per page
-      include: {
+      select: {
+        // 🚀 PERFORMANCE: Exclude imageUrl to prevent 10MiB Response Size limit
+        id: true,
+        title: true,
+        description: true,
+        startAt: true,
+        endAt: true,
+        status: true,
+        createdAt: true,
+        tenantId: true,
+        experienceId: true,
+        // imageUrl: false - Excluded to reduce response size
         _count: {
           select: {
             enrollments: true
@@ -132,7 +143,18 @@ export default async function ExperiencePage({ params }: Props) {
           endAt: { gt: new Date() }
         },
         take: 50, // 🚀 PERFORMANCE: Limit fallback query too
-        include: {
+        select: {
+          // 🚀 PERFORMANCE: Exclude imageUrl from fallback query too
+          id: true,
+          title: true,
+          description: true,
+          startAt: true,
+          endAt: true,
+          status: true,
+          createdAt: true,
+          tenantId: true,
+          experienceId: true,
+          // imageUrl: false - Excluded to reduce response size
           _count: { select: { enrollments: true } },
           enrollments: {
             where: { userId: user.id },

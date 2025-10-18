@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 // import { User } from '@prisma/client';
 import { Calendar, Users, Award, Flame, CheckCircle, Clock, Star, Play, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
+import LazyChallengeImage from '@/components/ui/LazyChallengeImage';
 
 interface CustomerChallengesProps {
   experienceId: string;
@@ -16,7 +17,7 @@ interface Challenge {
   id: string;
   title: string;
   description: string;
-  imageUrl?: string;
+  // imageUrl removed - loaded separately via Lazy Loading to avoid 10MiB Response Size
   startAt: string;
   endAt: string;
   _count?: { enrollments: number };
@@ -189,17 +190,13 @@ export default function CustomerChallenges({
                   className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden hover:border-purple-500/50 transition-all duration-300"
                 >
                   <Link href={`/experiences/${experienceId}/c/${challenge.id}`} className="block">
-                    {/* Challenge Image */}
-                    <div className="aspect-video bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
-                      {challenge.imageUrl ? (
-                        <img 
-                          src={challenge.imageUrl} 
-                          alt={challenge.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-4xl">🎯</span>
-                      )}
+                    {/* Challenge Image - Lazy Loaded */}
+                    <div className="aspect-video">
+                      <LazyChallengeImage 
+                        challengeId={challenge.id}
+                        title={challenge.title}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     
                     {/* Challenge Content */}
