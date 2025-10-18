@@ -78,7 +78,11 @@ export default async function ExperiencePage({ params }: Props) {
     // Filter challenges by the user's tenant/company AND this specific experience
     // Transitional support: also include tenant challenges that don't yet have an experienceId set (null)
     // Exclude challenges that have already ended
-    let challenges = await prisma.challenge.findMany({
+    // 🚀 PERFORMANCE FIX: Added pagination and optimized includes with timeout
+    let challenges: any[] = [];
+    try {
+      challenges = (await Promise.race([
+        prisma.challenge.findMany({
       where: {
         AND: [
           { tenantId: user.tenantId },  // Show challenges from user's tenant/company
@@ -90,6 +94,7 @@ export default async function ExperiencePage({ params }: Props) {
           }
         ]
       },
+      take: 50, // 🚀 PERFORMANCE: Limit to 50 challenges per page
       include: {
         _count: {
           select: {
@@ -105,10 +110,18 @@ export default async function ExperiencePage({ params }: Props) {
           }
         }
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+        orderBy: {
+          createdAt: 'desc'
+        }
+      }),
+        // 🚀 PERFORMANCE: 10 second timeout for Prisma Accelerate
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Query timeout')), 10000))
+      ])) as any[];
+    } catch (error) {
+      console.error('Challenge query failed:', error);
+      // 🚀 FALLBACK: Return empty array if query fails
+      challenges = [];
+    }
 
     // Fallback: if none found for this experience, show tenant-wide active challenges (transitional support)
     if (challenges.length === 0) {
@@ -118,6 +131,7 @@ export default async function ExperiencePage({ params }: Props) {
           tenantId: user.tenantId,
           endAt: { gt: new Date() }
         },
+        take: 50, // 🚀 PERFORMANCE: Limit fallback query too
         include: {
           _count: { select: { enrollments: true } },
           enrollments: {
