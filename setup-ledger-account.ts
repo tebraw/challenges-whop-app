@@ -8,16 +8,17 @@
  * Or: tsx setup-ledger-account.ts
  */
 
+import 'dotenv/config';
 import { whopSdk } from './lib/whop-sdk-unified';
 
 async function setupLedgerAccount() {
   try {
     console.log('🔍 Fetching company ledger account information...\n');
 
-    const companyId = process.env.WHOP_COMPANY_ID;
+    const companyId = process.env.WHOP_COMPANY_ID || process.env.NEXT_PUBLIC_WHOP_COMPANY_ID;
     
     if (!companyId) {
-      console.error('❌ Error: WHOP_COMPANY_ID not found in environment variables');
+      console.error('❌ Error: WHOP_COMPANY_ID or NEXT_PUBLIC_WHOP_COMPANY_ID not found in environment variables');
       console.log('Please add WHOP_COMPANY_ID=biz_XXXXXXXX to your .env file');
       process.exit(1);
     }
