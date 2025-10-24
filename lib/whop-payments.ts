@@ -20,6 +20,7 @@ export interface PaymentInitResponse {
   success: boolean;
   checkoutSessionId?: string;
   checkoutUrl?: string;
+  inAppPurchase?: any; // Whop inAppPurchase object for inline modal
   status?: string;
   error?: string;
 }
@@ -76,50 +77,27 @@ class WhopPaymentService {
         };
       }
 
-      // Extract checkout session ID and plan ID from Whop API response
-      const checkoutSessionId = (paymentResult as any).id || (paymentResult as any).inAppPurchase?.id;
-      const planId = (paymentResult as any).planId || (paymentResult as any).inAppPurchase?.planId;
+      // Extract inAppPurchase object for inline modal
+      const inAppPurchase = (paymentResult as any).inAppPurchase;
       
-      // 🔧 FIX: Try different Whop checkout URL formats based on real usage
-      // Format 1: Standard checkout with session ID
-      const checkoutUrl1 = checkoutSessionId ? `https://whop.com/checkout/${checkoutSessionId}` : null;
-      // Format 2: Purchase format with session ID
-      const checkoutUrl2 = checkoutSessionId ? `https://whop.com/purchase/${checkoutSessionId}` : null;
-      // Format 3: Direct plan purchase 
-      const checkoutUrl3 = planId ? `https://whop.com/checkout/plan/${planId}` : null;
-      // Format 4: Plan ID only
-      const checkoutUrl4 = planId ? `https://whop.com/checkout/${planId}` : null;
-      
-      // Let's try the plan-based approach (format 3)
-      const checkoutUrl = checkoutUrl3 || checkoutUrl1;
-
-      console.log('🔧 EXTRACTED PAYMENT DATA:', {
-        checkoutUrl,
-        checkoutSessionId,
-        planId,
-        success: !!(checkoutUrl && (checkoutSessionId || planId)),
-        paymentResultType: (paymentResult as any).__typename,
-        alternativeUrls: {
-          sessionBased1: checkoutUrl1,
-          sessionBased2: checkoutUrl2, 
-          planBased1: checkoutUrl3,
-          planBased2: checkoutUrl4
-        }
-      });
-
-      if (!checkoutUrl || (!checkoutSessionId && !planId)) {
-        console.log('❌ No checkout session ID or plan ID found in payment result');
+      if (!inAppPurchase) {
+        console.log('❌ No inAppPurchase object found in payment result');
         return {
           success: false,
-          error: 'No checkout session ID returned from payment service'
+          error: 'No inAppPurchase object returned from payment service'
         };
       }
 
+      console.log('✅ EXTRACTED inAppPurchase:', {
+        id: inAppPurchase.id,
+        planId: inAppPurchase.planId,
+        success: true
+      });
+
       return {
         success: true,
-        checkoutSessionId,
-        checkoutUrl,
-        status: (paymentResult as any).status || 'pending'
+        inAppPurchase,
+        checkoutSessionId: inAppPurchase.id
       };
 
     } catch (error) {
@@ -171,47 +149,17 @@ class WhopPaymentService {
   }
 
   /**
-   * 🎯 PHASE 2.5: Check payment status by checkout session ID
-   * This verifies if a payment has been completed
+   * ❌ DEPRECATED - Now using webhook-based payment verification
+   * This function has been replaced by the payment.succeeded webhook handler
+   * See: app/api/webhooks/route.ts
    */
-  async checkPaymentStatus(checkoutSessionId: string): Promise<{
-    success: boolean;
-    status: 'pending' | 'completed' | 'failed' | 'cancelled';
-    error?: string;
-  }> {
-    try {
-      console.log('🔍 Checking payment status for session:', checkoutSessionId);
-
-      // For now, we'll implement basic validation
-      // In a real implementation, you would query the Whop API for payment status
-      if (!checkoutSessionId || !checkoutSessionId.startsWith('ch_')) {
-        return {
-          success: false,
-          status: 'failed',
-          error: 'Invalid checkout session format'
-        };
-      }
-
-      // TODO: Implement actual Whop API call to check payment status
-      // For now, we'll assume that if the session ID is valid format, payment succeeded
-      // This should be replaced with actual Whop SDK call when available
-      
-      console.log('💰 Payment status check: Assuming completed for valid session format');
-      
-      return {
-        success: true,
-        status: 'completed'
-      };
-
-    } catch (error) {
-      console.error('Payment status check failed:', error);
-      return {
-        success: false,
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Payment status check failed'
-      };
-    }
-  }
+  // async checkPaymentStatus(checkoutSessionId: string): Promise<{
+  //   success: boolean;
+  //   status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  //   error?: string;
+  // }> {
+  //   // DEPRECATED: Use webhook instead
+  // }
 
   /**
    * 🎯 PHASE 3: Verify webhook payment completion

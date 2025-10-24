@@ -121,7 +121,7 @@ export async function POST(
 
       console.log('🔧 PAYMENT RESULT:', {
         success: paymentResult.success,
-        hasCheckoutUrl: !!paymentResult.checkoutUrl,
+        hasInAppPurchase: !!paymentResult.inAppPurchase,
         error: paymentResult.error
       });
 
@@ -133,19 +133,18 @@ export async function POST(
         }, { status: 500 });
       }
 
-      if (!paymentResult.checkoutUrl) {
-        console.log('❌ No checkout URL in successful payment result');
+      if (!paymentResult.inAppPurchase) {
+        console.log('❌ No inAppPurchase object in successful payment result');
         return NextResponse.json({ 
-          error: 'Payment service did not return checkout URL',
-          debug: 'Payment succeeded but no checkout URL available'
+          error: 'Payment service did not return inAppPurchase object',
+          debug: 'Payment succeeded but no inAppPurchase object available'
         }, { status: 500 });
       }
 
-      console.log('✅ Payment checkout URL created successfully');
+      console.log('✅ Payment inAppPurchase object created successfully');
       return NextResponse.json({
         requirePayment: true,
-        checkoutUrl: paymentResult.checkoutUrl,
-        checkoutSessionId: paymentResult.checkoutSessionId,
+        inAppPurchase: paymentResult.inAppPurchase,
         message: 'Payment required to join this challenge.'
       });
     }

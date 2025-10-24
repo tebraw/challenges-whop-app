@@ -1,6 +1,7 @@
 ﻿"use client";
 import React from "react";
 import { useRouter } from "next/navigation";
+import { useIframeSdk } from "@whop/react";
 import ChallengeTermsModal from "./ChallengeTermsModal";
 
 export default function JoinChallengeButton({
@@ -20,62 +21,13 @@ export default function JoinChallengeButton({
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [showTermsModal, setShowTermsModal] = React.useState(false);
   const router = useRouter();
+  const iframeSdk = useIframeSdk();
 
   // Check if challenge has paid entry fee
   const monetization = challenge?.monetizationRules;
   const isPaidChallenge = monetization && monetization.enabled && monetization.entryPriceCents > 0;
   const entryPrice = isPaidChallenge ? (monetization.entryPriceCents / 100).toFixed(2) : null;
   const entryCurrency = monetization?.entryCurrency || 'USD';
-
-  // Check for completed payment on component mount
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedSessionId = localStorage.getItem(`payment_${challengeId}`);
-      if (storedSessionId && !isEnrolled) {
-        // Check if payment was completed
-        checkPaymentStatus(storedSessionId);
-      }
-    }
-  }, [challengeId, isEnrolled]);
-
-  // Check payment status after checkout completion
-  async function checkPaymentStatus(checkoutSessionId: string) {
-    if (!checkoutSessionId) return;
-
-    try {
-      setJoining(true);
-      
-      const response = await fetch(`/api/challenges/${challengeId}/check-payment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-experience-id': experienceId,
-        },
-        body: JSON.stringify({ checkoutSessionId })
-      });
-
-      const result = await response.json();
-
-      if (result.success && (result.enrolled || result.alreadyEnrolled)) {
-        // Clear stored session
-        localStorage.removeItem(`payment_${challengeId}`);
-        
-        setShowSuccess(true);
-        setTimeout(() => {
-          router.refresh(); // Refresh to show updated enrollment status
-        }, 1500);
-      } else {
-        // Payment might still be processing, or failed
-        console.log('Payment verification result:', result);
-        // Don't show error immediately, user might need to complete payment
-      }
-    } catch (error) {
-      console.error('Payment verification error:', error);
-      // Silently fail, don't interrupt user experience
-    } finally {
-      setJoining(false);
-    }
-  }
 
   // Handle initial join click - show terms first
   function handleInitialJoin() {
@@ -124,21 +76,60 @@ export default function JoinChallengeButton({
       
       // Handle paid entry flow
       if (data?.requirePayment) {
-        const url = data.checkoutUrl as string | undefined;
-        const sessionId = data.checkoutSessionId;
+        const inAppPurchase = data.inAppPurchase;
         
-        if (url) {
-          // Store session info for return check
-          if (sessionId) {
-            localStorage.setItem(`payment_${challengeId}`, sessionId);
-          }
-          
-          alert('You will be redirected to secure Whop checkout to pay the entry fee. After payment, return to this page to access the challenge.');
-          window.location.href = url;
+        if (!inAppPurchase) {
+          alert('Payment setup error. Please try again.');
+          setJoining(false);
           return;
         }
-        // Fallback: if no URL, show graceful message
-        alert('Payment required to join this challenge. Please try again in a moment.');
+        
+        try {
+          // Show inline payment modal
+          const result = await iframeSdk.inAppPurchase(inAppPurchase);
+          
+          if (result.status === 'ok') {
+            // Payment initiated successfully - poll for enrollment
+            alert('Payment successful! Waiting for enrollment confirmation...');
+            
+            // Poll enrollment status
+            let enrolled = false;
+            let attempts = 0;
+            const maxAttempts = 20; // 20 seconds total
+            
+            while (!enrolled && attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+              const statusRes = await fetch(`/api/challenges/${challengeId}/enrollment-status`);
+              const statusData = await statusRes.json();
+              
+              if (statusData.enrolled) {
+                enrolled = true;
+                setShowSuccess(true);
+                
+                // Redirect to challenge view
+                setTimeout(() => {
+                  router.push(`/experiences/${experienceId}/c/${challengeId}`);
+                }, 1500);
+                return;
+              }
+              
+              attempts++;
+            }
+            
+            if (!enrolled) {
+              alert('Enrollment is taking longer than expected. Please refresh the page.');
+            }
+          } else {
+            // Payment cancelled or failed
+            alert('Payment was cancelled or failed. Please try again.');
+          }
+        } catch (error) {
+          console.error('Payment modal error:', error);
+          alert('Payment error. Please try again.');
+        } finally {
+          setJoining(false);
+        }
         return;
       }
       
