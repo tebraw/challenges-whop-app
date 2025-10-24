@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const search = searchParams.get('search');
     const difficulty = searchParams.get('difficulty');
     const id = searchParams.get('id'); // Single challenge by ID
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50); // Reduced max from 100 to 50 for better performance
     const offset = parseInt(searchParams.get('offset') || '0');
 
     // If requesting a specific challenge by ID

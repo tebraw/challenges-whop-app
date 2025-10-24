@@ -113,7 +113,7 @@ export default async function DiscoverExperiencePage({ params }: Props) {
         { featured: 'desc' },
         { createdAt: 'desc' }
       ],
-      take: 50  // Limit for performance
+      take: 100  // Limit to 100 challenges for better performance (can be increased if needed)
     });
 
     console.log(`🔍 Found ${allChallenges.length} cross-community challenges`);
@@ -210,6 +210,8 @@ export default async function DiscoverExperiencePage({ params }: Props) {
                           <img 
                             src={challenge.imageUrl} 
                             alt={challenge.title}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover"
                           />
                         ) : (
