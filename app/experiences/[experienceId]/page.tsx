@@ -137,12 +137,11 @@ export default async function ExperiencePage({ params }: Props) {
       challengeTenantIds: challenges.map(c => ({ id: c.id, title: c.title, tenantId: c.tenantId, experienceId: (c as any).experienceId }))
     });
     
-    // 🚀 UX Enhancement: If user has no challenges in their community, show Discover content inline
+    // 🚀 UX Enhancement: If user has no challenges in their community, redirect to Discover page
     // This ensures new users always see relevant content instead of an empty page
-    const shouldShowDiscoverContent = challenges.length === 0;
-    
-    if (shouldShowDiscoverContent) {
-      console.log('🔍 No challenges found - showing Discover content');
+    if (challenges.length === 0) {
+      console.log('🔍 No challenges found - redirecting to Discover page');
+      redirect(`/experiences/${experienceId}/discover`);
     }
     
     // Calculate user statistics
