@@ -88,40 +88,47 @@ export default function JoinChallengeButton({
           // Show inline payment modal
           const result = await iframeSdk.inAppPurchase(inAppPurchase);
           
+          console.log('💳 Payment modal result:', result);
+          
           if (result.status === 'ok') {
-            // Payment initiated successfully - poll for enrollment
-            alert('Payment successful! Waiting for enrollment confirmation...');
+            // Payment successful! Create enrollment immediately
+            console.log('✅ Payment successful! Receipt ID:', result.data.receiptId);
             
-            // Poll enrollment status
-            let enrolled = false;
-            let attempts = 0;
-            const maxAttempts = 20; // 20 seconds total
+            setJoining(true);
             
-            while (!enrolled && attempts < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
+            try {
+              const confirmRes = await fetch(`/api/challenges/${challengeId}/confirm-enrollment`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-experience-id': experienceId,
+                },
+                body: JSON.stringify({
+                  receiptId: result.data.receiptId,
+                }),
+              });
               
-              const statusRes = await fetch(`/api/challenges/${challengeId}/enrollment-status`);
-              const statusData = await statusRes.json();
+              const confirmData = await confirmRes.json();
               
-              if (statusData.enrolled) {
-                enrolled = true;
+              if (confirmRes.ok && confirmData.success) {
+                console.log('🎉 Enrollment confirmed!', confirmData);
                 setShowSuccess(true);
                 
                 // Redirect to challenge view
                 setTimeout(() => {
                   router.push(`/experiences/${experienceId}/c/${challengeId}`);
                 }, 1500);
-                return;
+              } else {
+                console.error('❌ Enrollment confirmation failed:', confirmData);
+                alert(confirmData.error || 'Failed to confirm enrollment. Please contact support.');
               }
-              
-              attempts++;
-            }
-            
-            if (!enrolled) {
-              alert('Enrollment is taking longer than expected. Please refresh the page.');
+            } catch (confirmError) {
+              console.error('❌ Error confirming enrollment:', confirmError);
+              alert('Failed to confirm enrollment. Please contact support with your receipt ID: ' + result.data.receiptId);
             }
           } else {
             // Payment cancelled or failed
+            console.log('❌ Payment cancelled or failed:', result);
             alert('Payment was cancelled or failed. Please try again.');
           }
         } catch (error) {
