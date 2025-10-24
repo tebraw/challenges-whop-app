@@ -1,9 +1,9 @@
 import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { whopSdk } from '@/lib/whop-sdk-unified';
 import { prisma } from '@/lib/prisma';
 import CustomerChallenges from './components/CustomerChallenges';
 import NotificationBadge from '@/components/NotificationBadge';
+import AutoRedirect from './components/AutoRedirect';
 
 interface Props {
   params: Promise<{
@@ -140,8 +140,8 @@ export default async function ExperiencePage({ params }: Props) {
     // 🚀 UX Enhancement: If user has no challenges in their community, redirect to Discover page
     // This ensures new users always see relevant content instead of an empty page
     if (challenges.length === 0) {
-      console.log('🔍 No challenges found - redirecting to Discover page');
-      redirect(`/experiences/${experienceId}/discover`);
+      console.log('🔍 No challenges found - auto-redirecting to Discover page');
+      return <AutoRedirect to={`/experiences/${experienceId}/discover`} />;
     }
     
     // Calculate user statistics
