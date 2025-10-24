@@ -59,6 +59,7 @@ model Challenge {
   cadence            Cadence                @default(DAILY)
   rules              Json?
   imageUrl           String?
+  imageUrlThumbnail  String?                // Optimized thumbnail for list views (WebP, 400x225, 75% quality)
   createdAt          DateTime               @default(now())
   creatorId          String?
   whopCreatorId      String?

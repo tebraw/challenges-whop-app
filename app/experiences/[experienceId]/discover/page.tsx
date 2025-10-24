@@ -95,7 +95,17 @@ export default async function DiscoverExperiencePage({ params }: Props) {
           }
         ]
       },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        startAt: true,
+        endAt: true,
+        featured: true,
+        difficulty: true,
+        tenantId: true,
+        // Use ONLY thumbnail for list view - DO NOT load full imageUrl to save bandwidth
+        imageUrlThumbnail: true,
         tenant: {
           select: {
             id: true,
@@ -206,9 +216,9 @@ export default async function DiscoverExperiencePage({ params }: Props) {
                     <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden hover:border-orange-500/50 transition-all duration-300 group-hover:transform group-hover:scale-[1.02]">
                       {/* Challenge Image */}
                       <div className="aspect-video bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
-                        {challenge.imageUrl ? (
+                        {challenge.imageUrlThumbnail ? (
                           <img 
-                            src={challenge.imageUrl} 
+                            src={challenge.imageUrlThumbnail} 
                             alt={challenge.title}
                             loading="lazy"
                             decoding="async"
