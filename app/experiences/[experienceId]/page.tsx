@@ -130,19 +130,20 @@ export default async function ExperiencePage({ params }: Props) {
       });
     }
     
-    // 🚀 UX Enhancement: If user has no challenges in their community, redirect to Discover page
-    // This ensures new users always see relevant content instead of an empty page
-    if (challenges.length === 0) {
-      console.log('🔍 No challenges in user community - redirecting to Discover page');
-      redirect(`/experiences/${experienceId}/discover`);
-    }
-    
     console.log('📊 Found challenges for user:', {
       challengeCount: challenges.length,
       userTenantId: user.tenantId,
       experienceId,
       challengeTenantIds: challenges.map(c => ({ id: c.id, title: c.title, tenantId: c.tenantId, experienceId: (c as any).experienceId }))
     });
+    
+    // 🚀 UX Enhancement: If user has no challenges in their community, show Discover content inline
+    // This ensures new users always see relevant content instead of an empty page
+    const shouldShowDiscoverContent = challenges.length === 0;
+    
+    if (shouldShowDiscoverContent) {
+      console.log('🔍 No challenges found - showing Discover content');
+    }
     
     // Calculate user statistics
     const joinedChallengesCount = challenges.filter((c: any) => c.enrollments && c.enrollments.length > 0).length;
