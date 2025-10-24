@@ -254,7 +254,14 @@ export default function AdminGuard({ children }: AdminGuardProps) {
           console.log('🎯 Adding Company ID to admin call:', companyIdForAdmin);
         }
         
-        const adminResponse = await fetch('/api/admin/challenges', {
+        // 🎯 Use Dashboard-specific API if in Business Dashboard, otherwise use Experience API
+        const apiEndpoint = businessDashboardCompanyId 
+          ? '/api/admin/dashboard/challenges'
+          : '/api/admin/challenges';
+        
+        console.log('🎯 Using API endpoint:', apiEndpoint);
+        
+        const adminResponse = await fetch(apiEndpoint, {
           method: 'GET',
           headers: adminHeaders,
           credentials: 'include'
