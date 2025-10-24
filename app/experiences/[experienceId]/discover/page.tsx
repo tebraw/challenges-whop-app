@@ -130,7 +130,7 @@ export default async function DiscoverExperiencePage({ params }: Props) {
     
     // Fetch real company names for all challenges
     const challengesWithCompanyNames = await Promise.all(
-      allChallenges.map(async (challenge) => {
+      allChallenges.map(async (challenge: any) => {
         if (challenge.tenant?.whopCompanyId) {
           const realCompanyName = await getCompanyName(challenge.tenant.whopCompanyId);
           return {
