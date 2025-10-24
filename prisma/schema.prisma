@@ -84,6 +84,9 @@ model Challenge {
   @@index([experienceId])
   @@index([whopCompanyId])
   @@index([tenantId])
+  @@index([isPublic, featured, createdAt]) // Composite index for discover page queries
+  @@index([status, endAt]) // Index for active/ended challenge queries
+  @@index([createdAt]) // Index for ordering by creation date
 }
 
 model WhopProduct {
@@ -161,6 +164,9 @@ model Enrollment {
 
   @@unique([challengeId, userId])
   @@index([experienceId])
+  @@index([challengeId]) // Index for faster enrollment lookups per challenge
+  @@index([userId]) // Index for faster user enrollment queries
+  @@index([joinedAt]) // Index for ordering enrollments by date
 }
 
 model Proof {
@@ -178,6 +184,8 @@ model Proof {
 
   @@index([enrollmentId, isActive])
   @@index([experienceId])
+  @@index([createdAt]) // Index for ordering proofs by date
+  @@index([type]) // Index for filtering by proof type
 }
 
 model Checkin {
