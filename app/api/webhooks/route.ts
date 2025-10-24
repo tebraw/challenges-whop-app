@@ -2,6 +2,7 @@ import { waitUntil } from "@vercel/functions";
 import { makeWebhookValidator } from "@whop/api";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { revenueDistributionService } from "@/lib/revenue-sharing";
 
 const validateWebhook = makeWebhookValidator({
 	webhookSecret: process.env.WHOP_WEBHOOK_SECRET ?? "fallback",
@@ -109,33 +110,55 @@ async function handlePaymentSuccess(
 
 		console.log('✅ Enrollment created:', enrollment.id);
 
-		// Create revenue share record if we have creator info
+		// Process revenue distribution if we have creator info
 		if (creatorId && whopCreatorId && amountAfterFees) {
 			const amountAfterFeesCents = Math.floor(amountAfterFees * 100); // Convert dollars to cents
 			const creatorAmountCents = Math.floor(amountAfterFeesCents * 0.9); // 90% to creator
 			const platformFeeCents = amountAfterFeesCents - creatorAmountCents; // 10% platform fee
 
-			const revenueShare = await prisma.revenueShare.create({
-				data: {
+			console.log('💰 Initiating revenue distribution:', {
+				totalAmount: amountAfterFeesCents,
+				creatorAmount: creatorAmountCents,
+				platformFee: platformFeeCents,
+				split: '90/10'
+			});
+
+			try {
+				// Call revenue distribution service
+				const result = await revenueDistributionService.distributeRevenue({
 					challengeId,
 					creatorId,
 					whopCreatorId,
 					paymentId,
-					amount: creatorAmountCents,
-					platformFee: platformFeeCents,
-					status: 'pending',
-				},
-			});
+					totalAmount: amountAfterFeesCents,
+					creatorAmount: creatorAmountCents,
+					platformAmount: platformFeeCents,
+				});
 
-			console.log('✅ Revenue share record created:', {
-				id: revenueShare.id,
-				creatorAmount: creatorAmountCents,
-				platformFee: platformFeeCents,
-				currency,
+				if (result.success) {
+					console.log('✅ Revenue distribution successful!', {
+						revenueShareId: result.revenueShareId,
+						transferId: result.transferId,
+					});
+				} else {
+					console.error('❌ Revenue distribution failed:', {
+						error: result.error,
+						shouldRetry: result.shouldRetry,
+					});
+					// Error is logged but enrollment is still successful
+					// Revenue share will be in 'failed' status and can be retried
+				}
+			} catch (revenueError) {
+				console.error('❌ Revenue distribution exception:', revenueError);
+				// Don't fail the whole webhook if revenue distribution fails
+				// Enrollment is still successful
+			}
+		} else {
+			console.log('⚠️ Skipping revenue distribution - missing creator info or amount:', {
+				hasCreatorId: !!creatorId,
+				hasWhopCreatorId: !!whopCreatorId,
+				hasAmountAfterFees: !!amountAfterFees,
 			});
-
-			// TODO Phase 3: Trigger actual payout to creator via payUser API
-			console.log('⏳ Phase 3 TODO: Execute payout to creator');
 		}
 
 	} catch (error) {

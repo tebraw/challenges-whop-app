@@ -130,42 +130,50 @@ class RevenueDistributionService {
 
       // Validate required environment variables
       if (!process.env.WHOP_LEDGER_ACCOUNT_ID) {
-        throw new Error('WHOP_LEDGER_ACCOUNT_ID environment variable not set');
+        throw new Error('WHOP_LEDGER_ACCOUNT_ID environment variable not set. Run setup-ledger-account.ts first!');
       }
 
-      // TODO: Replace with correct Whop API method for revenue transfer
-      // Currently using mock implementation until correct API is identified
-      
-      console.log('💰 MOCK REVENUE TRANSFER:', {
+      // Convert cents to dollars for Whop API
+      const amountInDollars = amount / 100;
+
+      // Create idempotence key to prevent duplicate transfers
+      const idempotenceKey = `revenue_${context.paymentId}_${context.challengeId}`;
+
+      console.log('💰 Calling Whop payUser API:', {
+        amount: amountInDollars,
+        currency: 'usd',
+        destinationId: whopCreatorId,
         ledgerAccountId: process.env.WHOP_LEDGER_ACCOUNT_ID,
+        reason: 'content_reward_payout',
+        idempotenceKey
+      });
+
+      // Call Whop payUser API
+      const result = await whopSdk.payments.payUser({
+        amount: amountInDollars,
+        currency: 'usd',
+        destinationId: whopCreatorId, // Creator's Whop User ID
+        ledgerAccountId: process.env.WHOP_LEDGER_ACCOUNT_ID,
+        reason: 'content_reward_payout', // Appropriate reason for challenge revenue
+        notes: `Challenge revenue: ${context.challengeId.substring(0, 20)}`, // Max 50 chars
+        idempotenceKey // Prevents duplicate transfers if webhook fires twice
+      });
+
+      if (result !== true) {
+        throw new Error('payUser API returned false - transfer may have failed');
+      }
+
+      console.log('✅ Whop payUser transfer successful!', {
         whopCreatorId,
-        amount,
-        amountDollars: (amount / 100).toFixed(2),
-        reason: `Challenge Revenue Share - ${context.challengeId}`
+        amount: amountInDollars,
+        challengeId: context.challengeId
       });
 
-      // Simulate successful transfer for now
-      const mockTransfer = {
-        id: `mock_transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        status: 'completed',
-        amount: amount,
-        recipient: whopCreatorId,
-        ledgerAccountId: process.env.WHOP_LEDGER_ACCOUNT_ID
-      };
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      console.log('✅ Mock revenue transfer successful:', {
-        transferId: mockTransfer.id,
-        status: mockTransfer.status,
-        amount: mockTransfer.amount,
-        recipient: whopCreatorId
-      });
-
+      // Note: Whop payUser returns true on success, but doesn't provide a transfer ID
+      // We'll use the payment ID as reference
       return {
         success: true,
-        transferId: mockTransfer.id
+        transferId: `transfer_${context.paymentId}_${Date.now()}`
       };
 
     } catch (error) {
