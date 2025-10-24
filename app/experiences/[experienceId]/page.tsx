@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { whopSdk } from '@/lib/whop-sdk-unified';
 import { prisma } from '@/lib/prisma';
 import CustomerChallenges from './components/CustomerChallenges';
@@ -127,6 +128,13 @@ export default async function ExperiencePage({ params }: Props) {
         },
         orderBy: { createdAt: 'desc' }
       });
+    }
+    
+    // 🚀 UX Enhancement: If user has no challenges in their community, redirect to Discover page
+    // This ensures new users always see relevant content instead of an empty page
+    if (challenges.length === 0) {
+      console.log('🔍 No challenges in user community - redirecting to Discover page');
+      redirect(`/experiences/${experienceId}/discover`);
     }
     
     console.log('📊 Found challenges for user:', {
