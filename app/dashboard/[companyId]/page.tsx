@@ -93,7 +93,13 @@ function DashboardContent() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/challenges", { cache: "no-store" });
+      // Use Dashboard-specific API route with company ID header
+      const res = await fetch("/api/admin/dashboard/challenges", { 
+        cache: "no-store",
+        headers: {
+          'x-whop-company-id': companyId
+        }
+      });
       if (!res.ok) throw new Error(await res.text());
       const j = await res.json();
       const arr = Array.isArray(j?.challenges) ? (j.challenges as Challenge[]) : [];
@@ -204,7 +210,13 @@ function DashboardContent() {
   async function onDelete(id: string) {
     if (!confirm("Really delete challenge?")) return;
     try {
-      const res = await fetch(`/api/admin/challenges/${id}`, { method: "DELETE" });
+      // Use Dashboard-specific API route
+      const res = await fetch(`/api/admin/dashboard/challenges?id=${id}`, { 
+        method: "DELETE",
+        headers: {
+          'x-whop-company-id': companyId
+        }
+      });
       if (!res.ok) throw new Error(await res.text());
       await load();
     } catch (e: any) {
