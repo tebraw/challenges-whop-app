@@ -13,7 +13,7 @@ export const TIER_LIMITS: Record<AccessTier, TierLimits> = {
   Basic: {
     challengesPerMonth: Infinity, // Not used for Basic - we use challengesLifetime instead
     challengesLifetime: 1, // 1 challenge total for lifetime
-    canCreatePaidChallenges: false,
+    canCreatePaidChallenges: true, // ⚠️ TEMPORARILY ENABLED FOR TESTING
     features: ['Basic analytics', 'Email support', 'Community access']
   },
   Plus: {
