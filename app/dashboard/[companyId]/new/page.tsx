@@ -70,8 +70,10 @@ function NewChallengePageContent() {
         const res = await fetch('/api/admin/access-tier', { headers: { 'x-whop-company-id': companyId as string } });
         if (res.ok) {
           const data = await res.json();
+          console.log('🎟️ CLIENT DEBUG: Access Tier Response:', data);
           setAccessTier(data.tier || 'Basic');
           setCanCreatePaid(Boolean(data.canCreatePaidChallenges));
+          console.log('🎟️ CLIENT DEBUG: Can Create Paid Challenges:', data.canCreatePaidChallenges);
         }
       } catch (e) {
         console.warn('Failed to load access tier', e);
