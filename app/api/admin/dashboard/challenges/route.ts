@@ -206,6 +206,15 @@ export async function DELETE(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Delete related records first (to avoid foreign key constraint errors)
+    await prisma.enrollment.deleteMany({
+      where: { challengeId: challengeId }
+    });
+
+    await prisma.revenueShare.deleteMany({
+      where: { challengeId: challengeId }
+    });
+
     // Delete challenge
     await prisma.challenge.delete({
       where: { id: challengeId }
