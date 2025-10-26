@@ -145,25 +145,43 @@ export async function POST(
         const platformFeeCents = totalAmountCents - creatorAmountCents; // 10%
 
         try {
-          const revenueShare = await prisma.revenueShare.create({
-            data: {
-              challengeId: challengeId,
-              creatorId: challenge.creatorId,
-              whopCreatorId: challenge.whopCreatorId,
-              paymentId: paymentId || receiptId,
-              amount: creatorAmountCents,
-              platformFee: platformFeeCents,
-              status: 'pending',
-            }
-          });
-
-          console.log('✅ Revenue share record created:', {
-            id: revenueShare.id,
+          // Import revenue distribution service
+          const { distributeRevenue } = await import('@/lib/revenue-sharing');
+          
+          console.log('💰 Initiating revenue distribution for payment confirmation:', {
+            challengeId,
+            creatorId: challenge.creatorId,
+            whopCreatorId: challenge.whopCreatorId,
+            totalAmount: totalAmountCents,
             creatorAmount: creatorAmountCents,
             platformFee: platformFeeCents
           });
+
+          // Distribute revenue using the service (creates record + calls payUser)
+          const result = await distributeRevenue({
+            challengeId: challengeId,
+            creatorId: challenge.creatorId,
+            whopCreatorId: challenge.whopCreatorId,
+            paymentId: paymentId || receiptId,
+            totalAmount: totalAmountCents,
+            creatorAmount: creatorAmountCents,
+            platformAmount: platformFeeCents
+          });
+
+          if (result.success) {
+            console.log('✅ Revenue distribution completed:', {
+              revenueShareId: result.revenueShareId,
+              transferId: result.transferId,
+              creatorAmount: creatorAmountCents
+            });
+          } else {
+            console.error('❌ Revenue distribution failed:', {
+              error: result.error,
+              shouldRetry: result.shouldRetry
+            });
+          }
         } catch (revenueError) {
-          console.error('❌ Failed to create revenue share record:', revenueError);
+          console.error('❌ Failed to process revenue distribution:', revenueError);
           // Don't fail enrollment if revenue tracking fails
         }
       }
