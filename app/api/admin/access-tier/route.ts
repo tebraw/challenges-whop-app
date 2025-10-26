@@ -197,7 +197,7 @@ export async function GET(request: NextRequest) {
     });
 
     const caps: TierCaps = {
-      tier: isTestCompany ? 'ProPlus' : tier,
+      tier: isTestCompany ? 'ProPlus' : (hasPromoCode && promoTier === 'ProPlus' ? 'ProPlus' : tier),
       canCreatePaidChallenges: isTestCompany || tier === 'ProPlus' || (hasPromoCode && promoTier === 'ProPlus'),
       canSetCustomEntryPrice: true, // Company owner sets entry price freely
       revenueSharePercent: 10, // 10% platform fee (assumed on net, see docs)
