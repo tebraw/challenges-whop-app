@@ -99,6 +99,29 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    // 🔐 Get authenticated user
+    const { whopAppSdk } = await import('@/lib/whop-sdk-unified');
+    
+    let userId: string;
+    try {
+      const tokenResult = await whopAppSdk.verifyUserToken(headersList);
+      userId = tokenResult.userId;
+    } catch (error) {
+      return NextResponse.json({ 
+        error: 'Authentication required' 
+      }, { status: 401 });
+    }
+
+    // Get or create user with whopUserId
+    const { autoCreateOrUpdateUser } = await import('@/lib/auto-company-extraction');
+    const user = await autoCreateOrUpdateUser(userId, null, companyId);
+
+    console.log('🔐 Dashboard challenge creation by user:', {
+      userId,
+      whopUserId: user.whopUserId,
+      companyId
+    });
+
     // Get or create tenant
     let tenant = await prisma.tenant.findUnique({
       where: { whopCompanyId: companyId }
@@ -113,7 +136,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Create challenge
+    // Create challenge with creator IDs for revenue sharing
     const challenge = await prisma.challenge.create({
       data: {
         tenantId: tenant.id,
@@ -127,7 +150,10 @@ export async function POST(request: NextRequest) {
         rules: body.rules || null,
         imageUrl: body.imageUrl || null,
         isPublic: body.isPublic ?? true,
-        featured: body.featured ?? false
+        featured: body.featured ?? false,
+        creatorId: user.id, // ✅ FIX: Set creator ID
+        whopCreatorId: user.whopUserId, // ✅ FIX: Set Whop Creator ID for revenue sharing
+        monetizationRules: body.monetization || body.monetizationRules || { enabled: false }
       },
       include: {
         _count: {
