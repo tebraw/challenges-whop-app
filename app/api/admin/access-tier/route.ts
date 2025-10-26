@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
     let hasPromoCode = false;
     let promoTier: string | null = null;
     
-    console.log('🔍 DEBUG: Checking promo code for userId:', userId);
+    console.error('🎟️ PROMO DEBUG: Checking promo code for userId:', userId);
     
     if (userId) {
       const userWithPromo = await prisma.user.findFirst({
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
         select: { activePromoCode: true, id: true }
       });
       
-      console.log('🔍 DEBUG: User lookup result:', {
+      console.error('🎟️ PROMO DEBUG: User lookup result:', {
         found: !!userWithPromo,
         activePromoCode: userWithPromo?.activePromoCode
       });
@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
           where: { code: userWithPromo.activePromoCode }
         });
         
-        console.log('🔍 DEBUG: Promo code lookup result:', {
+        console.error('🎟️ PROMO DEBUG: Promo code lookup result:', {
           found: !!promoCode,
           code: promoCode?.code,
           tier: promoCode?.tier,
@@ -173,24 +173,24 @@ export async function GET(request: NextRequest) {
           if (!promoCode.validUntil || new Date() <= promoCode.validUntil) {
             hasPromoCode = true;
             promoTier = promoCode.tier;
-            console.log('🎟️  PROMO CODE: User has active promo code:', {
+            console.error('🎟️ PROMO CODE: User has active promo code:', {
               code: promoCode.code,
               tier: promoCode.tier
             });
           } else {
-            console.log('⚠️  PROMO CODE: Code has expired');
+            console.error('⚠️ PROMO CODE: Code has expired');
           }
         } else {
-          console.log('⚠️  PROMO CODE: Code not found or inactive');
+          console.error('⚠️ PROMO CODE: Code not found or inactive');
         }
       } else {
-        console.log('ℹ️  No promo code found for user');
+        console.error('ℹ️ No promo code found for user');
       }
     } else {
-      console.log('⚠️  No userId provided to check promo code');
+      console.error('⚠️ No userId provided to check promo code');
     }
     
-    console.log('🎯 DEBUG: Final promo code check result:', {
+    console.error('�️ PROMO DEBUG: Final promo code check result:', {
       hasPromoCode,
       promoTier,
       willGrantPaidChallenges: isTestCompany || tier === 'ProPlus' || (hasPromoCode && promoTier === 'ProPlus')

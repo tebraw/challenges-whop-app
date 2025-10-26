@@ -10,9 +10,6 @@ async function main() {
   const usedCodes = await prisma.promoCode.findMany({
     where: {
       usedBy: { not: null }
-    },
-    include: {
-      // We'll manually fetch the user since relation might not exist yet
     }
   });
   
