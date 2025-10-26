@@ -31,6 +31,7 @@ model User {
   membershipId       String?
   subscriptionStatus String                 @default("free")
   tier               String                 @default("free")
+  activePromoCode    String?                // Active promo code for tier upgrade
   createdChallenges  Challenge[]            @relation("Creator")
   winnings           ChallengeWinner[]      @relation("Winners")
   enrollments        Enrollment[]
@@ -273,4 +274,19 @@ model RevenueShare {
   @@index([paymentId])
   @@index([status])
   @@map("RevenueShare")
+}
+
+model PromoCode {
+  id          String    @id @default(cuid())
+  code        String    @unique // BETA-XK9P-2M4L format
+  tier        String    @default("ProPlus") // Which tier this code grants
+  usedBy      String?   // User ID who claimed this code
+  usedAt      DateTime? // When the code was claimed
+  isActive    Boolean   @default(true) // Can be deactivated by admin
+  validUntil  DateTime? // Optional expiration date
+  createdAt   DateTime  @default(now())
+  
+  @@index([code])
+  @@index([usedBy])
+  @@map("PromoCode")
 }

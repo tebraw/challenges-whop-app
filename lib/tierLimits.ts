@@ -146,11 +146,34 @@ export async function canCreateChallenge(
 /**
  * Check if user can create paid challenges (entry fee system)
  */
-export function canCreatePaidChallenges(companyId: string, accessTier: AccessTier): boolean {
+export async function canCreatePaidChallenges(companyId: string, accessTier: AccessTier, userId?: string): Promise<boolean> {
   // Check testing mode first
   if (isTestingMode(companyId)) {
     console.log('🧪 TESTING MODE: Allowing paid challenges for test company');
     return true;
+  }
+  
+  // Check if user has active promo code that grants ProPlus
+  if (userId) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { activePromoCode: true }
+    });
+    
+    if (user?.activePromoCode) {
+      // Verify the promo code is still valid
+      const promoCode = await prisma.promoCode.findUnique({
+        where: { code: user.activePromoCode }
+      });
+      
+      if (promoCode && promoCode.isActive && promoCode.tier === 'ProPlus') {
+        // Check if code has expired
+        if (!promoCode.validUntil || new Date() <= promoCode.validUntil) {
+          console.log('🎟️  PROMO CODE: Granting ProPlus permissions via promo code:', user.activePromoCode);
+          return true;
+        }
+      }
+    }
   }
   
   // Normal tier check

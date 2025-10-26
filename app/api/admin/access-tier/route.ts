@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { whopAppSdk } from '@/lib/whop-sdk-unified';
 import { ACCESS_PASS_PRODUCTS, AccessTier, coalesceTier, productIdToTier } from '@/lib/subscriptionTiers';
+import { prisma } from '@/lib/prisma';
 
 type TierCaps = {
   tier: AccessTier;
@@ -137,9 +138,38 @@ export async function GET(request: NextRequest) {
       console.log('🧪 TESTING MODE: Granting ProPlus access tier for company:', companyId);
     }
 
+    // Check if user has active promo code
+    let hasPromoCode = false;
+    let promoTier: string | null = null;
+    
+    if (userId) {
+      const userWithPromo = await prisma.user.findFirst({
+        where: { whopUserId: userId },
+        select: { activePromoCode: true, id: true }
+      });
+      
+      if (userWithPromo?.activePromoCode) {
+        const promoCode = await prisma.promoCode.findUnique({
+          where: { code: userWithPromo.activePromoCode }
+        });
+        
+        if (promoCode && promoCode.isActive) {
+          // Check if code hasn't expired
+          if (!promoCode.validUntil || new Date() <= promoCode.validUntil) {
+            hasPromoCode = true;
+            promoTier = promoCode.tier;
+            console.log('🎟️  PROMO CODE: User has active promo code:', {
+              code: promoCode.code,
+              tier: promoCode.tier
+            });
+          }
+        }
+      }
+    }
+
     const caps: TierCaps = {
       tier: isTestCompany ? 'ProPlus' : tier,
-      canCreatePaidChallenges: isTestCompany || tier === 'ProPlus', // Testing mode OR ProPlus
+      canCreatePaidChallenges: isTestCompany || tier === 'ProPlus' || (hasPromoCode && promoTier === 'ProPlus'),
       canSetCustomEntryPrice: true, // Company owner sets entry price freely
       revenueSharePercent: 10, // 10% platform fee (assumed on net, see docs)
     };

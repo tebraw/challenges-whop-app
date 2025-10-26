@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Check } from 'lucide-react';
+import { X, Check, Tag } from 'lucide-react';
 
 interface PlanSelectionModalProps {
   isOpen: boolean;
@@ -70,6 +70,10 @@ const PLANS = [
 
 export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPlanSelect }: PlanSelectionModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showPromoInput, setShowPromoInput] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoError, setPromoError] = useState('');
+  const [promoSuccess, setPromoSuccess] = useState('');
 
   if (!isOpen) return null;
 
@@ -80,6 +84,47 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
     try {
       await onPlanSelect(planId, tierName);
     } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePromoCodeSubmit = async () => {
+    if (!promoCode.trim()) {
+      setPromoError('Please enter a promo code');
+      return;
+    }
+
+    setIsProcessing(true);
+    setPromoError('');
+    setPromoSuccess('');
+
+    try {
+      const response = await fetch('/api/promo/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoCode.trim() })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setPromoError(data.error || 'Invalid promo code');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Success!
+      setPromoSuccess(`🎉 ${data.tier} access activated!`);
+      setPromoCode('');
+      
+      // Refresh page after 1.5 seconds to show new tier
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+
+    } catch (error) {
+      console.error('Promo code error:', error);
+      setPromoError('Failed to activate promo code');
       setIsProcessing(false);
     }
   };
@@ -131,15 +176,6 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
                   isCurrentPlan(plan.name) ? 'ring-2 ring-blue-500' : ''
                 }`}
               >
-                {/* Popular Badge - DISABLED to prevent click interference */}
-                {/* {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium">
-                      Most Popular
-                    </span>
-                  </div>
-                )} */}
-
                 {/* Current Plan Badge */}
                 {isCurrentPlan(plan.name) && (
                   <div className="absolute -top-3 right-4">
@@ -195,6 +231,82 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
                 </div>
               </div>
             ))}
+
+            {/* 🎟️ PROMO CODE CARD */}
+            <div className="relative rounded-lg border-2 border-dashed border-green-300 bg-green-50 p-6">
+              <div className="text-green-900">
+                <div className="text-center mb-6">
+                  <div className="flex justify-center mb-3">
+                    <div className="p-3 bg-green-200 rounded-full">
+                      <Tag size={24} className="text-green-700" />
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">Promo Code</h3>
+                  <p className="text-sm opacity-80">Have a beta access code?</p>
+                </div>
+
+                {!showPromoInput ? (
+                  <button
+                    onClick={() => setShowPromoInput(true)}
+                    className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Enter Promo Code
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={promoCode}
+                      onChange={(e) => {
+                        setPromoCode(e.target.value.toUpperCase());
+                        setPromoError('');
+                        setPromoSuccess('');
+                      }}
+                      placeholder="BETA-XXXX-XXXX"
+                      className="w-full px-4 py-2 border-2 border-green-300 rounded-lg text-center font-mono font-bold text-green-900 placeholder-green-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      maxLength={16}
+                      disabled={isProcessing}
+                    />
+                    
+                    {promoError && (
+                      <p className="text-xs text-red-600 text-center">{promoError}</p>
+                    )}
+                    
+                    {promoSuccess && (
+                      <p className="text-xs text-green-700 font-bold text-center">{promoSuccess}</p>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setShowPromoInput(false);
+                          setPromoCode('');
+                          setPromoError('');
+                          setPromoSuccess('');
+                        }}
+                        disabled={isProcessing}
+                        className="flex-1 py-2 px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handlePromoCodeSubmit}
+                        disabled={isProcessing || !promoCode.trim()}
+                        className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isProcessing ? 'Activating...' : 'Activate'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6 pt-4 border-t border-green-200">
+                  <p className="text-xs text-center opacity-70">
+                    Beta testers: Use your exclusive code for ProPlus access
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Additional Info */}
