@@ -78,8 +78,8 @@ function DashboardContent() {
   const [error, setError] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editChallengeId, setEditChallengeId] = useState<string | null>(null);
-  // Access tier state (Basic | Pre | ProPlus)
-  const [accessTier, setAccessTier] = useState<'Basic' | 'Pre' | 'ProPlus'>("Basic");
+  // Access tier state (Basic | Starter | Professional)
+  const [accessTier, setAccessTier] = useState<'Basic' | 'Starter' | 'Professional'>("Basic");
   const [accessTierLoading, setAccessTierLoading] = useState<boolean>(true);
   const [accessTierError, setAccessTierError] = useState<string | null>(null);
   // Plan selection modal state
@@ -146,7 +146,7 @@ function DashboardContent() {
           setAccessTierError(`Access tier unavailable (${res.status})`);
         } else {
           const data = await res.json();
-          if (data?.tier === 'Pre' || data?.tier === 'ProPlus' || data?.tier === 'Basic') {
+          if (data?.tier === 'Starter' || data?.tier === 'Professional' || data?.tier === 'Basic') {
             setAccessTier(data.tier);
             console.log('🎯 Access Tier loaded:', data.tier);
           } else {
@@ -262,7 +262,7 @@ function DashboardContent() {
         console.warn('❌ Whop iFrame SDK not available - not running in Whop iFrame context');
         
         // Fallback: Create external checkout link for non-iFrame context
-        const productId = (tierName === 'Pre') ? 'prod_ttlhdSPEzAXeO' : 'prod_9YkNJGjxSgRyE';
+        const productId = (tierName === 'Starter') ? 'prod_lSScR3R6CR94J' : 'prod_ql9UrCigkkosC';
         const checkoutUrl = `https://whop.com/checkout/${productId}`;
         
         console.log('🔗 Fallback: Opening external Whop checkout:', checkoutUrl);
@@ -288,7 +288,7 @@ function DashboardContent() {
       
       if (result.status === 'ok') {
         // Update local state immediately for better UX
-        setAccessTier(tierName as 'Basic' | 'Pre' | 'ProPlus');
+        setAccessTier(tierName as 'Basic' | 'Starter' | 'Professional');
         setPlanModalOpen(false);
         
         // Show success message
@@ -322,9 +322,9 @@ function DashboardContent() {
                 <span
                   title={accessTierError || undefined}
                   className={`px-3 py-1 rounded-full text-sm font-medium border ${
-                    accessTier === 'ProPlus'
+                    accessTier === 'Professional'
                       ? 'bg-purple-700/30 text-purple-200 border-purple-600'
-                      : accessTier === 'Pre'
+                      : accessTier === 'Starter'
                       ? 'bg-blue-700/30 text-blue-200 border-blue-600'
                       : 'bg-gray-700/50 text-gray-200 border-gray-600'
                   }`}

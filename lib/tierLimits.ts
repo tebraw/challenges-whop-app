@@ -1,6 +1,6 @@
 import { prisma } from './prisma';
 
-export type AccessTier = 'Basic' | 'Pre' | 'ProPlus';
+export type AccessTier = 'Basic' | 'Starter' | 'Professional';
 
 export interface TierLimits {
   challengesPerMonth: number;
@@ -16,15 +16,15 @@ export const TIER_LIMITS: Record<AccessTier, TierLimits> = {
     canCreatePaidChallenges: false, // Basic tier cannot create paid challenges
     features: ['Basic analytics', 'Email support', 'Community access']
   },
-  Pre: {
+  Starter: {
     challengesPerMonth: Infinity,
-    canCreatePaidChallenges: true, // Pre tier can create paid challenges with 50% commission
+    canCreatePaidChallenges: true, // Starter tier can create paid challenges with 50% commission
     features: ['Unlimited challenges', 'Paid challenges (50% commission)', 'Priority email support']
   },
-  ProPlus: {
+  Professional: {
     challengesPerMonth: Infinity,
-    canCreatePaidChallenges: true, // ProPlus tier can create paid challenges with 10% commission
-    features: ['Everything in Pre', 'White-label', 'API access', 'Dedicated support', 'Paid challenges (10% commission)']
+    canCreatePaidChallenges: true, // Professional tier can create paid challenges with 10% commission
+    features: ['Everything in Starter', 'White-label', 'API access', 'Dedicated support', 'Paid challenges (10% commission)']
   }
 };
 
@@ -36,7 +36,7 @@ function isTestingMode(companyId: string): boolean {
   const testCompanyId = process.env.TEST_COMPANY_ID;
   
   if (testingMode && testCompanyId && companyId === testCompanyId) {
-    console.log('🧪 TESTING MODE: Granting ProPlus permissions for company:', companyId);
+    console.log('🧪 TESTING MODE: Granting Professional permissions for company:', companyId);
     return true;
   }
   
@@ -59,7 +59,7 @@ export async function canCreateChallenge(
   
   const limits = TIER_LIMITS[accessTier];
   
-  // Plus and ProPlus have unlimited challenges
+  // Starter and Professional have unlimited challenges
   if (limits.challengesPerMonth === Infinity && !limits.challengesLifetime) {
     return { allowed: true };
   }
@@ -153,7 +153,7 @@ export async function canCreatePaidChallenges(companyId: string, accessTier: Acc
     return true;
   }
   
-  // Check if user has active promo code that grants ProPlus
+  // Check if user has active promo code that grants Professional
   if (userId) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -166,10 +166,10 @@ export async function canCreatePaidChallenges(companyId: string, accessTier: Acc
         where: { code: user.activePromoCode }
       });
       
-      if (promoCode && promoCode.isActive && promoCode.tier === 'ProPlus') {
+      if (promoCode && promoCode.isActive && promoCode.tier === 'Professional') {
         // Check if code has expired
         if (!promoCode.validUntil || new Date() <= promoCode.validUntil) {
-          console.log('🎟️  PROMO CODE: Granting ProPlus permissions via promo code:', user.activePromoCode);
+          console.log('🎟️  PROMO CODE: Granting Professional permissions via promo code:', user.activePromoCode);
           return true;
         }
       }

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useIframeSdk } from "@whop/react";
@@ -88,11 +88,11 @@ export default function JoinChallengeButton({
           // Show inline payment modal
           const result = await iframeSdk.inAppPurchase(inAppPurchase);
           
-          console.log('💳 Payment modal result:', result);
+          console.log('?? Payment modal result:', result);
           
           if (result.status === 'ok') {
             // Payment successful! Create enrollment immediately
-            console.log('✅ Payment successful! Receipt ID:', result.data.receiptId);
+            console.log('? Payment successful! Receipt ID:', result.data.receiptId);
             
             setJoining(true);
             
@@ -111,7 +111,7 @@ export default function JoinChallengeButton({
               const confirmData = await confirmRes.json();
               
               if (confirmRes.ok && confirmData.success) {
-                console.log('🎉 Enrollment confirmed!', confirmData);
+                console.log('?? Enrollment confirmed!', confirmData);
                 setShowSuccess(true);
                 
                 // Redirect to challenge view
@@ -119,16 +119,16 @@ export default function JoinChallengeButton({
                   router.push(`/experiences/${experienceId}/c/${challengeId}`);
                 }, 1500);
               } else {
-                console.error('❌ Enrollment confirmation failed:', confirmData);
+                console.error('? Enrollment confirmation failed:', confirmData);
                 alert(confirmData.error || 'Failed to confirm enrollment. Please contact support.');
               }
             } catch (confirmError) {
-              console.error('❌ Error confirming enrollment:', confirmError);
+              console.error('? Error confirming enrollment:', confirmError);
               alert('Failed to confirm enrollment. Please contact support with your receipt ID: ' + result.data.receiptId);
             }
           } else {
             // Payment cancelled or failed
-            console.log('❌ Payment cancelled or failed:', result);
+            console.log('? Payment cancelled or failed:', result);
             alert('Payment was cancelled or failed. Please try again.');
           }
         } catch (error) {

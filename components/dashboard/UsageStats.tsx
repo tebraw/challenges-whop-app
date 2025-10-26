@@ -3,7 +3,7 @@
 import { AlertTriangle, Crown, TrendingUp, Users, BarChart3 } from 'lucide-react';
 
 interface UsageStatsProps {
-  currentTier: 'Basic' | 'Pre' | 'ProPlus';
+  currentTier: 'Basic' | 'Starter' | 'Professional';
   stats: {
     challengesCreated: number;
     totalParticipants: number;
@@ -21,13 +21,13 @@ const TIER_LIMITS = {
     challenges: Infinity,
     features: ['Advanced analytics', 'Priority support', 'Custom branding', 'Member tools']
   },
-  Pre: {
+  Starter: {
     challenges: Infinity,
     features: ['Advanced analytics', 'Priority support', 'Custom branding', 'Member tools']
   },
-  ProPlus: {
+  Professional: {
     challenges: Infinity,
-    features: ['Everything in Plus', 'White-label', 'API access', 'Dedicated support', 'Revenue sharing']
+    features: ['Everything in Starter', 'White-label', 'API access', 'Dedicated support', 'Revenue sharing']
   }
 };
 
@@ -40,10 +40,10 @@ export default function UsageStats({ currentTier, stats, onUpgrade }: UsageStats
   const isNearLimit = challengeUsagePercent > 80;
   const isAtLimit = stats.challengesCreated >= limits.challenges && limits.challenges !== Infinity;
 
-  // Don't show for ProPlus users (they have everything)
-  if (currentTier === 'ProPlus') return null;
+  // Don't show for Professional users (they have everything)
+  if (currentTier === 'Professional') return null;
   
-  // Use Pre tier directly
+  // Use Starter tier directly
   const effectiveTier = currentTier;
 
   return (
@@ -55,7 +55,7 @@ export default function UsageStats({ currentTier, stats, onUpgrade }: UsageStats
         </h3>
         <div className="flex items-center gap-2">
           <span className={`px-2 py-1 rounded text-xs font-medium ${
-            currentTier === 'Pre' 
+            currentTier === 'Starter' 
               ? 'bg-blue-600/20 text-blue-200 border border-blue-600'
               : 'bg-gray-600/20 text-gray-200 border border-gray-600'
           }`}>
@@ -175,12 +175,12 @@ export default function UsageStats({ currentTier, stats, onUpgrade }: UsageStats
         </div>
       )}
 
-      {/* Pre to ProPlus upgrade */}
-      {currentTier === 'Pre' && (
+      {/* Starter to Professional upgrade */}
+      {currentTier === 'Starter' && (
         <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg p-4 border border-purple-600/30">
           <div className="flex items-center gap-2 mb-3">
             <Crown size={16} className="text-purple-400" />
-            <span className="text-sm font-medium text-purple-200">Upgrade to ProPlus</span>
+            <span className="text-sm font-medium text-purple-200">Upgrade to Professional</span>
             <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full">$49.90/mo</span>
           </div>
           

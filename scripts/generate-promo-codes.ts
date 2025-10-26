@@ -44,7 +44,7 @@ async function main() {
     await prisma.promoCode.create({
       data: {
         code,
-        tier: 'ProPlus',
+        tier: 'Starter',
         isActive: true,
         // Optional: Set expiration to 90 days from now
         // validUntil: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)

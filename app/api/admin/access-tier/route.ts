@@ -72,8 +72,8 @@ export async function GET(request: NextRequest) {
       // ✅ WHOP TEAM FIX: "remove base accessPass ID check for the free plan"
       // Basic users get access by default - no purchase required!
       const ACCESS_PASS_CHECKS = [
-        { tier: 'ProPlus' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PRO_PLUS },
-        { tier: 'Pre' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PRE }
+        { tier: 'Professional' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.PROFESSIONAL },
+        { tier: 'Starter' as AccessTier, accessPassId: ACCESS_PASS_PRODUCTS.STARTER }
         // ❌ REMOVED Basic tier - users get Basic access without purchasing Access Pass
       ];
       
@@ -111,8 +111,8 @@ export async function GET(request: NextRequest) {
       if (!detectedTier) {
         console.log('✅ DEBUG: No paid Access Pass found - defaulting to Basic tier (free access)');
         console.log('📋 DEBUG: Checked PAID Access Pass IDs only:', {
-          PRE: ACCESS_PASS_PRODUCTS.PRE,
-          PRO_PLUS: ACCESS_PASS_PRODUCTS.PRO_PLUS
+          PRE: ACCESS_PASS_PRODUCTS.STARTER,
+          PROFESSIONAL: ACCESS_PASS_PRODUCTS.PROFESSIONAL
         });
         console.log('🎯 DEBUG: Basic tier = default access (no purchase required)');
       }
@@ -124,8 +124,8 @@ export async function GET(request: NextRequest) {
 
     // Debug override header (non-production only)
     const debugTier = request.headers.get('x-debug-tier');
-    if (debugTier === 'pre') detectedTier = 'Pre';
-    if (debugTier === 'proplus') detectedTier = 'ProPlus';
+    if (debugTier === 'Starter') detectedTier = 'Starter';
+    if (debugTier === 'Professional') detectedTier = 'Professional';
 
     const tier = coalesceTier(detectedTier);
 
@@ -193,12 +193,12 @@ export async function GET(request: NextRequest) {
     console.error('�️ PROMO DEBUG: Final promo code check result:', {
       hasPromoCode,
       promoTier,
-      willGrantPaidChallenges: isTestCompany || tier === 'ProPlus' || (hasPromoCode && promoTier === 'ProPlus')
+      willGrantPaidChallenges: isTestCompany || tier === 'Professional' || (hasPromoCode && promoTier === 'Professional')
     });
 
     const caps: TierCaps = {
-      tier: isTestCompany ? 'ProPlus' : (hasPromoCode && promoTier === 'ProPlus' ? 'ProPlus' : tier),
-      canCreatePaidChallenges: isTestCompany || tier === 'ProPlus' || (hasPromoCode && promoTier === 'ProPlus'),
+      tier: isTestCompany ? 'Professional' : (hasPromoCode && promoTier === 'Professional' ? 'Professional' : tier),
+      canCreatePaidChallenges: isTestCompany || tier === 'Professional' || (hasPromoCode && promoTier === 'Professional'),
       canSetCustomEntryPrice: true, // Company owner sets entry price freely
       revenueSharePercent: 10, // 10% platform fee (assumed on net, see docs)
     };

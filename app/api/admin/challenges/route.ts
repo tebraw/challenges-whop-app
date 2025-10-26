@@ -317,8 +317,8 @@ export async function POST(request: NextRequest) {
               console.log('❌ Paid challenge creation blocked for tier:', tier);
               return NextResponse.json({
                 error: 'Paid challenges not allowed',
-                message: 'Paid challenges are only available on ProPlus plan. Upgrade to unlock this feature.',
-                tierRequired: 'ProPlus',
+                message: 'Paid challenges are only available on Professional plan. Upgrade to unlock this feature.',
+                tierRequired: 'Professional',
                 currentTier: tier
               }, { status: 403 });
             }

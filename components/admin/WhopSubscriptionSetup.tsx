@@ -28,7 +28,7 @@ const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
       'Premium features',
       'Custom branding options'
     ],
-    whopProdId: 'plan_HIkvcR8fdipgO', // Pre Plan ID aus .env.local (Whop plan is named "Pre")
+    whopProdId: 'plan_HIkvcR8fdipgO', // Pre Plan ID aus .env.local (Whop plan is named "Starter")
     isActive: true
   },
   {
@@ -119,7 +119,7 @@ export default function WhopSubscriptionSetup() {
     const tierMapping: Record<string, string> = {
       'Basic': 'starter',
       'Plus': 'professional', 
-      'ProPlus': 'enterprise'
+      'Professional': 'enterprise'
     };
     return tierMapping[currentTier] === tierId;
   };
@@ -179,7 +179,7 @@ export default function WhopSubscriptionSetup() {
               <p className="text-blue-800 dark:text-blue-300">
                 {currentTier === 'Basic' && '$19/month'}
                 {currentTier === 'Plus' && '$49/month'}
-                {currentTier === 'ProPlus' && '$79/month'}
+                {currentTier === 'Professional' && '$79/month'}
               </p>
             </div>
             <Button

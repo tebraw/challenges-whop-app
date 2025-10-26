@@ -279,7 +279,7 @@ model RevenueShare {
 model PromoCode {
   id          String    @id @default(cuid())
   code        String    @unique // BETA-XK9P-2M4L format
-  tier        String    @default("ProPlus") // Which tier this code grants
+  tier        String    @default("Starter") // Which tier this code grants
   usedBy      String?   // User ID who claimed this code
   usedAt      DateTime? // When the code was claimed
   isActive    Boolean   @default(true) // Can be deactivated by admin

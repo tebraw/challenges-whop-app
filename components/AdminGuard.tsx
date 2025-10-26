@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
@@ -7,7 +7,7 @@ interface AdminGuardProps {
   children: React.ReactNode;
 }
 
-// 🚀 Global Header Injection for Business Dashboard
+// ?? Global Header Injection for Business Dashboard
 function setupGlobalHeaderInjection(companyId: string) {
   // Override the global fetch to inject headers for admin API calls
   const originalFetch = window.fetch;
@@ -20,7 +20,7 @@ function setupGlobalHeaderInjection(companyId: string) {
     
     // Only inject headers for our admin API calls
     if (url.includes('/api/admin/') || url.includes('/api/auth/')) {
-      console.log('🎯 Injecting Company ID header for:', url);
+      console.log('?? Injecting Company ID header for:', url);
       
       // Clone the init object to avoid mutating the original
       const newInit = { ...init };
@@ -36,7 +36,7 @@ function setupGlobalHeaderInjection(companyId: string) {
     return originalFetch(input, init);
   };
   
-  console.log('✅ Global header injection set up for Company ID:', companyId);
+  console.log('? Global header injection set up for Company ID:', companyId);
 }
 
 export default function AdminGuard({ children }: AdminGuardProps) {
@@ -50,7 +50,7 @@ export default function AdminGuard({ children }: AdminGuardProps) {
       try {
         // DEV MODE: Allow admin access for localhost
         if (typeof window !== 'undefined' && window.location.host.includes('localhost')) {
-          console.log('🔧 DEV MODE: Granting admin access for localhost');
+          console.log('?? DEV MODE: Granting admin access for localhost');
           setIsAdmin(true);
           setIsChecking(false);
           setDebugInfo({ devMode: true, host: window.location.host });
@@ -59,16 +59,16 @@ export default function AdminGuard({ children }: AdminGuardProps) {
         
         console.log('Starting Whop admin access check...');
         
-        // 🎯 Business Dashboard Detection
+        // ?? Business Dashboard Detection
         const isBusinessDashboard = window.location.href.includes('whop.com/dashboard/');
         let businessDashboardCompanyId = null;
         if (isBusinessDashboard) {
           const match = window.location.href.match(/whop\.com\/dashboard\/(biz_[^\/]+)/);
           if (match) {
             businessDashboardCompanyId = match[1];
-            console.log('🎯 Business Dashboard detected, Company ID:', businessDashboardCompanyId);
+            console.log('?? Business Dashboard detected, Company ID:', businessDashboardCompanyId);
             
-            // 🚀 CRITICAL: Set up global header injection for ALL API calls
+            // ?? CRITICAL: Set up global header injection for ALL API calls
             setupGlobalHeaderInjection(businessDashboardCompanyId);
           }
         }
@@ -105,7 +105,7 @@ export default function AdminGuard({ children }: AdminGuardProps) {
           // Don't throw immediately, try admin API first
         }
         
-        // 🎯 FLEXIBLE AUTH: Try admin API even if experience context has issues
+        // ?? FLEXIBLE AUTH: Try admin API even if experience context has issues
         // This handles cases where user is authenticated in Whop but our context detection fails
         
         if (!contextData.isAuthenticated && !contextData.userId) {
@@ -124,7 +124,7 @@ export default function AdminGuard({ children }: AdminGuardProps) {
                                      !contextData.companyId.startsWith('biz_');
         
         if (hasFallbackCompanyId) {
-          console.log('🚨 Fallback Company ID detected - checking if this is Business Dashboard access');
+          console.log('?? Fallback Company ID detected - checking if this is Business Dashboard access');
           
           // SPECIAL CASE: Business Dashboard access often has fallback company ID
           // but the user is still a valid company owner. Let's try to extract the real company ID.
@@ -134,15 +134,15 @@ export default function AdminGuard({ children }: AdminGuardProps) {
           const businessDashboardMatch = currentUrl.match(/whop\.com\/dashboard\/(biz_[^\/]+)/);
           if (businessDashboardMatch) {
             const realCompanyId = businessDashboardMatch[1];
-            console.log(`🎯 Business Dashboard detected! Real company ID: ${realCompanyId}`);
+            console.log(`?? Business Dashboard detected! Real company ID: ${realCompanyId}`);
             
             // Update context with real company ID and skip fallback cleanup
             contextData.companyId = realCompanyId;
-            console.log('🔄 Using real company ID for admin access...');
+            console.log('?? Using real company ID for admin access...');
             
-            // 🚀 CRITICAL: Initialize user in database for Business Dashboard access
+            // ?? CRITICAL: Initialize user in database for Business Dashboard access
             try {
-              console.log('🔄 Initializing user in database...');
+              console.log('?? Initializing user in database...');
               const initUserResponse = await fetch('/api/auth/init-user', {
                 method: 'GET',
                 headers: {
@@ -156,18 +156,18 @@ export default function AdminGuard({ children }: AdminGuardProps) {
               
               if (initUserResponse.ok) {
                 const initData = await initUserResponse.json();
-                console.log('✅ User initialized successfully:', initData.user);
+                console.log('? User initialized successfully:', initData.user);
               } else {
                 const errorData = await initUserResponse.json();
-                console.log('⚠️  User initialization failed:', errorData);
+                console.log('??  User initialization failed:', errorData);
               }
             } catch (initError) {
-              console.log('⚠️  User initialization error:', initError);
+              console.log('??  User initialization error:', initError);
             }
             
             // Allow the normal admin flow to continue
           } else {
-            console.log('🚨 Genuine fallback Company ID - trying to clean up and re-authenticate');
+            console.log('?? Genuine fallback Company ID - trying to clean up and re-authenticate');
           
           // First, try to clean up the fallback user
           try {
@@ -183,10 +183,10 @@ export default function AdminGuard({ children }: AdminGuardProps) {
             
             if (cleanupResponse.ok) {
               const cleanupData = await cleanupResponse.json();
-              console.log('✅ Cleanup successful:', cleanupData);
+              console.log('? Cleanup successful:', cleanupData);
               
               if (cleanupData.action === 'user_deleted') {
-                console.log('🔄 User deleted - attempting re-authentication');
+                console.log('?? User deleted - attempting re-authentication');
                 
                 // Try Company Owner Access API after cleanup
                 const companyOwnerResponse = await fetch('/api/auth/company-owner-access', {
@@ -201,7 +201,7 @@ export default function AdminGuard({ children }: AdminGuardProps) {
                 
                 if (companyOwnerResponse.ok) {
                   const companyOwnerData = await companyOwnerResponse.json();
-                  console.log('✅ Re-authentication successful:', companyOwnerData);
+                  console.log('? Re-authentication successful:', companyOwnerData);
                   
                   if (companyOwnerData.success && companyOwnerData.user.role === 'ADMIN') {
                     setIsAdmin(true);
@@ -218,7 +218,7 @@ export default function AdminGuard({ children }: AdminGuardProps) {
               }
             }
           } catch (cleanupError) {
-            console.error('❌ Cleanup failed:', cleanupError);
+            console.error('? Cleanup failed:', cleanupError);
           }
             
             // If cleanup didn't work, show error
@@ -247,19 +247,19 @@ export default function AdminGuard({ children }: AdminGuardProps) {
           'Accept': 'application/json'
         };
         
-        // 🎯 CRITICAL: Use Business Dashboard Company ID or fallback to context
+        // ?? CRITICAL: Use Business Dashboard Company ID or fallback to context
         const companyIdForAdmin = businessDashboardCompanyId || contextData.companyId;
         if (companyIdForAdmin) {
           adminHeaders['x-whop-company-id'] = companyIdForAdmin;
-          console.log('🎯 Adding Company ID to admin call:', companyIdForAdmin);
+          console.log('?? Adding Company ID to admin call:', companyIdForAdmin);
         }
         
-        // 🎯 Use Dashboard-specific API if in Business Dashboard, otherwise use Experience API
+        // ?? Use Dashboard-specific API if in Business Dashboard, otherwise use Experience API
         const apiEndpoint = businessDashboardCompanyId 
           ? '/api/admin/dashboard/challenges'
           : '/api/admin/challenges';
         
-        console.log('🎯 Using API endpoint:', apiEndpoint);
+        console.log('?? Using API endpoint:', apiEndpoint);
         
         const adminResponse = await fetch(apiEndpoint, {
           method: 'GET',

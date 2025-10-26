@@ -1,4 +1,4 @@
-﻿import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { Card } from "@/components/ui/Card";
 import Link from "next/link";
 import { Calendar, Users, Trophy, Gift } from "lucide-react";
@@ -68,7 +68,7 @@ export default async function FeedPage() {
           _count: challenge._count
         }));
         
-        console.log('📱 Feed loaded challenges:', challenges.length);
+        console.log('?? Feed loaded challenges:', challenges.length);
       }
     } catch (error) {
       console.error('Error fetching challenges for feed:', error);
@@ -80,7 +80,7 @@ export default async function FeedPage() {
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
-                <span className="text-2xl">🎯</span>
+                <span className="text-2xl">??</span>
               </div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
                 Community Challenges
@@ -118,7 +118,7 @@ export default async function FeedPage() {
             <div className="text-center py-16">
               <div className="bg-gray-800 rounded-xl p-12 max-w-lg mx-auto border border-gray-700">
                 <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <span className="text-4xl">📋</span>
+                  <span className="text-4xl">??</span>
                 </div>
                 <h2 className="text-2xl font-bold mb-4 text-white">No challenges yet</h2>
                 <p className="text-gray-400 mb-8 text-lg leading-relaxed">
@@ -126,7 +126,7 @@ export default async function FeedPage() {
                   <br />Check back later for new exciting challenges!
                 </p>
                 <div className="inline-flex items-center gap-2 text-purple-400 font-medium">
-                  <span className="text-lg">✨</span>
+                  <span className="text-lg">?</span>
                   <span>New challenges coming soon</span>
                 </div>
               </div>
@@ -166,7 +166,7 @@ export default async function FeedPage() {
                       {/* Challenge Info */}
                       <div className="flex flex-wrap items-center gap-6 text-sm mb-4">
                         <div className="flex items-center gap-2 text-blue-400">
-                          <span className="text-lg">📅</span>
+                          <span className="text-lg">??</span>
                           <span className="font-medium">
                             {new Date(challenge.startAt).toLocaleDateString()} - {new Date(challenge.endAt).toLocaleDateString()}
                           </span>
@@ -174,13 +174,13 @@ export default async function FeedPage() {
                         
                         {challenge._count && (
                           <div className="flex items-center gap-2 text-green-400">
-                            <span className="text-lg">👥</span>
+                            <span className="text-lg">??</span>
                             <span className="font-medium">{challenge._count.enrollments} participants</span>
                           </div>
                         )}
                         
                         <div className="flex items-center gap-2 text-yellow-400">
-                          <span className="text-lg">🏆</span>
+                          <span className="text-lg">??</span>
                           <span className="font-medium">Rewards available</span>
                         </div>
                       </div>

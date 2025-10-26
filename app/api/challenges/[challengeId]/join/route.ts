@@ -105,10 +105,10 @@ export async function POST(
 
       // Calculate commission based on creator's tier
       // Pre: 50% to creator, 50% to platform
-      // ProPlus: 90% to creator, 10% to platform
+      // Professional: 90% to creator, 10% to platform
       // Default (Basic/unknown): 90% to creator, 10% to platform
-      const creatorTier = challenge.creator?.tier || 'ProPlus';
-      const creatorPercentage = creatorTier === 'Pre' ? 0.5 : 0.9;
+      const creatorTier = challenge.creator?.tier || 'Professional';
+      const creatorPercentage = creatorTier === 'Starter' ? 0.5 : 0.9;
       const platformPercentage = 1 - creatorPercentage;
       
       const creatorAmount = Math.floor(entryPriceCents * creatorPercentage);

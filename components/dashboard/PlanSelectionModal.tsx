@@ -6,7 +6,7 @@ import { X, Check, Tag } from 'lucide-react';
 interface PlanSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentTier?: 'Basic' | 'Pre' | 'ProPlus' | null;
+  currentTier?: 'Basic' | 'Starter' | 'Professional' | null;
   onPlanSelect: (planId: string, tierName: string) => void;
 }
 
@@ -14,28 +14,28 @@ interface PlanSelectionModalProps {
 // ❌ BASIC PLAN REMOVED: Users get Basic access by default (no purchase needed)
 
 // DEBUG: Log Plan IDs to console with detailed info
-console.log('🔍 Pre Plan ID from env:', process.env.NEXT_PUBLIC_PRE_PLAN_ID);
-console.log('🔍 ProPlus Plan ID from env:', process.env.NEXT_PUBLIC_PROPLUS_PLAN_ID);
+console.log('🔍 Starter Plan ID from env:', process.env.NEXT_PUBLIC_STARTER_PLAN_ID);
+console.log('🔍 Professional Plan ID from env:', process.env.NEXT_PUBLIC_PROFESSIONAL_PLAN_ID);
 console.log('🔍 ALL ENV VARS DEBUG:', {
-  PRE_PLAN_ID: process.env.NEXT_PUBLIC_PRE_PLAN_ID,
-  PRE_ACCESS_PASS_ID: process.env.NEXT_PUBLIC_PRE_ACCESS_PASS_ID,
-  PROPLUS_PLAN_ID: process.env.NEXT_PUBLIC_PROPLUS_PLAN_ID,
-  PROPLUS_ACCESS_PASS_ID: process.env.NEXT_PUBLIC_PROPLUS_ACCESS_PASS_ID
+  STARTER_PLAN_ID: process.env.NEXT_PUBLIC_STARTER_PLAN_ID,
+  STARTER_ACCESS_PASS_ID: process.env.NEXT_PUBLIC_STARTER_ACCESS_PASS_ID,
+  PROFESSIONAL_PLAN_ID: process.env.NEXT_PUBLIC_PROFESSIONAL_PLAN_ID,
+  PROFESSIONAL_ACCESS_PASS_ID: process.env.NEXT_PUBLIC_PROFESSIONAL_ACCESS_PASS_ID
 });
 
 // ADDITIONAL DEBUG: Check values before PLANS array creation
 console.log('🔥 DIRECT ENV CHECK before PLANS array:', {
-  PRE_ID: process.env.NEXT_PUBLIC_PRE_PLAN_ID,
-  PRE_DEFAULT: 'plan_pre_placeholder',
-  RESULT: process.env.NEXT_PUBLIC_PRE_PLAN_ID || 'plan_pre_placeholder'
+  STARTER_ID: process.env.NEXT_PUBLIC_STARTER_PLAN_ID,
+  STARTER_DEFAULT: 'plan_starter_placeholder',
+  RESULT: process.env.NEXT_PUBLIC_STARTER_PLAN_ID || 'plan_starter_placeholder'
 });
 
 const PLANS = [
   {
-    id: process.env.NEXT_PUBLIC_PRE_PLAN_ID || 'plan_HIkvcR8fdipgO', // HARDCODED FALLBACK
-    accessPassId: process.env.NEXT_PUBLIC_PRE_ACCESS_PASS_ID || 'prod_ttlhdSPEzAXeO', // HARDCODED FALLBACK
-    name: 'Pre', // Internal name matching Whop plan
-    displayName: 'Pre', // User-facing name (unified with internal name)
+    id: process.env.NEXT_PUBLIC_STARTER_PLAN_ID || 'plan_QnHsOHgVr3vIR', // HARDCODED FALLBACK
+    accessPassId: process.env.NEXT_PUBLIC_STARTER_ACCESS_PASS_ID || 'prod_lSScR3R6CR94J', // HARDCODED FALLBACK
+    name: 'Starter', // Internal name matching Whop plan
+    displayName: 'Starter', // User-facing name (unified with internal name)
     price: '$7.90',
     priceDetail: '/month',
     description: 'Ideal for growing communities',
@@ -50,10 +50,10 @@ const PLANS = [
     ]
   },
   {
-    id: process.env.NEXT_PUBLIC_PROPLUS_PLAN_ID || 'plan_SHRCynR9h3EdG', // HARDCODED FALLBACK
-    accessPassId: process.env.NEXT_PUBLIC_PROPLUS_ACCESS_PASS_ID || 'prod_9YkNJGjxSgRyE', // HARDCODED FALLBACK
-    name: 'ProPlus', // Internal name matching Whop plan
-    displayName: 'ProPlus', // User-facing name
+    id: process.env.NEXT_PUBLIC_PROFESSIONAL_PLAN_ID || 'plan_tVwCbXMDN0yw2', // HARDCODED FALLBACK
+    accessPassId: process.env.NEXT_PUBLIC_PROFESSIONAL_ACCESS_PASS_ID || 'prod_ql9UrCigkkosC', // HARDCODED FALLBACK
+    name: 'Professional', // Internal name matching Whop plan
+    displayName: 'Professional', // User-facing name
     price: '$19.90',
     priceDetail: '/month',
     description: 'Maximum power for enterprises',
@@ -160,8 +160,8 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
             <p className="text-sm text-blue-800">
               <strong>Current Plan:</strong> {currentTier} 
               {currentTier === 'Basic' && ' (FREE)'}
-              {currentTier === 'Pre' && ' ($7.90/month)'}
-              {currentTier === 'ProPlus' && ' ($19.90/month)'}
+              {currentTier === 'Starter' && ' ($7.90/month)'}
+              {currentTier === 'Professional' && ' ($19.90/month)'}
             </p>
           </div>
         )}
@@ -302,7 +302,7 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
 
                 <div className="mt-6 pt-4 border-t border-green-200">
                   <p className="text-xs text-center opacity-70">
-                    Beta testers: Use your exclusive code for ProPlus access
+                    Beta testers: Use your exclusive code for Starter access
                   </p>
                 </div>
               </div>
@@ -313,8 +313,8 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
           <div className="mt-8 p-4 bg-gray-50 rounded-lg">
             <h4 className="font-semibold text-gray-900 mb-2">Need Help Choosing?</h4>
             <p className="text-sm text-gray-600 mb-3">
-              Start with <strong>Basic</strong> to explore our features. Upgrade to <strong>Pre</strong> when you need unlimited challenges and advanced analytics. 
-              Choose <strong>ProPlus</strong> for enterprise features and dedicated support.
+              Start with <strong>Basic</strong> to explore our features. Upgrade to <strong>Starter</strong> when you need unlimited challenges and advanced analytics. 
+              Choose <strong>Professional</strong> for enterprise features and dedicated support.
             </p>
             <div className="flex flex-wrap gap-4 text-xs text-gray-500">
               <span>✨ Cancel anytime</span>
