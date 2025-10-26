@@ -193,12 +193,12 @@ export async function GET(request: NextRequest) {
     console.error('�️ PROMO DEBUG: Final promo code check result:', {
       hasPromoCode,
       promoTier,
-      willGrantPaidChallenges: isTestCompany || tier === 'Professional' || (hasPromoCode && promoTier === 'Professional')
+      willGrantPaidChallenges: isTestCompany || tier === 'Professional' || tier === 'Starter' || (hasPromoCode && promoTier)
     });
 
     const caps: TierCaps = {
-      tier: isTestCompany ? 'Professional' : (hasPromoCode && promoTier === 'Professional' ? 'Professional' : tier),
-      canCreatePaidChallenges: isTestCompany || tier === 'Professional' || (hasPromoCode && promoTier === 'Professional'),
+      tier: isTestCompany ? 'Professional' : (hasPromoCode && promoTier ? promoTier as AccessTier : tier),
+      canCreatePaidChallenges: isTestCompany || tier === 'Professional' || tier === 'Starter' || (hasPromoCode && (promoTier === 'Professional' || promoTier === 'Starter')),
       canSetCustomEntryPrice: true, // Company owner sets entry price freely
       revenueSharePercent: 10, // 10% platform fee (assumed on net, see docs)
     };
@@ -209,3 +209,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
