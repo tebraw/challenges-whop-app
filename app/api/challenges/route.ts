@@ -270,6 +270,15 @@ export async function POST(request: NextRequest) {
 
     // 🎯 Use NEW clean auto-creation system - supports both modes!
     const user = await autoCreateOrUpdateUser(userId, experienceId || tenantId, headerCompanyId || null);
+    
+    console.error('🔍 USER OBJECT AFTER AUTO-CREATE:', {
+      userId: user.id,
+      whopUserId: user.whopUserId,
+      whopUserIdType: typeof user.whopUserId,
+      whopUserIdValue: JSON.stringify(user.whopUserId),
+      name: user.name,
+      role: user.role
+    });
 
     // 🔒 CHECK TIER LIMITS (only for Company Owners - Experience Members unlimited via admin)
     if (isCompanyOwner && headerCompanyId) {
@@ -351,6 +360,7 @@ export async function POST(request: NextRequest) {
         cadence: challengeData.cadence,
         imageUrl: challengeData.imageUrl,
         creatorId: user.id,
+        whopCreatorId: user.whopUserId, // ✅ FIX: Set Whop Creator ID for revenue sharing
         
         // Store as JSON fields that exist in schema
         rules: {
