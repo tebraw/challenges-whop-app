@@ -1,6 +1,6 @@
 import { prisma } from './prisma';
 
-export type AccessTier = 'Basic' | 'Plus' | 'ProPlus';
+export type AccessTier = 'Basic' | 'Pre' | 'ProPlus';
 
 export interface TierLimits {
   challengesPerMonth: number;
@@ -13,18 +13,18 @@ export const TIER_LIMITS: Record<AccessTier, TierLimits> = {
   Basic: {
     challengesPerMonth: Infinity, // Not used for Basic - we use challengesLifetime instead
     challengesLifetime: 1, // 1 challenge total for lifetime
-    canCreatePaidChallenges: true, // ⚠️ TEMPORARILY ENABLED FOR TESTING
+    canCreatePaidChallenges: false, // Basic tier cannot create paid challenges
     features: ['Basic analytics', 'Email support', 'Community access']
   },
-  Plus: {
+  Pre: {
     challengesPerMonth: Infinity,
-    canCreatePaidChallenges: false,
-    features: ['Advanced analytics', 'Priority support', 'Custom branding', 'Member tools']
+    canCreatePaidChallenges: true, // Pre tier can create paid challenges with 50% commission
+    features: ['Unlimited challenges', 'Paid challenges (50% commission)', 'Priority email support']
   },
   ProPlus: {
     challengesPerMonth: Infinity,
-    canCreatePaidChallenges: true,
-    features: ['Everything in Plus', 'White-label', 'API access', 'Dedicated support', 'Revenue sharing', 'Paid challenges']
+    canCreatePaidChallenges: true, // ProPlus tier can create paid challenges with 10% commission
+    features: ['Everything in Pre', 'White-label', 'API access', 'Dedicated support', 'Paid challenges (10% commission)']
   }
 };
 

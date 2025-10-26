@@ -44,6 +44,12 @@ export async function POST(
         monetizationRules: true,
         creatorId: true,        // ✅ Added for revenue sharing
         whopCreatorId: true,    // ✅ Added for revenue sharing
+        creator: {              // ✅ Load creator with tier info
+          select: {
+            id: true,
+            tier: true
+          }
+        },
         _count: {
           select: { enrollments: true }
         }
@@ -93,8 +99,20 @@ export async function POST(
         storedCents: entryPriceCents,
         convertedToDollars: entryPriceCents / 100,
         currency: entryCurrency,
+        creatorTier: challenge.creator?.tier,
         debug: 'Converting cents from database to dollars for Whop API (which expects dollars, not cents)'
       });
+
+      // Calculate commission based on creator's tier
+      // Pre: 50% to creator, 50% to platform
+      // ProPlus: 90% to creator, 10% to platform
+      // Default (Basic/unknown): 90% to creator, 10% to platform
+      const creatorTier = challenge.creator?.tier || 'ProPlus';
+      const creatorPercentage = creatorTier === 'Pre' ? 0.5 : 0.9;
+      const platformPercentage = 1 - creatorPercentage;
+      
+      const creatorAmount = Math.floor(entryPriceCents * creatorPercentage);
+      const platformAmount = entryPriceCents - creatorAmount; // Ensure total equals entry price
 
       console.error('💳 PAYMENT METADATA:', {
         type: 'challenge_entry',
@@ -102,9 +120,12 @@ export async function POST(
         experienceId: challenge.experienceId,
         creatorId: challenge.creatorId,
         whopCreatorId: challenge.whopCreatorId,
+        creatorTier,
         totalAmount: entryPriceCents,
-        creatorAmount: Math.floor(entryPriceCents * 0.9),
-        platformAmount: Math.floor(entryPriceCents * 0.1),
+        creatorAmount,
+        creatorPercentage: `${creatorPercentage * 100}%`,
+        platformAmount,
+        platformPercentage: `${platformPercentage * 100}%`,
         warning: challenge.whopCreatorId ? 'Creator ID SET ✅' : '⚠️ CREATOR ID MISSING - REVENUE DIST WILL FAIL!'
       });
 
@@ -124,8 +145,9 @@ export async function POST(
           creatorId: challenge.creatorId || '',
           whopCreatorId: challenge.whopCreatorId || '',
           totalAmount: String(entryPriceCents),
-          creatorAmount: String(Math.floor(entryPriceCents * 0.9)), // 90% to creator
-          platformAmount: String(Math.floor(entryPriceCents * 0.1)), // 10% platform fee
+          creatorAmount: String(creatorAmount),
+          platformAmount: String(platformAmount),
+          creatorTier: creatorTier, // Track which tier for debugging
           // for reconciliation
           appEntity: 'challenge_enrollment',
         }

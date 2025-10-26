@@ -36,7 +36,7 @@ const PLANS = [
     accessPassId: process.env.NEXT_PUBLIC_PRE_ACCESS_PASS_ID || 'prod_ttlhdSPEzAXeO', // HARDCODED FALLBACK
     name: 'Pre', // Internal name matching Whop plan
     displayName: 'Pre', // User-facing name (unified with internal name)
-    price: '$19.90',
+    price: '$7.90',
     priceDetail: '/month',
     description: 'Ideal for growing communities',
     color: 'bg-blue-50 border-blue-200',
@@ -45,7 +45,7 @@ const PLANS = [
     // popular: true, // DISABLED: Could interfere with click events
     features: [
       '✅ Unlimited challenges',
-      '❌ Paid challenges',
+      '✅ Paid challenges (50% commission)',
       '✅ Priority email support'
     ]
   },
@@ -54,7 +54,7 @@ const PLANS = [
     accessPassId: process.env.NEXT_PUBLIC_PROPLUS_ACCESS_PASS_ID || 'prod_9YkNJGjxSgRyE', // HARDCODED FALLBACK
     name: 'ProPlus', // Internal name matching Whop plan
     displayName: 'ProPlus', // User-facing name
-    price: '$49.90',
+    price: '$19.90',
     priceDetail: '/month',
     description: 'Maximum power for enterprises',
     color: 'bg-purple-50 border-purple-200',
@@ -62,7 +62,7 @@ const PLANS = [
     buttonColor: 'bg-purple-600 hover:bg-purple-700',
     features: [
       '✅ Unlimited challenges',
-      '✅ Paid challenges',
+      '✅ Paid challenges (10% commission)',
       '✅ Priority email support'
     ]
   }
@@ -160,8 +160,8 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
             <p className="text-sm text-blue-800">
               <strong>Current Plan:</strong> {currentTier} 
               {currentTier === 'Basic' && ' (FREE)'}
-              {currentTier === 'Pre' && ' ($19.90/month)'}
-              {currentTier === 'ProPlus' && ' ($49.90/month)'}
+              {currentTier === 'Pre' && ' ($7.90/month)'}
+              {currentTier === 'ProPlus' && ' ($19.90/month)'}
             </p>
           </div>
         )}

@@ -84,6 +84,12 @@ export async function POST(
         status: true,
         startAt: true,
         endAt: true,
+        creator: {              // ✅ Load creator with tier info
+          select: {
+            id: true,
+            tier: true
+          }
+        }
       }
     });
 
@@ -141,8 +147,17 @@ export async function POST(
       const monetization = challenge.monetizationRules as any;
       if (monetization.enabled && monetization.entryPriceCents) {
         const totalAmountCents = monetization.entryPriceCents;
-        const creatorAmountCents = Math.floor(totalAmountCents * 0.9); // 90%
-        const platformFeeCents = totalAmountCents - creatorAmountCents; // 10%
+        
+        // Calculate commission based on creator's tier
+        // Pre: 50% to creator, 50% to platform
+        // ProPlus: 90% to creator, 10% to platform
+        // Default (Basic/unknown): 90% to creator, 10% to platform
+        const creatorTier = challenge.creator?.tier || 'ProPlus';
+        const creatorPercentage = creatorTier === 'Pre' ? 0.5 : 0.9;
+        const platformPercentage = 1 - creatorPercentage;
+        
+        const creatorAmountCents = Math.floor(totalAmountCents * creatorPercentage);
+        const platformFeeCents = totalAmountCents - creatorAmountCents; // Ensure total equals entry price
 
         try {
           // Import revenue distribution service
@@ -152,9 +167,12 @@ export async function POST(
             challengeId,
             creatorId: challenge.creatorId,
             whopCreatorId: challenge.whopCreatorId,
+            creatorTier,
             totalAmount: totalAmountCents,
             creatorAmount: creatorAmountCents,
-            platformFee: platformFeeCents
+            creatorPercentage: `${creatorPercentage * 100}%`,
+            platformFee: platformFeeCents,
+            platformPercentage: `${platformPercentage * 100}%`
           });
 
           // Distribute revenue using the service (creates record + calls payUser)
