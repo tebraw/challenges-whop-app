@@ -142,15 +142,30 @@ export async function GET(request: NextRequest) {
     let hasPromoCode = false;
     let promoTier: string | null = null;
     
+    console.log('🔍 DEBUG: Checking promo code for userId:', userId);
+    
     if (userId) {
       const userWithPromo = await prisma.user.findFirst({
         where: { whopUserId: userId },
         select: { activePromoCode: true, id: true }
       });
       
+      console.log('🔍 DEBUG: User lookup result:', {
+        found: !!userWithPromo,
+        activePromoCode: userWithPromo?.activePromoCode
+      });
+      
       if (userWithPromo?.activePromoCode) {
         const promoCode = await prisma.promoCode.findUnique({
           where: { code: userWithPromo.activePromoCode }
+        });
+        
+        console.log('🔍 DEBUG: Promo code lookup result:', {
+          found: !!promoCode,
+          code: promoCode?.code,
+          tier: promoCode?.tier,
+          isActive: promoCode?.isActive,
+          validUntil: promoCode?.validUntil
         });
         
         if (promoCode && promoCode.isActive) {
@@ -162,10 +177,24 @@ export async function GET(request: NextRequest) {
               code: promoCode.code,
               tier: promoCode.tier
             });
+          } else {
+            console.log('⚠️  PROMO CODE: Code has expired');
           }
+        } else {
+          console.log('⚠️  PROMO CODE: Code not found or inactive');
         }
+      } else {
+        console.log('ℹ️  No promo code found for user');
       }
+    } else {
+      console.log('⚠️  No userId provided to check promo code');
     }
+    
+    console.log('🎯 DEBUG: Final promo code check result:', {
+      hasPromoCode,
+      promoTier,
+      willGrantPaidChallenges: isTestCompany || tier === 'ProPlus' || (hasPromoCode && promoTier === 'ProPlus')
+    });
 
     const caps: TierCaps = {
       tier: isTestCompany ? 'ProPlus' : tier,
