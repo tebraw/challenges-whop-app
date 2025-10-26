@@ -9,31 +9,47 @@ import { distributeRevenue } from '@/lib/revenue-sharing';
 // Enhanced payment processing with revenue sharing
 async function handlePaymentSucceeded(data: any) {
   try {
-    console.log('� Payment succeeded - processing revenue share:', {
-      paymentId: data?.id,
-      userId: data?.user_id,
-      amount: data?.amount,
-      metadata: data?.metadata
-    });
+    console.error('💰 WEBHOOK: Payment succeeded - FULL DATA:', JSON.stringify(data, null, 2));
+    console.error('💰 WEBHOOK: Payment ID:', data?.id);
+    console.error('💰 WEBHOOK: User ID:', data?.user_id);
+    console.error('💰 WEBHOOK: Amount:', data?.amount);
+    console.error('💰 WEBHOOK: Metadata:', JSON.stringify(data?.metadata, null, 2));
     
     const metadata = data?.metadata;
     
     // Check if this is a challenge payment that requires revenue sharing
     if (metadata?.type === 'challenge_entry' && metadata?.challengeId && metadata?.whopCreatorId) {
-      console.log('🎯 Challenge payment detected - processing enrollment and revenue share');
+      console.error('🎯 WEBHOOK: Challenge payment detected - processing enrollment and revenue share');
+      console.error('🎯 WEBHOOK: Challenge ID:', metadata.challengeId);
+      console.error('🎯 WEBHOOK: Whop Creator ID:', metadata.whopCreatorId);
+      console.error('🎯 WEBHOOK: Creator Amount:', metadata.creatorAmount);
+      console.error('🎯 WEBHOOK: Platform Amount:', metadata.platformAmount);
+      console.error('🎯 WEBHOOK: Total Amount:', metadata.totalAmount);
       
       // 1. Create challenge enrollment
       await createChallengeEnrollment(data.user_id, metadata);
       
       // 2. Distribute revenue to creator (if creator info available)
       if (metadata.whopCreatorId && metadata.creatorAmount) {
+        console.error('✅ WEBHOOK: Creator info available - triggering revenue distribution');
         await distributeRevenueToCreator(data, metadata);
       } else {
-        console.log('⚠️ Skipping revenue distribution: Missing creator info in metadata');
+        console.error('⚠️ WEBHOOK: Skipping revenue distribution - Missing creator info:', {
+          hasWhopCreatorId: !!metadata.whopCreatorId,
+          hasCreatorAmount: !!metadata.creatorAmount,
+          whopCreatorId: metadata.whopCreatorId,
+          creatorAmount: metadata.creatorAmount
+        });
       }
       
     } else {
-      console.log('ℹ️ Non-challenge payment or missing metadata - using legacy handling');
+      console.error('ℹ️ WEBHOOK: Non-challenge payment or missing metadata:', {
+        hasType: !!metadata?.type,
+        type: metadata?.type,
+        hasChallengeId: !!metadata?.challengeId,
+        hasWhopCreatorId: !!metadata?.whopCreatorId,
+        usingLegacyHandling: true
+      });
       
       // Legacy handling for other payment types
       if (data?.user_id) {
@@ -52,7 +68,7 @@ async function handlePaymentSucceeded(data: any) {
       }
     }
   } catch (error) {
-    console.error('💥 Error handling payment succeeded:', error);
+    console.error('💥 WEBHOOK ERROR: Error handling payment succeeded:', error);
   }
 }
 
@@ -99,14 +115,13 @@ async function createChallengeEnrollment(whopUserId: string, metadata: any) {
 // Distribute revenue to challenge creator
 async function distributeRevenueToCreator(paymentData: any, metadata: any) {
   try {
-    console.log('💸 Initiating revenue distribution:', {
-      paymentId: paymentData.id,
-      challengeId: metadata.challengeId,
-      whopCreatorId: metadata.whopCreatorId,
-      totalAmount: metadata.totalAmount,
-      creatorAmount: metadata.creatorAmount,
-      platformAmount: metadata.platformAmount
-    });
+    console.error('💸 REVENUE DIST: Initiating revenue distribution');
+    console.error('💸 REVENUE DIST: Payment ID:', paymentData.id);
+    console.error('💸 REVENUE DIST: Challenge ID:', metadata.challengeId);
+    console.error('💸 REVENUE DIST: Whop Creator ID:', metadata.whopCreatorId);
+    console.error('💸 REVENUE DIST: Total Amount:', metadata.totalAmount);
+    console.error('💸 REVENUE DIST: Creator Amount (90%):', metadata.creatorAmount);
+    console.error('💸 REVENUE DIST: Platform Amount (10%):', metadata.platformAmount);
 
     const result = await distributeRevenue({
       challengeId: metadata.challengeId,
@@ -119,19 +134,18 @@ async function distributeRevenueToCreator(paymentData: any, metadata: any) {
     });
 
     if (result.success) {
-      console.log('✅ Revenue distribution completed:', {
-        revenueShareId: result.revenueShareId,
-        transferId: result.transferId
-      });
+      console.error('✅ REVENUE DIST: Revenue distribution completed successfully!');
+      console.error('✅ REVENUE DIST: Revenue Share ID:', result.revenueShareId);
+      console.error('✅ REVENUE DIST: Transfer ID:', result.transferId);
     } else {
-      console.error('❌ Revenue distribution failed:', {
-        error: result.error,
-        shouldRetry: result.shouldRetry
-      });
+      console.error('❌ REVENUE DIST: Revenue distribution FAILED!');
+      console.error('❌ REVENUE DIST: Error:', result.error);
+      console.error('❌ REVENUE DIST: Should Retry?:', result.shouldRetry);
     }
 
   } catch (error) {
-    console.error('💥 Revenue distribution system error:', error);
+    console.error('💥 REVENUE DIST ERROR: Revenue distribution system error:', error);
+    console.error('💥 REVENUE DIST ERROR: Stack:', error instanceof Error ? error.stack : 'No stack trace');
   }
 }
 
@@ -314,23 +328,51 @@ async function handleEvent(event: string, data: any) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🪝 WEBHOOK RECEIVED - Starting validation...');
+    
     // Validate webhook with new SDK
     const webhookData = await validateWebhook(request);
     
     if (!webhookData) {
-      console.log('🪝 Webhook received but validation failed');
+      console.log('🚨 Webhook validation FAILED - Invalid signature or payload');
       return NextResponse.json({ error: 'Invalid webhook' }, { status: 400 });
     }
 
     const { action, data } = webhookData;
-    console.log(`🪝 Processing webhook event: ${action}`);
+    console.log(`🎯 WEBHOOK EVENT VALIDATED: ${action}`, {
+      action,
+      dataKeys: Object.keys(data || {}),
+      hasMetadata: !!(data as any)?.metadata,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Extra logging for payment events
+    if (action === 'payment.succeeded') {
+      console.log('💰 PAYMENT SUCCESS WEBHOOK DETAILS:', {
+        paymentId: data?.id,
+        userId: (data as any)?.user_id,
+        amount: (data as any)?.amount,
+        metadata: (data as any)?.metadata,
+        hasRequiredFields: !!(data?.id && (data as any)?.user_id && (data as any)?.metadata)
+      });
+    }
     
     // Process the webhook event
     await handleEvent(action, data);
     
-    return NextResponse.json({ ok: true, event, processed: true });
+    console.log(`✅ WEBHOOK PROCESSED SUCCESSFULLY: ${action}`);
+    return NextResponse.json({ 
+      ok: true, 
+      event: action, 
+      processed: true,
+      timestamp: new Date().toISOString()
+    });
   } catch (err) {
-    console.error('❌ Webhook processing failed:', err);
+    console.error('💥 WEBHOOK PROCESSING FAILED:', {
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
   }
 }

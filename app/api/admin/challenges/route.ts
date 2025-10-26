@@ -351,6 +351,7 @@ export async function POST(request: NextRequest) {
         cadence: challengeData.cadence,
         imageUrl: challengeData.imageUrl,
         creatorId: user.id,
+        whopCreatorId: user.whopUserId, // ✅ FIX: Set Whop Creator ID for revenue sharing
         
         // Store as JSON fields that exist in schema
         rules: {

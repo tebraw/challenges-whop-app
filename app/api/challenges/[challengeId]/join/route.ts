@@ -96,6 +96,18 @@ export async function POST(
         debug: 'Converting cents from database to dollars for Whop API (which expects dollars, not cents)'
       });
 
+      console.error('💳 PAYMENT METADATA:', {
+        type: 'challenge_entry',
+        challengeId: challenge.id,
+        experienceId: challenge.experienceId,
+        creatorId: challenge.creatorId,
+        whopCreatorId: challenge.whopCreatorId,
+        totalAmount: entryPriceCents,
+        creatorAmount: Math.floor(entryPriceCents * 0.9),
+        platformAmount: Math.floor(entryPriceCents * 0.1),
+        warning: challenge.whopCreatorId ? 'Creator ID SET ✅' : '⚠️ CREATOR ID MISSING - REVENUE DIST WILL FAIL!'
+      });
+
       // 🔧 FIX: Whop API expects amount in DOLLARS, not cents!
       // Database stores: entryPriceCents = 100 (for $1.00)
       // Whop API expects: amount = 1.00 (dollars), then internally converts to cents via amount * 100
