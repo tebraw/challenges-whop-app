@@ -262,9 +262,9 @@ export default function PlanSelectionModal({ isOpen, onClose, currentTier, onPla
                         setPromoError('');
                         setPromoSuccess('');
                       }}
-                      placeholder="BETA-XXXX-XXXX"
+                      placeholder="BETA-XXXX-XXXX-XXXX"
                       className="w-full px-4 py-2 border-2 border-green-300 rounded-lg text-center font-mono font-bold text-green-900 placeholder-green-400 focus:outline-none focus:ring-2 focus:ring-green-500"
-                      maxLength={16}
+                      maxLength={19}
                       disabled={isProcessing}
                     />
                     
