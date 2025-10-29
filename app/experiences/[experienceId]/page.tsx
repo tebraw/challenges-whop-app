@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import CustomerChallenges from './components/CustomerChallenges';
 import NotificationBadge from '@/components/NotificationBadge';
 import AutoRedirect from './components/AutoRedirect';
+import Link from 'next/link';
 
 interface Props {
   params: Promise<{
@@ -173,6 +174,19 @@ export default async function ExperiencePage({ params }: Props) {
         </header>
 
         <div className="max-w-6xl mx-auto px-6 py-8">
+          {/* Create/Manage Challenges Button - Top Right */}
+          {user.tenant?.whopCompanyId && (
+            <div className="flex justify-end mb-4">
+              <Link
+                href={`/dashboard/${user.tenant.whopCompanyId}`}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-xl"
+              >
+                <span className="text-lg">⚙️</span>
+                Create/Manage Challenges
+              </Link>
+            </div>
+          )}
+          
           {/* Beautiful Header */}
           <div className="mb-10 text-center">
             <div className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-full px-6 py-3 mb-6">
